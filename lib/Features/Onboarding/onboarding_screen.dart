@@ -135,13 +135,13 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   // SKIP
   // ═══════════════════════════════════════════════════════════════════════════
 
-  void _skipOnboarding() {
-    _finishOnboarding();
-  }
+  // void _skipOnboarding() {
+  //   _finishOnboarding();
+  // }
 
-  void _finishOnboarding() {
-    widget.onFinished?.call();
-  }
+  // void _finishOnboarding() {
+  //   widget.onFinished?.call();
+  // }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // BUILD

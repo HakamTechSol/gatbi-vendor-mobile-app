@@ -11,15 +11,23 @@ import '../Features/Authentication/Registration/registration_screen.dart';
 import '../Features/Authentication/Rest Password/reset_password_screen.dart';
 import '../Features/Bulk Imort/Screens/bulk_import_screen.dart';
 import '../Features/Campaign/Screens/campaigns_screen.dart';
+import '../Features/Change Password/Screens/change_password_screen.dart';
+import '../Features/Chat/Screens/chat_detail_screen.dart';
+import '../Features/Chat/Screens/chat_list_screen.dart';
 import '../Features/Dashboard/dashboard_screen.dart';
 import '../Features/Edit Product/edit_product_screen.dart';
 import '../Features/More/more_screen.dart';
 import '../Features/My Product/Models/my_product_model.dart';
 import '../Features/My Product/my_products_screen.dart';
 import '../Features/Onboarding/onboarding_screen.dart';
+import '../Features/Order/Order Detail/Models/order_detail_model.dart';
+import '../Features/Order/Order Detail/screens/order_detail_screen.dart';
+import '../Features/Order/Order List/screens/orders_screen.dart';
 import '../Features/Product Detail/Model/product_detail_model.dart';
 import '../Features/Product Detail/Screens/product_detail_screen.dart';
 import '../Features/Splash/splash_screen.dart';
+import '../Features/Support/screen/create_support_ticket_screen.dart';
+import '../Features/Support/screen/support_screen.dart';
 import '../Features/Ticket/Create Ticket/create_ticket_screen.dart';
 import '../Features/Ticket/Detail ticket/ticket_detail_screen.dart';
 import '../Features/Ticket/List Ticket/ticket_list_screen.dart';
@@ -50,6 +58,8 @@ abstract final class AppRoutes {
 
   static const String resetPassword = '/reset-password';
 
+  static const String changePassword = '/change-password';
+
   static const String bottombar = '/bottombar';
 
   static const String dashboard = '/dashboard';
@@ -58,7 +68,13 @@ abstract final class AppRoutes {
 
   static const String orders = '/orders';
 
+  static const String orderDetail = '/orders/detail';
+
   static const String profile = '/profile';
+
+  static const String chatList = '/chat-list';
+
+  static const String chatDetail = '/chat-detail';
 
   static const String editProduct = '/products/edit';
 
@@ -73,6 +89,10 @@ abstract final class AppRoutes {
   static const String ticketDetail = '/support-tickets/detail';
 
   static const String createTicket = '/support-tickets/create';
+
+  static const String support = '/support';
+
+  static const String createSupportTicket = '/support/create';
 
   static const String campaigns = '/campaigns';
 
@@ -262,6 +282,26 @@ final GoRouter appRouter = GoRouter(
       },
     ),
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // CHANGE PASSWORD
+    // ═══════════════════════════════════════════════════════════════════════════
+    GoRoute(
+      path: AppRoutes.changePassword,
+      name: 'change-password',
+      builder: (context, state) {
+        return ChangePasswordScreen(
+          onBack: () {
+            context.pop();
+          },
+
+          onPasswordChanged: () {
+            // API / Riverpod will be connected later.
+            debugPrint('Password changed successfully');
+          },
+        );
+      },
+    ),
+
     // Dashboard
     GoRoute(
       path: AppRoutes.dashboard,
@@ -432,6 +472,22 @@ final GoRouter appRouter = GoRouter(
     ),
 
     GoRoute(
+      path: AppRoutes.chatList,
+      name: 'chat-list',
+      builder: (context, state) {
+        return const ChatListScreen();
+      },
+    ),
+
+    GoRoute(
+      path: AppRoutes.chatDetail,
+      name: 'chat-detail',
+      builder: (context, state) {
+        return const ChatDetailScreen();
+      },
+    ),
+
+    GoRoute(
       path: AppRoutes.analytics,
       name: 'analytics',
       builder: (context, state) {
@@ -443,11 +499,112 @@ final GoRouter appRouter = GoRouter(
       },
     ),
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SUPPORT
+    // ═══════════════════════════════════════════════════════════════════════════
+    GoRoute(
+      path: AppRoutes.support,
+      name: 'support',
+      builder: (context, state) {
+        return SupportScreen(
+          onBack: () {
+            context.pop();
+          },
+
+          onCustomerChatTap: () {
+            context.push(AppRoutes.chatList);
+          },
+
+          onCampaignsTap: () {
+            context.push(AppRoutes.campaigns);
+          },
+
+          onKycTap: () {
+            // KYC route will be connected here.
+            debugPrint('KYC tapped');
+          },
+
+          onOrdersTap: () {
+            context.push(AppRoutes.orders);
+          },
+
+          onPaymentsTap: () {
+            debugPrint('Payments & payouts tapped');
+          },
+
+          onCampaignRequestTap: () {
+            context.push(AppRoutes.campaigns);
+          },
+
+          onAnalyticsTap: () {
+            context.push(AppRoutes.analytics);
+          },
+
+          onProductsTap: () {
+            context.push(AppRoutes.products);
+          },
+
+          onSettingsTap: () {
+            // Settings route will be connected here.
+            debugPrint('Settings tapped');
+          },
+
+          onCreateTicketTap: () {
+            context.push(AppRoutes.createSupportTicket);
+          },
+
+          onEmailTap: () {
+            debugPrint('Support email tapped');
+            // mailto will be connected here.
+          },
+
+          onPhoneTap: () {
+            debugPrint('Support phone tapped');
+            // tel will be connected here.
+          },
+
+          onWhatsAppTap: () {
+            debugPrint('WhatsApp support tapped');
+            // WhatsApp deep link will be connected here.
+          },
+        );
+      },
+    ),
+
+    GoRoute(
+      path: AppRoutes.createSupportTicket,
+      name: 'create-support-ticket',
+      builder: (context, state) {
+        return CreateSupportTicketScreen(
+          onBack: () {
+            context.pop();
+          },
+
+          onSubmit:
+              ({
+                required String subject,
+                required String message,
+                required String priority,
+              }) async {
+                // API will be connected later.
+                debugPrint('Create Support Ticket');
+                debugPrint('Subject: $subject');
+                debugPrint('Message: $message');
+                debugPrint('Priority: $priority');
+              },
+        );
+      },
+    ),
+
     GoRoute(
       path: AppRoutes.more,
       name: 'more',
       builder: (context, state) {
         return MoreScreen(
+          onOrders: () {
+            context.push(AppRoutes.orders);
+          },
+
           onBulkProducts: () {
             context.push(AppRoutes.bulkImport);
           },
@@ -463,18 +620,72 @@ final GoRouter appRouter = GoRouter(
           onAnalytics: () {
             context.push(AppRoutes.analytics);
           },
+
+          onSupport: () {
+            context.push(AppRoutes.support);
+          },
+
+          onChangePassword: () {
+            context.push(AppRoutes.changePassword);
+          },
         );
       },
     ),
 
-    // Orders
-    // GoRoute(
-    //   path: AppRoutes.orders,
-    //   name: 'orders',
-    //   builder: (context, state) {
-    //     return const OrdersScreen();
-    //   },
-    // ),
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ORDERS
+    // ═══════════════════════════════════════════════════════════════════════════
+    GoRoute(
+      path: AppRoutes.orders,
+      name: 'orders',
+      builder: (context, state) {
+        return OrdersScreen(
+          onOrderTap: (order) {
+            final detailOrder = OrderDetailModel.fromJson({
+              ...order.toJson(),
+              'items': order.items.map((item) => item.toJson()).toList(),
+              'timeline': [],
+              'payment': null,
+              'shipping_address': null,
+              'billing_address': null,
+              'notes': null,
+              'payment_proof_url': null,
+            });
+
+            context.push(AppRoutes.orderDetail, extra: detailOrder);
+          },
+        );
+      },
+    ),
+
+    GoRoute(
+      path: AppRoutes.orderDetail,
+      name: 'order-detail',
+      builder: (context, state) {
+        final extra = state.extra;
+
+        if (extra is! OrderDetailModel) {
+          return const Scaffold(
+            body: Center(
+              child: Text(
+                'Order data is missing.',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+          );
+        }
+
+        return OrderDetailScreen(
+          order: extra,
+          onBack: () {
+            context.pop();
+          },
+          onRefresh: () {
+            debugPrint('Refresh Order: ${extra.orderNumber}');
+          },
+        );
+      },
+    ),
 
     // Profile
     // GoRoute(

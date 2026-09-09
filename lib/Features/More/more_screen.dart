@@ -15,6 +15,7 @@ class MoreScreen extends StatelessWidget {
     this.onBulkProducts,
 
     // Account
+    this.onChangePassword,
     this.onSettings,
     this.onKycVerification,
 
@@ -45,6 +46,7 @@ class MoreScreen extends StatelessWidget {
   // ACCOUNT
   // ═══════════════════════════════════════════════════════════════════════════
 
+  final VoidCallback? onChangePassword;
   final VoidCallback? onSettings;
   final VoidCallback? onKycVerification;
 
@@ -261,6 +263,12 @@ class MoreScreen extends StatelessWidget {
       subtitle: 'Store and verification settings',
       icon: Icons.manage_accounts_outlined,
       children: [
+        _buildMenuItem(
+          icon: Icons.lock_outlined,
+          title: 'Change Password',
+          subtitle: 'Update your account password',
+          onTap: onChangePassword,
+        ),
         _buildMenuItem(
           icon: Icons.settings_outlined,
           title: 'Settings',

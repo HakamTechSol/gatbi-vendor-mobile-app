@@ -104,6 +104,18 @@ class _BottomMainScreenState extends State<BottomMainScreen> {
     context.push(AppRoutes.analytics);
   }
 
+  void _openOrders() {
+    context.push(AppRoutes.orders);
+  }
+
+  void _openSupport() {
+    context.push(AppRoutes.support);
+  }
+
+  void _openChangePassword() {
+    context.push(AppRoutes.changePassword);
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // BUILD
   // ═══════════════════════════════════════════════════════════════════════════
@@ -125,6 +137,9 @@ class _BottomMainScreenState extends State<BottomMainScreen> {
             onTickets: _openSupportTickets,
             onCampaigns: _openCampaigns,
             onAnalytics: _openAnalytics,
+            onOrders: _openOrders,
+            onSupport: _openSupport,
+            onChangePassword: _openChangePassword,
           ),
         ],
       ),
