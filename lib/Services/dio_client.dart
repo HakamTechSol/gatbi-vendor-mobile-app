@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 
+import 'api_exception.dart';
 import 'error_handler.dart';
 
 class DioClient {
@@ -27,7 +28,7 @@ class DioClient {
         cancelToken: cancelToken,
       );
     } on DioException catch (error) {
-      throw ErrorHandler.handle(error);
+      throw _convertError(error);
     }
   }
 
@@ -51,7 +52,7 @@ class DioClient {
         cancelToken: cancelToken,
       );
     } on DioException catch (error) {
-      throw ErrorHandler.handle(error);
+      throw _convertError(error);
     }
   }
 
@@ -75,7 +76,7 @@ class DioClient {
         cancelToken: cancelToken,
       );
     } on DioException catch (error) {
-      throw ErrorHandler.handle(error);
+      throw _convertError(error);
     }
   }
 
@@ -99,7 +100,7 @@ class DioClient {
         cancelToken: cancelToken,
       );
     } on DioException catch (error) {
-      throw ErrorHandler.handle(error);
+      throw _convertError(error);
     }
   }
 
@@ -123,7 +124,27 @@ class DioClient {
         cancelToken: cancelToken,
       );
     } on DioException catch (error) {
-      throw ErrorHandler.handle(error);
+      throw _convertError(error);
     }
+  }
+
+  // ============================================================
+  // ERROR CONVERTER
+  // ============================================================
+
+  Object _convertError(DioException error) {
+    // ----------------------------------------------------------
+    // Already converted to ApiException
+    // ----------------------------------------------------------
+
+    if (error.error is ApiException) {
+      return error.error as ApiException;
+    }
+
+    // ----------------------------------------------------------
+    // Normal DioException
+    // ----------------------------------------------------------
+
+    return ErrorHandler.handle(error);
   }
 }

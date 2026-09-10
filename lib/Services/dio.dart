@@ -21,10 +21,15 @@ DioClient dio(Ref ref) {
       },
 
       connectTimeout: const Duration(seconds: 20),
-
       receiveTimeout: const Duration(seconds: 20),
-
       sendTimeout: const Duration(seconds: 20),
+
+      // Important:
+      // Dio should treat HTTP errors as errors so that
+      // ErrorHandler can process them.
+      validateStatus: (status) {
+        return status != null && status >= 200 && status < 300;
+      },
     ),
   );
 
@@ -40,33 +45,50 @@ DioClient dio(Ref ref) {
           options.headers['Authorization'] = 'Bearer $token';
         }
 
-        return handler.next(options);
+        // --------------------------------------------------------
+        // Debug logging
+        // --------------------------------------------------------
+
+        print('');
+        print('========== API REQUEST ==========');
+        print('METHOD: ${options.method}');
+        print('URL: ${options.uri}');
+        print('QUERY: ${options.queryParameters}');
+        print('BODY: ${options.data}');
+        print('=================================');
+        print('');
+
+        handler.next(options);
       },
 
       // ==========================================================
       // RESPONSE
       // ==========================================================
       onResponse: (response, handler) {
-        return handler.next(response);
+        print('');
+        print('========== API RESPONSE ==========');
+        print('STATUS: ${response.statusCode}');
+        print('URL: ${response.requestOptions.uri}');
+        print('DATA: ${response.data}');
+        print('==================================');
+        print('');
+
+        handler.next(response);
       },
 
       // ==========================================================
       // ERROR
       // ==========================================================
-      onError: (DioException error, handler) async {
-        print('============== DIO ERROR ==============');
-
+      onError: (DioException error, ErrorInterceptorHandler handler) async {
+        print('');
+        print('========== API ERROR ==========');
         print('TYPE: ${error.type}');
-
-        print('MESSAGE: ${error.message}');
-
-        print('ERROR: ${error.error}');
-
         print('STATUS: ${error.response?.statusCode}');
-
-        print('PATH: ${error.requestOptions.path}');
-
-        print('=======================================');
+        print('URL: ${error.requestOptions.uri}');
+        print('MESSAGE: ${error.message}');
+        print('RESPONSE: ${error.response?.data}');
+        print('================================');
+        print('');
 
         final apiException = ErrorHandler.handle(error);
 
@@ -74,9 +96,7 @@ DioClient dio(Ref ref) {
 
         final requestPath = error.requestOptions.path;
 
-        final hasToken = error.requestOptions.headers.containsKey(
-          'Authorization',
-        );
+        final hasToken = error.requestOptions.headers['Authorization'] != null;
 
         // ========================================================
         // Public endpoints
@@ -95,9 +115,10 @@ DioClient dio(Ref ref) {
         // Session Expired
         // ========================================================
 
-        if (statusCode == 401 &&
-            hasToken &&
-            !publicPaths.contains(requestPath)) {
+        final isSessionError =
+            statusCode == 401 && hasToken && !publicPaths.contains(requestPath);
+
+        if (isSessionError) {
           await SessionManager.handleSessionExpired();
         }
 
@@ -105,12 +126,12 @@ DioClient dio(Ref ref) {
         // Reject with ApiException
         // ========================================================
 
-        return handler.reject(
+        handler.reject(
           DioException(
             requestOptions: error.requestOptions,
-            error: apiException,
             response: error.response,
             type: error.type,
+            error: apiException,
           ),
         );
       },

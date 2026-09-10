@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../Services/auth_session.dart';
 import '../../Theme/app_colors.dart';
 import '../../Theme/app_dimensions.dart';
 import '../../Theme/app_text_styles.dart';
@@ -93,6 +94,10 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _finishSplash() async {
     if (!mounted) return;
 
+    // ============================================================
+    // CHECK ONBOARDING
+    // ============================================================
+
     final SharedPreferences prefs = await SharedPreferences.getInstance();
 
     final bool onboardingCompleted =
@@ -100,10 +105,26 @@ class _SplashScreenState extends State<SplashScreen>
 
     if (!mounted) return;
 
-    if (onboardingCompleted) {
-      context.go(AppRoutes.login);
-    } else {
+    // First time user → onboarding.
+    if (!onboardingCompleted) {
       context.go(AppRoutes.onboarding);
+      return;
+    }
+
+    // ============================================================
+    // CHECK AUTH SESSION
+    // ============================================================
+
+    final bool isAuthenticated = await AuthSession.instance.initialize();
+
+    if (!mounted) return;
+
+    if (isAuthenticated) {
+      // User is already logged in.
+      context.go(AppRoutes.bottombar);
+    } else {
+      // User is logged out.
+      context.go(AppRoutes.login);
     }
   }
 

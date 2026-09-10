@@ -3,23 +3,23 @@ import 'package:flutter/material.dart';
 import '../../../Core/Custom Widgets/custom_button.dart';
 import '../../../Theme/app_colors.dart';
 import '../../../Theme/app_text_styles.dart';
+import '../Models/dashboard_product_model.dart';
 
 class ProductsPreviewSection extends StatelessWidget {
   const ProductsPreviewSection({
     super.key,
-    this.productCount = 0,
+    required this.products,
     this.onAddProduct,
     this.onManageProducts,
+    this.onProductTap,
   });
 
-  /// Total number of products.
-  final int productCount;
+  final List<DashboardProductModel> products;
 
-  /// Called when user taps "Add your first product".
   final VoidCallback? onAddProduct;
-
-  /// Called when user taps "Manage products".
   final VoidCallback? onManageProducts;
+
+  final ValueChanged<DashboardProductModel>? onProductTap;
 
   @override
   Widget build(BuildContext context) {
@@ -44,14 +44,14 @@ class ProductsPreviewSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeader(context, isSmallScreen),
+          _buildHeader(isSmallScreen),
 
           const SizedBox(height: 16),
 
-          if (productCount == 0)
-            _buildEmptyState(context, isSmallScreen)
+          if (products.isEmpty)
+            _buildEmptyState(isSmallScreen)
           else
-            _buildProductsPlaceholder(context, isSmallScreen),
+            _buildProductsList(isSmallScreen),
         ],
       ),
     );
@@ -61,9 +61,8 @@ class ProductsPreviewSection extends StatelessWidget {
   // HEADER
   // ═══════════════════════════════════════════════════════════════════════════
 
-  Widget _buildHeader(BuildContext context, bool isSmallScreen) {
+  Widget _buildHeader(bool isSmallScreen) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Container(
           width: isSmallScreen ? 40 : 44,
@@ -100,9 +99,9 @@ class ProductsPreviewSection extends StatelessWidget {
               const SizedBox(height: 2),
 
               Text(
-                productCount == 0
+                products.isEmpty
                     ? 'Manage your store catalogue'
-                    : '$productCount products in your catalogue',
+                    : '${products.length} recent products',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.caption.copyWith(
@@ -122,7 +121,7 @@ class ProductsPreviewSection extends StatelessWidget {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // MANAGE PRODUCTS
+  // MANAGE
   // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildManageButton() {
@@ -157,10 +156,187 @@ class ProductsPreviewSection extends StatelessWidget {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // PRODUCTS LIST
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildProductsList(bool isSmallScreen) {
+    return Column(
+      children: [
+        for (int index = 0; index < products.length; index++) ...[
+          _buildProductTile(products[index], isSmallScreen),
+
+          if (index != products.length - 1)
+            Divider(height: 1, color: AppColors.divider.withValues(alpha: 0.7)),
+        ],
+      ],
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PRODUCT TILE
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildProductTile(DashboardProductModel product, bool isSmallScreen) {
+    return InkWell(
+      onTap: onProductTap == null ? null : () => onProductTap!(product),
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Row(
+          children: [
+            _buildProductImage(product, isSmallScreen),
+
+            const SizedBox(width: 11),
+
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    product.name ?? 'Unnamed Product',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.titleSmall.copyWith(
+                      color: AppColors.navy,
+                      fontSize: isSmallScreen ? 10.5 : 11.5,
+                      fontWeight: FontWeight.w800,
+                      height: 1.2,
+                    ),
+                  ),
+
+                  const SizedBox(height: 4),
+
+                  Text(
+                    '${product.stockQuantity ?? 0} in stock',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.textSecondary,
+                      fontSize: 9,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(width: 8),
+
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '${product.currencySymbol ?? product.currency ?? 'AED'} '
+                  '${(product.price ?? 0).toStringAsFixed(2)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.titleSmall.copyWith(
+                    color: AppColors.navy,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+
+                const SizedBox(height: 4),
+
+                _buildStockBadge(product),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PRODUCT IMAGE
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildProductImage(DashboardProductModel product, bool isSmallScreen) {
+    final size = isSmallScreen ? 48.0 : 54.0;
+
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: AppColors.primaryLight,
+        borderRadius: BorderRadius.circular(13),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: product.image != null && product.image!.isNotEmpty
+          ? Image.network(
+              product.image!,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) {
+                return Icon(
+                  Icons.inventory_2_outlined,
+                  color: AppColors.primary,
+                  size: isSmallScreen ? 21 : 23,
+                );
+              },
+            )
+          : Icon(
+              Icons.inventory_2_outlined,
+              color: AppColors.primary,
+              size: isSmallScreen ? 21 : 23,
+            ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // STOCK BADGE
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildStockBadge(DashboardProductModel product) {
+    final status = product.stockStatus?.toLowerCase() ?? '';
+
+    final bool isInStock = status == 'in_stock';
+    final bool isOutOfStock = status == 'out_of_stock';
+
+    final Color badgeColor;
+    final Color textColor;
+
+    if (isInStock) {
+      badgeColor = AppColors.success.withValues(alpha: 0.10);
+      textColor = AppColors.success;
+    } else if (isOutOfStock) {
+      badgeColor = AppColors.error.withValues(alpha: 0.10);
+      textColor = AppColors.error;
+    } else {
+      badgeColor = AppColors.warning.withValues(alpha: 0.10);
+      textColor = AppColors.warning;
+    }
+
+    final label = isInStock
+        ? 'In stock'
+        : isOutOfStock
+        ? 'Out of stock'
+        : 'Low stock';
+
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 85),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: badgeColor,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: AppTextStyles.caption.copyWith(
+          color: textColor,
+          fontSize: 8,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // EMPTY STATE
   // ═══════════════════════════════════════════════════════════════════════════
 
-  Widget _buildEmptyState(BuildContext context, bool isSmallScreen) {
+  Widget _buildEmptyState(bool isSmallScreen) {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.symmetric(
@@ -174,7 +350,20 @@ class ProductsPreviewSection extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _buildEmptyIcon(isSmallScreen),
+          Container(
+            width: isSmallScreen ? 48 : 54,
+            height: isSmallScreen ? 48 : 54,
+            decoration: BoxDecoration(
+              gradient: AppColors.softGradient,
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.primaryLight),
+            ),
+            child: Icon(
+              Icons.inventory_2_outlined,
+              color: AppColors.primary,
+              size: isSmallScreen ? 23 : 26,
+            ),
+          ),
 
           const SizedBox(height: 12),
 
@@ -192,141 +381,34 @@ class ProductsPreviewSection extends StatelessWidget {
 
           const SizedBox(height: 5),
 
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: Text(
-              'Add products to start selling and make them available to your customers.',
-              textAlign: TextAlign.center,
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.caption.copyWith(
-                color: AppColors.textSecondary,
-                fontSize: isSmallScreen ? 9.5 : 10,
-                height: 1.4,
-              ),
+          Text(
+            'Add products to start selling and make them available to your customers.',
+            textAlign: TextAlign.center,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.textSecondary,
+              fontSize: isSmallScreen ? 9.5 : 10,
+              height: 1.4,
             ),
           ),
 
           const SizedBox(height: 16),
 
-          _buildAddProductButton(isSmallScreen),
-        ],
-      ),
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // EMPTY ICON
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  Widget _buildEmptyIcon(bool isSmallScreen) {
-    final iconSize = isSmallScreen ? 48.0 : 54.0;
-
-    return Container(
-      width: iconSize,
-      height: iconSize,
-      decoration: BoxDecoration(
-        gradient: AppColors.softGradient,
-        shape: BoxShape.circle,
-        border: Border.all(color: AppColors.primaryLight),
-      ),
-      child: Icon(
-        Icons.inventory_2_outlined,
-        color: AppColors.primary,
-        size: isSmallScreen ? 23 : 26,
-      ),
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // ADD PRODUCT BUTTON
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  Widget _buildAddProductButton(bool isSmallScreen) {
-    return CustomButton(
-      text: 'Add your first product',
-      icon: Icons.add_rounded,
-      onPressed: onAddProduct,
-      type: CustomButtonType.primary,
-      width: isSmallScreen ? 190 : 205,
-      height: isSmallScreen ? 42 : 44,
-      borderRadius: 10,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      textStyle: AppTextStyles.buttonLarge.copyWith(
-        color: AppColors.textOnPrimary,
-        fontSize: isSmallScreen ? 10.5 : 11,
-        fontWeight: FontWeight.w700,
-      ),
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // PRODUCTS PLACEHOLDER
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  Widget _buildProductsPlaceholder(BuildContext context, bool isSmallScreen) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(isSmallScreen ? 12 : 14),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.65)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: isSmallScreen ? 44 : 48,
-            height: isSmallScreen ? 44 : 48,
-            decoration: BoxDecoration(
-              color: AppColors.primaryLight,
-              borderRadius: BorderRadius.circular(12),
+          CustomButton(
+            text: 'Add your first product',
+            icon: Icons.add_rounded,
+            onPressed: onAddProduct,
+            type: CustomButtonType.primary,
+            width: isSmallScreen ? 190 : 205,
+            height: isSmallScreen ? 42 : 44,
+            borderRadius: 10,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            textStyle: AppTextStyles.buttonLarge.copyWith(
+              color: AppColors.textOnPrimary,
+              fontSize: isSmallScreen ? 10.5 : 11,
+              fontWeight: FontWeight.w700,
             ),
-            child: Icon(
-              Icons.inventory_2_outlined,
-              color: AppColors.primary,
-              size: isSmallScreen ? 21 : 23,
-            ),
-          ),
-
-          const SizedBox(width: 11),
-
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Product Catalogue',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.titleSmall.copyWith(
-                    color: AppColors.navy,
-                    fontSize: isSmallScreen ? 11 : 12,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-
-                const SizedBox(height: 3),
-
-                Text(
-                  '$productCount ${productCount == 1 ? 'product' : 'products'} available',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.textSecondary,
-                    fontSize: isSmallScreen ? 9 : 9.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(width: 8),
-
-          Icon(
-            Icons.arrow_forward_ios_rounded,
-            color: AppColors.primary,
-            size: 13,
           ),
         ],
       ),

@@ -1,29 +1,44 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../Core/Custom Widgets/custom_button.dart';
-import '../../../Core/Custom Widgets/custom_textfield.dart';
-import '../../../Routes/app_route.dart';
-import '../../../Theme/app_colors.dart';
-import '../../../Theme/app_text_styles.dart';
+import '../../../../Core/Custom Widgets/custom_button.dart';
+import '../../../../Core/Custom Widgets/custom_textfield.dart';
+import '../../../../Routes/app_route.dart';
+import '../../../../Services/api_exception.dart';
+import '../../../../Services/auth_validator.dart';
+import '../../../../Services/dio.dart';
+import '../../../../Theme/app_colors.dart';
+import '../../../../Theme/app_text_styles.dart';
+import '../Controller/register_controller.dart';
 
-class ForgotPasswordScreen extends StatefulWidget {
-  const ForgotPasswordScreen({super.key, this.onSubmit, this.onBackToLogin});
+class RegisterScreen extends ConsumerStatefulWidget {
+  const RegisterScreen({super.key, this.onBackToLogin});
 
-  final Future<void> Function(String email)? onSubmit;
   final VoidCallback? onBackToLogin;
 
   @override
-  State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
+  ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
+class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   // ═══════════════════════════════════════════════════════════════════════════
   // CONTROLLERS
   // ═══════════════════════════════════════════════════════════════════════════
 
+  late final TextEditingController _businessNameController;
   late final TextEditingController _emailController;
+  late final TextEditingController _phoneController;
+  late final TextEditingController _passwordController;
+  late final TextEditingController _passwordConfirmationController;
+
+  late final FocusNode _businessNameFocusNode;
   late final FocusNode _emailFocusNode;
+  late final FocusNode _phoneFocusNode;
+  late final FocusNode _passwordFocusNode;
+  late final FocusNode _passwordConfirmationFocusNode;
+
+  late final RegisterController _registerController;
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
@@ -37,28 +52,52 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   void initState() {
     super.initState();
 
+    _businessNameController = TextEditingController();
     _emailController = TextEditingController();
+    _phoneController = TextEditingController();
+    _passwordController = TextEditingController();
+    _passwordConfirmationController = TextEditingController();
+
+    _businessNameFocusNode = FocusNode();
     _emailFocusNode = FocusNode();
+    _phoneFocusNode = FocusNode();
+    _passwordFocusNode = FocusNode();
+    _passwordConfirmationFocusNode = FocusNode();
+
+    _registerController = RegisterController(dioClient: ref.read(dioProvider));
   }
 
   @override
   void dispose() {
+    _businessNameController.dispose();
     _emailController.dispose();
+    _phoneController.dispose();
+    _passwordController.dispose();
+    _passwordConfirmationController.dispose();
+
+    _businessNameFocusNode.dispose();
     _emailFocusNode.dispose();
+    _phoneFocusNode.dispose();
+    _passwordFocusNode.dispose();
+    _passwordConfirmationFocusNode.dispose();
 
     super.dispose();
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // SUBMIT
+  // REGISTER
   // ═══════════════════════════════════════════════════════════════════════════
 
-  Future<void> _handleSubmit() async {
-    if (_isLoading) return;
+  Future<void> _handleRegister() async {
+    if (_isLoading) {
+      return;
+    }
 
     FocusScope.of(context).unfocus();
 
-    if (!_formKey.currentState!.validate()) {
+    final isValid = _formKey.currentState?.validate() ?? false;
+
+    if (!isValid) {
       return;
     }
 
@@ -67,49 +106,60 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     });
 
     try {
-      final email = _emailController.text.trim();
+      final phone = _phoneController.text.trim();
 
-      if (widget.onSubmit != null) {
-        await widget.onSubmit!(email);
-      } else {
-        await Future<void>.delayed(const Duration(milliseconds: 800));
+      final result = await _registerController.register(
+        businessName: _businessNameController.text.trim(),
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        passwordConfirmation: _passwordConfirmationController.text,
+        phone: phone.isEmpty ? null : phone,
+      );
+
+      if (!mounted) {
+        return;
       }
 
-      if (!mounted) return;
+      // ============================================================
+      // REGISTRATION SUCCESS
+      // ============================================================
 
-      // Navigate to Forget OTP Verification Screen
-      context.push(AppRoutes.resetPassword, extra: email);
+      if (result.success == true) {
+        context.push(
+          AppRoutes.emailotpVerification,
+          extra: _emailController.text.trim(),
+        );
+
+        return;
+      }
+
+      // ============================================================
+      // API RETURNED SUCCESS HTTP BUT SUCCESS = FALSE
+      // ============================================================
+
+      _showError(result.message ?? 'Registration failed. Please try again.');
+    } on ApiException catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      // ErrorHandler ka actual user-friendly message.
+      _showError(error.message);
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
-      _showError(error.toString());
+      _showError('Something went wrong. Please try again.');
     } finally {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _isLoading = false;
       });
     }
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // VALIDATION
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  String? _validateEmail(String? value) {
-    final email = value?.trim() ?? '';
-
-    if (email.isEmpty) {
-      return 'Please enter your email address';
-    }
-
-    final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
-
-    if (!emailRegex.hasMatch(email)) {
-      return 'Please enter a valid email address';
-    }
-
-    return null;
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -161,10 +211,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               physics: const BouncingScrollPhysics(),
               padding: EdgeInsets.only(bottom: 24 + bottomInset),
               child: Column(
-                children: [
-                  _buildHeroSection(size),
-                  _buildForgotPasswordCard(size),
-                ],
+                children: [_buildHeroSection(size), _buildRegisterCard(size)],
               ),
             ),
           ),
@@ -245,7 +292,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // HERO
+  // HERO SECTION
   // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildHeroSection(Size size) {
@@ -257,17 +304,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         horizontalPadding,
         isSmallHeight ? 18 : 22,
         horizontalPadding,
-        isSmallHeight ? 35 : 40,
+        isSmallHeight ? 30 : 35,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildBrandHeader(),
 
-          SizedBox(height: isSmallHeight ? 18 : 22),
+          SizedBox(height: isSmallHeight ? 14 : 17),
 
           Text(
-            'Reset your\npassword',
+            'Start your\nbusiness journey',
             style: AppTextStyles.displayLarge.copyWith(
               color: AppColors.white,
               fontSize: size.width < 350 ? 23 : 25,
@@ -280,14 +327,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           const SizedBox(height: 9),
 
           Text(
-            'Enter your registered email address and '
-            'we will send you a link to reset your password.',
+            'Create your vendor account, manage your '
+            'store, track orders, and grow your business '
+            'from one simple platform.',
             style: AppTextStyles.bodyLarge.copyWith(
               color: AppColors.white.withValues(alpha: 0.90),
               fontSize: size.width < 350 ? 10.5 : 11.5,
               height: 1.4,
             ),
           ),
+
+          SizedBox(height: isSmallHeight ? 14 : 17),
         ],
       ),
     );
@@ -330,10 +380,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // FORGOT PASSWORD CARD
+  // REGISTER CARD
   // ═══════════════════════════════════════════════════════════════════════════
 
-  Widget _buildForgotPasswordCard(Size size) {
+  Widget _buildRegisterCard(Size size) {
     final isSmallScreen = size.width < 350;
 
     return Transform.translate(
@@ -362,15 +412,15 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           key: _formKey,
           child: Column(
             children: [
-              _buildForgotIcon(),
+              _buildRegisterIcon(),
 
               const SizedBox(height: 9),
 
               Text(
-                'Forgot Password?',
+                'Create Vendor Account',
                 textAlign: TextAlign.center,
                 style: AppTextStyles.authTitle.copyWith(
-                  fontSize: isSmallScreen ? 24 : 26,
+                  fontSize: isSmallScreen ? 23 : 25,
                   height: 1.1,
                 ),
               ),
@@ -378,22 +428,38 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               const SizedBox(height: 3),
 
               Text(
-                'Enter your email to reset your password',
+                'Register your business to get started',
                 textAlign: TextAlign.center,
                 style: AppTextStyles.authSubtitle.copyWith(fontSize: 11),
               ),
 
               const SizedBox(height: 20),
 
+              _buildBusinessNameField(),
+
+              const SizedBox(height: 13),
+
               _buildEmailField(),
 
+              const SizedBox(height: 13),
+
+              _buildPhoneField(),
+
+              const SizedBox(height: 13),
+
+              _buildPasswordField(),
+
+              const SizedBox(height: 13),
+
+              _buildPasswordConfirmationField(),
+
+              const SizedBox(height: 20),
+
+              _buildRegisterButton(),
+
               const SizedBox(height: 18),
 
-              _buildResetButton(),
-
-              const SizedBox(height: 18),
-
-              _buildBackToLogin(),
+              _buildLoginSection(),
             ],
           ),
         ),
@@ -402,10 +468,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // ICON
+  // REGISTER ICON
   // ═══════════════════════════════════════════════════════════════════════════
 
-  Widget _buildForgotIcon() {
+  Widget _buildRegisterIcon() {
     return Container(
       width: 56,
       height: 56,
@@ -415,10 +481,29 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         border: Border.all(color: AppColors.primaryLight),
       ),
       child: const Icon(
-        Icons.lock_reset_rounded,
+        Icons.storefront_rounded,
         size: 29,
         color: AppColors.primary,
       ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // BUSINESS NAME
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildBusinessNameField() {
+    return CustomTextField(
+      controller: _businessNameController,
+      focusNode: _businessNameFocusNode,
+      label: 'Business Name',
+      hintText: 'Enter your business name',
+      prefixIcon: Icons.business_outlined,
+      textInputAction: TextInputAction.next,
+      validator: AuthValidator.businessName,
+      onSubmitted: (_) {
+        _emailFocusNode.requestFocus();
+      },
     );
   }
 
@@ -434,25 +519,90 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       hintText: 'Enter your email',
       prefixIcon: Icons.email_outlined,
       keyboardType: TextInputType.emailAddress,
-      textInputAction: TextInputAction.done,
+      textInputAction: TextInputAction.next,
       autocorrect: false,
       enableSuggestions: false,
-      validator: _validateEmail,
+      validator: AuthValidator.email,
       onSubmitted: (_) {
-        _handleSubmit();
+        _phoneFocusNode.requestFocus();
       },
     );
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // RESET BUTTON
+  // PHONE
   // ═══════════════════════════════════════════════════════════════════════════
 
-  Widget _buildResetButton() {
+  Widget _buildPhoneField() {
+    return CustomTextField(
+      controller: _phoneController,
+      focusNode: _phoneFocusNode,
+      label: 'Phone Number',
+      hintText: 'Enter your phone number',
+      prefixIcon: Icons.phone_outlined,
+      keyboardType: TextInputType.phone,
+      textInputAction: TextInputAction.next,
+      validator: AuthValidator.phone,
+      onSubmitted: (_) {
+        _passwordFocusNode.requestFocus();
+      },
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PASSWORD
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildPasswordField() {
+    return CustomTextField(
+      controller: _passwordController,
+      focusNode: _passwordFocusNode,
+      label: 'Password',
+      hintText: 'Create a password',
+      prefixIcon: Icons.lock_outline_rounded,
+      isPassword: true,
+      textInputAction: TextInputAction.next,
+      validator: AuthValidator.password,
+      onSubmitted: (_) {
+        _passwordConfirmationFocusNode.requestFocus();
+      },
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PASSWORD CONFIRMATION
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildPasswordConfirmationField() {
+    return CustomTextField(
+      controller: _passwordConfirmationController,
+      focusNode: _passwordConfirmationFocusNode,
+      label: 'Confirm Password',
+      hintText: 'Confirm your password',
+      prefixIcon: Icons.lock_reset_outlined,
+      isPassword: true,
+      textInputAction: TextInputAction.done,
+      validator: (value) {
+        return AuthValidator.confirmPassword(
+          value,
+          password: _passwordController.text,
+        );
+      },
+      onSubmitted: (_) {
+        _handleRegister();
+      },
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // REGISTER BUTTON
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildRegisterButton() {
     return CustomButton(
-      text: 'Send Reset Link',
-      icon: Icons.send_rounded,
-      onPressed: _handleSubmit,
+      text: 'Create Account',
+      icon: Icons.person_add_alt_1_rounded,
+      onPressed: _handleRegister,
       isLoading: _isLoading,
       type: CustomButtonType.primary,
       height: 47,
@@ -462,18 +612,33 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // BACK TO LOGIN
+  // LOGIN SECTION
   // ═══════════════════════════════════════════════════════════════════════════
 
-  Widget _buildBackToLogin() {
-    return CustomButton(
-      text: 'Back to Login',
-      icon: Icons.arrow_back_rounded,
-      iconPosition: CustomButtonIconPosition.leading,
-      onPressed: widget.onBackToLogin,
-      type: CustomButtonType.outlined,
-      height: 44,
-      borderRadius: 10,
+  Widget _buildLoginSection() {
+    return Column(
+      children: [
+        Text(
+          'Already have a vendor account?',
+          textAlign: TextAlign.center,
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: AppColors.navy,
+            fontSize: 11.5,
+          ),
+        ),
+
+        const SizedBox(height: 7),
+
+        CustomButton(
+          text: 'Back to Login',
+          icon: Icons.login_rounded,
+          iconPosition: CustomButtonIconPosition.leading,
+          onPressed: widget.onBackToLogin,
+          type: CustomButtonType.outlined,
+          height: 44,
+          borderRadius: 10,
+        ),
+      ],
     );
   }
 }

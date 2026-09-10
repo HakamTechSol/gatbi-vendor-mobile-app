@@ -1,40 +1,35 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:task_project/Routes/app_route.dart';
 
-import '../../../Core/Custom Widgets/custom_button.dart';
-import '../../../Core/Custom Widgets/custom_textfield.dart';
-import '../../../Theme/app_colors.dart';
-import '../../../Theme/app_text_styles.dart';
+import '../../../../Core/Custom Widgets/custom_button.dart';
+import '../../../../Core/Custom Widgets/custom_textfield.dart';
+import '../../../../Routes/app_route.dart';
+import '../../../../Services/api_exception.dart';
+import '../../../../Services/auth_validator.dart';
+import '../../../../Services/dio.dart';
+import '../../../../Theme/app_colors.dart';
+import '../../../../Theme/app_text_styles.dart';
+import '../Controller/forgot_password_controller.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({
-    super.key,
-    this.onLogin,
-    this.onForgotPassword,
-    this.onRegister,
-    this.onBackToWebsite,
-  });
+class ForgotPasswordScreen extends ConsumerStatefulWidget {
+  const ForgotPasswordScreen({super.key, this.onSubmit, this.onBackToLogin});
 
-  final Future<void> Function(String email, String password)? onLogin;
-  final VoidCallback? onForgotPassword;
-  final VoidCallback? onRegister;
-  final VoidCallback? onBackToWebsite;
+  final Future<void> Function(String email)? onSubmit;
+  final VoidCallback? onBackToLogin;
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<ForgotPasswordScreen> createState() =>
+      _ForgotPasswordScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   // ═══════════════════════════════════════════════════════════════════════════
   // CONTROLLERS
   // ═══════════════════════════════════════════════════════════════════════════
 
   late final TextEditingController _emailController;
-  late final TextEditingController _passwordController;
-
   late final FocusNode _emailFocusNode;
-  late final FocusNode _passwordFocusNode;
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
@@ -49,103 +44,180 @@ class _LoginScreenState extends State<LoginScreen> {
     super.initState();
 
     _emailController = TextEditingController();
-    _passwordController = TextEditingController();
-
     _emailFocusNode = FocusNode();
-    _passwordFocusNode = FocusNode();
   }
 
   @override
   void dispose() {
     _emailController.dispose();
-    _passwordController.dispose();
-
     _emailFocusNode.dispose();
-    _passwordFocusNode.dispose();
 
     super.dispose();
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // LOGIN
+  // SUBMIT
   // ═══════════════════════════════════════════════════════════════════════════
 
-  Future<void> _handleLogin() async {
-  if (_isLoading) return;
+  Future<void> _handleSubmit() async {
+    if (_isLoading) return;
 
-  FocusScope.of(context).unfocus();
+    FocusScope.of(context).unfocus();
 
-  if (!_formKey.currentState!.validate()) {
-    return;
-  }
-
-  setState(() {
-    _isLoading = true;
-  });
-
-  try {
-    if (widget.onLogin != null) {
-      await widget.onLogin!(
-        _emailController.text.trim(),
-        _passwordController.text,
-      );
-    } else {
-      await Future<void>.delayed(
-        const Duration(milliseconds: 800),
-      );
+    if (!_formKey.currentState!.validate()) {
+      return;
     }
 
-    // ============================================================
-    // LOGIN SUCCESS → DASHBOARD
-    // ============================================================
-
-    if (!mounted) return;
-
-    context.go(AppRoutes.bottombar);
-  } catch (error) {
-    if (!mounted) return;
-
-    _showError(error.toString());
-  } finally {
-    if (!mounted) return;
+    final email = _emailController.text.trim();
 
     setState(() {
-      _isLoading = false;
+      _isLoading = true;
     });
+
+    try {
+      // ================================================================
+      // API CONNECTION
+      // ================================================================
+
+      final dioClient = ref.read(dioProvider);
+
+      final controller = ForgotPasswordController(dioClient: dioClient);
+
+      final result = await controller.forgotPassword(email: email);
+
+      if (!mounted) return;
+
+      // ================================================================
+      // API SUCCESS
+      // ================================================================
+
+      if (result.success == true) {
+        await _showSuccessDialog(
+          message:
+              result.message ??
+              'If a vendor account exists, a password reset link will be sent.',
+        );
+      }
+    } on ApiException catch (error) {
+      if (!mounted) return;
+
+      _showError(error.message);
+    } catch (error) {
+      if (!mounted) return;
+
+      _showError('Something went wrong. Please try again.');
+    } finally {
+      if (!mounted) return;
+
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
-}
+
   // ═══════════════════════════════════════════════════════════════════════════
-  // VALIDATION
+  // EMAIL VALIDATION
   // ═══════════════════════════════════════════════════════════════════════════
 
   String? _validateEmail(String? value) {
-    final email = value?.trim() ?? '';
-
-    if (email.isEmpty) {
-      return 'Please enter your email address';
-    }
-
-    final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
-
-    if (!emailRegex.hasMatch(email)) {
-      return 'Please enter a valid email address';
-    }
-
-    return null;
+    return AuthValidator.email(value);
   }
 
-  String? _validatePassword(String? value) {
-    final password = value ?? '';
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SUCCESS DIALOG
+  // ═══════════════════════════════════════════════════════════════════════════
 
-    if (password.isEmpty) {
-      return 'Please enter your password';
-    }
+  Future<void> _showSuccessDialog({required String message}) async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: AppColors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(22, 24, 22, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ==========================================================
+                // SUCCESS ICON
+                // ==========================================================
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    gradient: AppColors.softGradient,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.primaryLight),
+                  ),
+                  child: const Icon(
+                    Icons.mark_email_read_rounded,
+                    color: AppColors.primary,
+                    size: 31,
+                  ),
+                ),
 
-    if (password.length < 6) {
-      return 'Password must be at least 6 characters';
-    }
+                const SizedBox(height: 16),
 
-    return null;
+                // ==========================================================
+                // TITLE
+                // ==========================================================
+                Text(
+                  'Reset Link Sent',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.authTitle.copyWith(
+                    fontSize: 21,
+                    height: 1.15,
+                  ),
+                ),
+
+                const SizedBox(height: 9),
+
+                // ==========================================================
+                // MESSAGE
+                // ==========================================================
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.authSubtitle.copyWith(
+                    fontSize: 12,
+                    height: 1.45,
+                  ),
+                ),
+
+                const SizedBox(height: 22),
+
+                // ==========================================================
+                // CONFIRM BUTTON
+                // ==========================================================
+                CustomButton(
+                  text: 'Confirm',
+                  icon: Icons.check_rounded,
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop();
+                  },
+                  type: CustomButtonType.primary,
+                  height: 46,
+                  borderRadius: 10,
+                  elevation: 2,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (!mounted) return;
+
+    // ================================================================
+    // AFTER CONFIRM → LOGIN
+    // ================================================================
+
+    context.go(AppRoutes.login);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -192,18 +264,16 @@ class _LoginScreenState extends State<LoginScreen> {
 
           SafeArea(
             bottom: false,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  keyboardDismissBehavior:
-                      ScrollViewKeyboardDismissBehavior.onDrag,
-                  physics: const BouncingScrollPhysics(),
-                  padding: EdgeInsets.only(bottom: 24 + bottomInset),
-                  child: Column(
-                    children: [_buildHeroSection(size), _buildLoginCard(size)],
-                  ),
-                );
-              },
+            child: SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              physics: const BouncingScrollPhysics(),
+              padding: EdgeInsets.only(bottom: 24 + bottomInset),
+              child: Column(
+                children: [
+                  _buildHeroSection(size),
+                  _buildForgotPasswordCard(size),
+                ],
+              ),
             ),
           ),
         ],
@@ -223,14 +293,12 @@ class _LoginScreenState extends State<LoginScreen> {
       height: double.infinity,
       child: Stack(
         children: [
-          // Main gradient
           Container(
             width: double.infinity,
             height: screenHeight * 0.51,
             decoration: const BoxDecoration(gradient: AppColors.heroGradient),
           ),
 
-          // Decorative circles
           Positioned(
             top: 70,
             right: -55,
@@ -249,13 +317,11 @@ class _LoginScreenState extends State<LoginScreen> {
             child: _buildBackgroundCircle(size: 300, opacity: 0.035),
           ),
 
-          // Background
           Positioned.fill(
             top: screenHeight * 0.45,
             child: Container(color: AppColors.background),
           ),
 
-          // Wave
           ClipPath(
             clipper: _HeroWaveClipper(),
             child: Container(
@@ -287,7 +353,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // HERO SECTION
+  // HERO
   // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildHeroSection(Size size) {
@@ -306,10 +372,10 @@ class _LoginScreenState extends State<LoginScreen> {
         children: [
           _buildBrandHeader(),
 
-          SizedBox(height: isSmallHeight ? 14 : 17),
+          SizedBox(height: isSmallHeight ? 18 : 22),
 
           Text(
-            'Grow your\nbusiness with',
+            'Reset your\npassword',
             style: AppTextStyles.displayLarge.copyWith(
               color: AppColors.white,
               fontSize: size.width < 350 ? 23 : 25,
@@ -322,19 +388,14 @@ class _LoginScreenState extends State<LoginScreen> {
           const SizedBox(height: 9),
 
           Text(
-            'Access real-time sales insights, manage '
-            'orders effortlessly, and keep your catalogue '
-            'in sync across all channels.',
+            'Enter your registered email address and '
+            'we will send you a link to reset your password.',
             style: AppTextStyles.bodyLarge.copyWith(
               color: AppColors.white.withValues(alpha: 0.90),
               fontSize: size.width < 350 ? 10.5 : 11.5,
               height: 1.4,
             ),
           ),
-
-          SizedBox(height: isSmallHeight ? 14 : 17),
-
-          _buildFeatureCard(size),
         ],
       ),
     );
@@ -377,128 +438,10 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // FEATURE CARD
+  // FORGOT PASSWORD CARD
   // ═══════════════════════════════════════════════════════════════════════════
 
-  Widget _buildFeatureCard(Size size) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadowStrong,
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center, // ← change this
-        children: [
-          Expanded(
-            child: _buildFeatureItem(
-              icon: Icons.analytics_outlined,
-              title: 'Smart Analytics',
-              description:
-                  'Track revenue, best sellers, and performance in one place.',
-            ),
-          ),
-
-          _buildFeatureDivider(),
-
-          Expanded(
-            child: _buildFeatureItem(
-              icon: Icons.local_shipping_outlined,
-              title: 'Order Fulfilment',
-              description:
-                  'Streamlined workflow to manage orders from placement to delivery.',
-            ),
-          ),
-
-          _buildFeatureDivider(),
-
-          Expanded(
-            child: _buildFeatureItem(
-              icon: Icons.headset_mic_outlined,
-              title: 'Dedicated Support',
-              description:
-                  'Our merchant success team is available 6 days a week.',
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFeatureItem({
-    required IconData icon,
-    required String title,
-    required String description,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 3),
-      child: Column(
-        children: [
-          Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              color: AppColors.primaryLight,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: AppColors.primary, size: 15),
-          ),
-
-          const SizedBox(height: 7),
-
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.titleSmall.copyWith(
-              color: AppColors.navy,
-              fontWeight: FontWeight.w800,
-              fontSize: 8.5,
-              height: 1.15,
-            ),
-          ),
-
-          const SizedBox(height: 4),
-
-          Text(
-            description,
-            textAlign: TextAlign.center,
-            maxLines: 4,
-            overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.caption.copyWith(
-              color: AppColors.textSecondary,
-              fontSize: 7,
-              height: 1.3,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFeatureDivider() {
-    return Container(
-      width: 1,
-      height: 100,
-      margin: const EdgeInsets.symmetric(horizontal: 2),
-      color: AppColors.divider,
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // LOGIN CARD
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  Widget _buildLoginCard(Size size) {
+  Widget _buildForgotPasswordCard(Size size) {
     final isSmallScreen = size.width < 350;
 
     return Transform.translate(
@@ -527,12 +470,12 @@ class _LoginScreenState extends State<LoginScreen> {
           key: _formKey,
           child: Column(
             children: [
-              _buildLoginIcon(),
+              _buildForgotIcon(),
 
               const SizedBox(height: 9),
 
               Text(
-                'Vendor Login',
+                'Forgot Password?',
                 textAlign: TextAlign.center,
                 style: AppTextStyles.authTitle.copyWith(
                   fontSize: isSmallScreen ? 24 : 26,
@@ -543,7 +486,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 3),
 
               Text(
-                'Sign in to manage your store',
+                'Enter your email to reset your password',
                 textAlign: TextAlign.center,
                 style: AppTextStyles.authSubtitle.copyWith(fontSize: 11),
               ),
@@ -552,21 +495,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
               _buildEmailField(),
 
-              const SizedBox(height: 13),
+              const SizedBox(height: 18),
 
-              _buildPasswordField(),
-
-              const SizedBox(height: 3),
-
-              _buildForgotPassword(),
-
-              const SizedBox(height: 13),
-
-              _buildLoginButton(),
+              _buildResetButton(),
 
               const SizedBox(height: 18),
 
-              _buildRegisterSection(),
+              _buildBackToLogin(),
             ],
           ),
         ),
@@ -575,10 +510,10 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // LOGIN ICON
+  // ICON
   // ═══════════════════════════════════════════════════════════════════════════
 
-  Widget _buildLoginIcon() {
+  Widget _buildForgotIcon() {
     return Container(
       width: 56,
       height: 56,
@@ -588,7 +523,7 @@ class _LoginScreenState extends State<LoginScreen> {
         border: Border.all(color: AppColors.primaryLight),
       ),
       child: const Icon(
-        Icons.storefront_rounded,
+        Icons.lock_reset_rounded,
         size: 29,
         color: AppColors.primary,
       ),
@@ -607,70 +542,25 @@ class _LoginScreenState extends State<LoginScreen> {
       hintText: 'Enter your email',
       prefixIcon: Icons.email_outlined,
       keyboardType: TextInputType.emailAddress,
-      textInputAction: TextInputAction.next,
+      textInputAction: TextInputAction.done,
       autocorrect: false,
       enableSuggestions: false,
       validator: _validateEmail,
       onSubmitted: (_) {
-        _passwordFocusNode.requestFocus();
+        _handleSubmit();
       },
     );
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // PASSWORD
+  // RESET BUTTON
   // ═══════════════════════════════════════════════════════════════════════════
 
-  Widget _buildPasswordField() {
-    return CustomTextField(
-      controller: _passwordController,
-      focusNode: _passwordFocusNode,
-      label: 'Password',
-      hintText: 'Enter your password',
-      prefixIcon: Icons.lock_outline_rounded,
-      isPassword: true,
-      textInputAction: TextInputAction.done,
-      validator: _validatePassword,
-      onSubmitted: (_) {
-        _handleLogin();
-      },
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // FORGOT PASSWORD
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  Widget _buildForgotPassword() {
-    return Align(
-      alignment: Alignment.centerRight,
-      child: TextButton(
-        onPressed: widget.onForgotPassword,
-        style: TextButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
-          minimumSize: Size.zero,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
-        child: Text(
-          'Forgot Password?',
-          style: AppTextStyles.buttonText.copyWith(
-            fontSize: 11.5,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // LOGIN BUTTON
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  Widget _buildLoginButton() {
+  Widget _buildResetButton() {
     return CustomButton(
-      text: 'Login',
-      icon: Icons.login_rounded,
-      onPressed: _handleLogin,
+      text: 'Send Reset Link',
+      icon: Icons.send_rounded,
+      onPressed: _handleSubmit,
       isLoading: _isLoading,
       type: CustomButtonType.primary,
       height: 47,
@@ -680,66 +570,24 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // REGISTER
+  // BACK TO LOGIN
   // ═══════════════════════════════════════════════════════════════════════════
 
-  Widget _buildRegisterSection() {
-    return Column(
-      children: [
-        Text(
-          'Don\'t have a vendor account?',
-          textAlign: TextAlign.center,
-          style: AppTextStyles.bodyMedium.copyWith(
-            color: AppColors.navy,
-            fontSize: 11.5,
-          ),
-        ),
-
-        const SizedBox(height: 7),
-
-        CustomButton(
-          text: 'Register as Vendor',
-          onPressed: widget.onRegister,
-          type: CustomButtonType.outlined,
-          height: 44,
-          borderRadius: 10,
-        ),
-      ],
+  Widget _buildBackToLogin() {
+    return CustomButton(
+      text: 'Back to Login',
+      icon: Icons.arrow_back_rounded,
+      iconPosition: CustomButtonIconPosition.leading,
+      onPressed:
+          widget.onBackToLogin ??
+          () {
+            context.go(AppRoutes.login);
+          },
+      type: CustomButtonType.outlined,
+      height: 44,
+      borderRadius: 10,
     );
   }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // BACK TO WEBSITE
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  // Widget _buildBackToWebsite() {
-  //   return TextButton(
-  //     onPressed: widget.onBackToWebsite,
-  //     style: TextButton.styleFrom(
-  //       foregroundColor: AppColors.primary,
-  //       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-  //       minimumSize: Size.zero,
-  //       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-  //     ),
-  //     child: Row(
-  //       mainAxisSize: MainAxisSize.min,
-  //       children: [
-  //         const Icon(Icons.arrow_back_rounded, size: 16),
-
-  //         const SizedBox(width: 5),
-
-  //         Text(
-  //           'Back to Website',
-  //           style: AppTextStyles.buttonText.copyWith(
-  //             fontSize: 11.5,
-  //             fontWeight: FontWeight.w600,
-  //           ),
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  // }
-
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

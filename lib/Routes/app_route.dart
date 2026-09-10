@@ -4,10 +4,11 @@ import '../Core/Bottom Naigation Bar/bottom_bar_screen.dart';
 import '../Core/Bottom Naigation Bar/bottom_bar_navigation.dart';
 import '../Features/Add Product/Screens/add_product_screen.dart';
 import '../Features/Authentication/Email Verification OTP/email_otp_verification_screen.dart';
-import '../Features/Authentication/Forget Password/forget_password_Screen.dart';
+import '../Features/Authentication/Forget Password/Screens/forget_password_Screen.dart';
 import '../Features/Authentication/Forget Verification OTP/forget_verification_otp.dart';
-import '../Features/Authentication/Login/login_screen.dart';
-import '../Features/Authentication/Registration/registration_screen.dart';
+import '../Features/Authentication/Login Verification OTP/Screens/login_verification_otp_screen.dart';
+import '../Features/Authentication/Login/Screens/login_screen.dart';
+import '../Features/Authentication/Registration/Screen/registration_screen.dart';
 import '../Features/Authentication/Rest Password/reset_password_screen.dart';
 import '../Features/Bulk Imort/Screens/bulk_import_screen.dart';
 import '../Features/Campaign/Screens/campaigns_screen.dart';
@@ -51,6 +52,8 @@ abstract final class AppRoutes {
   static const String register = '/register';
 
   static const String emailotpVerification = '/email-otp-verification';
+
+  static const String loginotpVerification = '/login-otp-verification';
 
   static const String forgotPassword = '/forgot-password';
 
@@ -198,6 +201,31 @@ final GoRouter appRouter = GoRouter(
         );
       },
     ),
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // LOGIN VERIFICATION
+    // ═══════════════════════════════════════════════════════════════════════
+    GoRoute(
+  path: AppRoutes.loginotpVerification,
+  name: 'loginotpVerification',
+  builder: (context, state) {
+    final extra = state.extra;
+
+    final data = extra is Map
+        ? Map<String, dynamic>.from(extra)
+        : <String, dynamic>{};
+
+    final email = data['email'] as String? ?? '';
+    final merchantId = data['merchant_id'] as int? ?? 0;
+    final expiresInMinutes = data['expires_in_minutes'] as int? ?? 0;
+
+    return LoginOtpVerificationScreen(
+      email: email,
+      merchantId: merchantId,
+      expiresInMinutes: expiresInMinutes,
+    );
+  },
+),
 
     // ═══════════════════════════════════════════════════════════════════════
     // FORGET PASSWORD

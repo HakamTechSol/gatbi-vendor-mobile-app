@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../Routes/app_route.dart';
 import '../../Theme/app_colors.dart';
 import '../../Theme/app_dimensions.dart';
@@ -8,11 +10,6 @@ import '../../Theme/app_text_styles.dart';
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key, this.onFinished});
 
-  /// Called when the user completes onboarding.
-  ///
-  /// Later this will navigate to:
-  ///
-  /// Onboarding → Login
   final VoidCallback? onFinished;
 
   @override
@@ -21,6 +18,8 @@ class OnboardingScreen extends StatefulWidget {
 
 class _OnboardingScreenState extends State<OnboardingScreen>
     with TickerProviderStateMixin {
+  static const String _onboardingCompletedKey = 'onboarding_completed';
+
   late final PageController _pageController;
 
   late final AnimationController _contentAnimationController;
@@ -28,6 +27,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   late final Animation<Offset> _contentSlide;
 
   int _currentPage = 0;
+
+  bool _isCompleting = false;
 
   bool get _isLastPage => _currentPage == _pages.length - 1;
 
@@ -65,6 +66,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     ),
   ];
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // INIT
+  // ═══════════════════════════════════════════════════════════════════════════
+
   @override
   void initState() {
     super.initState();
@@ -92,13 +97,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     _contentAnimationController.forward();
   }
 
-  @override
-  void dispose() {
-    _pageController.dispose();
-    _contentAnimationController.dispose();
-    super.dispose();
-  }
-
   // ═══════════════════════════════════════════════════════════════════════════
   // PAGE CHANGE
   // ═══════════════════════════════════════════════════════════════════════════
@@ -116,12 +114,47 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // COMPLETE ONBOARDING
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Future<void> _completeOnboarding() async {
+    if (_isCompleting) return;
+
+    setState(() {
+      _isCompleting = true;
+    });
+
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+
+      // Save onboarding completion permanently.
+      await prefs.setBool(_onboardingCompletedKey, true);
+
+      if (!mounted) return;
+
+      // Optional callback if parent wants to handle completion.
+      widget.onFinished?.call();
+
+      // Navigate to login.
+      context.go(AppRoutes.login);
+    } catch (e) {
+      debugPrint('❌ Failed to save onboarding status: $e');
+
+      if (!mounted) return;
+
+      setState(() {
+        _isCompleting = false;
+      });
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // NEXT
   // ═══════════════════════════════════════════════════════════════════════════
 
   void _nextPage() {
     if (_isLastPage) {
-      context.go(AppRoutes.login);
+      _completeOnboarding();
       return;
     }
 
@@ -130,18 +163,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       curve: Curves.easeInOut,
     );
   }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // SKIP
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  // void _skipOnboarding() {
-  //   _finishOnboarding();
-  // }
-
-  // void _finishOnboarding() {
-  //   widget.onFinished?.call();
-  // }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // BUILD
@@ -189,30 +210,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         height: 48,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _buildBrandMini(),
-
-            // if (!_isLastPage)
-            //   TextButton(
-            //     onPressed: _skipOnboarding,
-            //     style: TextButton.styleFrom(
-            //       foregroundColor: AppColors.textSecondary,
-            //       padding: const EdgeInsets.symmetric(
-            //         horizontal: AppDimensions.spacing8,
-            //         vertical: AppDimensions.spacing8,
-            //       ),
-            //     ),
-            //     child: Text(
-            //       'Skip',
-            //       style: AppTextStyles.buttonText.copyWith(
-            //         color: AppColors.textSecondary,
-            //       ),
-            //     ),
-            //   )
-            
-            // else
-            //   const SizedBox(width: 50),
-          ],
+          children: [_buildBrandMini()],
         ),
       ),
     );
@@ -308,9 +306,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // ─────────────────────────────────────────────────────────────────
-          // Large soft background circle
-          // ─────────────────────────────────────────────────────────────────
           Container(
             width: illustrationHeight * 0.82,
             height: illustrationHeight * 0.82,
@@ -327,9 +322,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             ),
           ),
 
-          // ─────────────────────────────────────────────────────────────────
-          // Decorative purple circle
-          // ─────────────────────────────────────────────────────────────────
           Positioned(
             top: 22,
             right: 30,
@@ -340,9 +332,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             ),
           ),
 
-          // ─────────────────────────────────────────────────────────────────
-          // Decorative blue circle
-          // ─────────────────────────────────────────────────────────────────
           Positioned(
             bottom: 24,
             left: 24,
@@ -353,32 +342,20 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             ),
           ),
 
-          // ─────────────────────────────────────────────────────────────────
-          // Main illustration card
-          // ─────────────────────────────────────────────────────────────────
           _buildMainIllustrationCard(data, index),
 
-          // ─────────────────────────────────────────────────────────────────
-          // Floating top-right card
-          // ─────────────────────────────────────────────────────────────────
           Positioned(
             top: 48,
             right: 16,
             child: _buildFloatingCard(icon: data.secondaryIcon, small: true),
           ),
 
-          // ─────────────────────────────────────────────────────────────────
-          // Floating bottom-left card
-          // ─────────────────────────────────────────────────────────────────
           Positioned(
             bottom: 38,
             left: 12,
             child: _buildFloatingCard(icon: data.accentIcon, small: false),
           ),
 
-          // ─────────────────────────────────────────────────────────────────
-          // Small status badge
-          // ─────────────────────────────────────────────────────────────────
           Positioned(right: 28, bottom: 30, child: _buildStatusBadge(index)),
         ],
       ),
@@ -403,7 +380,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       ),
       child: Stack(
         children: [
-          // Decorative glow
           Positioned(
             top: -32,
             right: -32,
@@ -676,12 +652,14 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       color: AppColors.white,
       borderRadius: BorderRadius.circular(AppDimensions.buttonRadius),
       child: InkWell(
-        onTap: () {
-          _pageController.previousPage(
-            duration: const Duration(milliseconds: 400),
-            curve: Curves.easeInOutCubic,
-          );
-        },
+        onTap: _isCompleting
+            ? null
+            : () {
+                _pageController.previousPage(
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeInOutCubic,
+                );
+              },
         borderRadius: BorderRadius.circular(AppDimensions.buttonRadius),
         child: Container(
           width: 52,
@@ -721,7 +699,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           ],
         ),
         child: InkWell(
-          onTap: _nextPage,
+          onTap: _isCompleting ? null : _nextPage,
           borderRadius: BorderRadius.circular(AppDimensions.buttonRadius),
           child: Container(
             height: AppDimensions.buttonHeight,
@@ -731,20 +709,29 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  _isLastPage ? 'Get Started' : 'Next',
-                  style: AppTextStyles.buttonLarge,
-                ),
-
-                const SizedBox(width: AppDimensions.buttonIconGap),
-
-                Icon(
-                  _isLastPage
-                      ? Icons.arrow_forward_rounded
-                      : Icons.arrow_forward_rounded,
-                  size: AppDimensions.buttonIconSize,
-                  color: AppColors.white,
-                ),
+                if (_isCompleting)
+                  const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        AppColors.white,
+                      ),
+                    ),
+                  )
+                else ...[
+                  Text(
+                    _isLastPage ? 'Get Started' : 'Next',
+                    style: AppTextStyles.buttonLarge,
+                  ),
+                  const SizedBox(width: AppDimensions.buttonIconGap),
+                  const Icon(
+                    Icons.arrow_forward_rounded,
+                    size: AppDimensions.buttonIconSize,
+                    color: AppColors.white,
+                  ),
+                ],
               ],
             ),
           ),

@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../Features/Authentication/Logout/Controller/logout_controller.dart';
+import '../../../Routes/app_route.dart';
+import '../../../Services/api_exception.dart';
+import '../../../Services/dio.dart';
 import '../../../Theme/app_colors.dart';
 import '../../../Theme/app_text_styles.dart';
 
-class MoreScreen extends StatelessWidget {
+class MoreScreen extends ConsumerStatefulWidget {
   const MoreScreen({
     super.key,
 
@@ -66,6 +72,221 @@ class MoreScreen extends StatelessWidget {
   final VoidCallback? onCampaigns;
 
   @override
+  ConsumerState<MoreScreen> createState() => _MoreScreenState();
+}
+
+class _MoreScreenState extends ConsumerState<MoreScreen> {
+  bool _isLoggingOut = false;
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // LOGOUT
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Future<void> _handleLogout() async {
+    if (_isLoggingOut) return;
+
+    final shouldLogout = await _showLogoutConfirmation();
+
+    if (!mounted || shouldLogout != true) {
+      return;
+    }
+
+    setState(() {
+      _isLoggingOut = true;
+    });
+
+    try {
+      final dioClient = ref.read(dioProvider);
+
+      final controller = LogoutController(dioClient: dioClient);
+
+      final result = await controller.logout();
+
+      if (!mounted) return;
+
+      if (result.success == true) {
+        // Replace current navigation stack with Login.
+        context.go(AppRoutes.login);
+      }
+    } on ApiException catch (error) {
+      if (!mounted) return;
+
+      _showError(error.message);
+    } catch (_) {
+      if (!mounted) return;
+
+      _showError('Something went wrong. Please try again.');
+    } finally {
+      if (!mounted) return;
+
+      setState(() {
+        _isLoggingOut = false;
+      });
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // LOGOUT CONFIRMATION
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Future<bool?> _showLogoutConfirmation() {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: AppColors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(22, 24, 22, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ==========================================================
+                // ICON
+                // ==========================================================
+                Container(
+                  width: 62,
+                  height: 62,
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.08),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.logout_rounded,
+                    color: AppColors.error,
+                    size: 30,
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // ==========================================================
+                // TITLE
+                // ==========================================================
+                Text(
+                  'Logout',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.authTitle.copyWith(
+                    fontSize: 21,
+                    height: 1.15,
+                  ),
+                ),
+
+                const SizedBox(height: 9),
+
+                // ==========================================================
+                // MESSAGE
+                // ==========================================================
+                Text(
+                  'Are you sure you want to logout from your account?',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.authSubtitle.copyWith(
+                    fontSize: 12,
+                    height: 1.45,
+                  ),
+                ),
+
+                const SizedBox(height: 22),
+
+                // ==========================================================
+                // ACTIONS
+                // ==========================================================
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 44,
+                        child: OutlinedButton(
+                          onPressed: () {
+                            Navigator.of(dialogContext).pop(false);
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.textPrimary,
+                            side: BorderSide(color: AppColors.border),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: Text(
+                            'Cancel',
+                            style: AppTextStyles.buttonOutlined.copyWith(
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(width: 10),
+
+                    Expanded(
+                      child: SizedBox(
+                        height: 44,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.of(dialogContext).pop(true);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.error,
+                            foregroundColor: AppColors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: Text(
+                            'Logout',
+                            style: AppTextStyles.buttonLarge.copyWith(
+                              color: AppColors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ERROR
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            message,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: AppColors.white,
+              fontSize: 13,
+            ),
+          ),
+          backgroundColor: AppColors.errorDark,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // BUILD
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -86,6 +307,11 @@ class MoreScreen extends StatelessWidget {
             SliverToBoxAdapter(child: _buildSupportSection()),
 
             SliverToBoxAdapter(child: _buildGrowthSection()),
+
+            // ==============================================================
+            // LOGOUT
+            // ==============================================================
+            SliverToBoxAdapter(child: _buildLogoutSection()),
 
             const SliverToBoxAdapter(child: SizedBox(height: 28)),
           ],
@@ -114,9 +340,7 @@ class MoreScreen extends StatelessWidget {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-
                 const SizedBox(height: 5),
-
                 Text(
                   'Manage your store, account and growth',
                   maxLines: 2,
@@ -170,9 +394,7 @@ class MoreScreen extends StatelessWidget {
                 size: 25,
               ),
             ),
-
             const SizedBox(width: 13),
-
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -186,9 +408,7 @@ class MoreScreen extends StatelessWidget {
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-
                   const SizedBox(height: 4),
-
                   Text(
                     'Everything you need to manage your store',
                     maxLines: 2,
@@ -221,13 +441,13 @@ class MoreScreen extends StatelessWidget {
           icon: Icons.shopping_bag_outlined,
           title: 'Orders',
           subtitle: 'View and manage customer orders',
-          onTap: onOrders,
+          onTap: widget.onOrders,
         ),
         _buildMenuItem(
           icon: Icons.account_balance_wallet_outlined,
           title: 'Payouts',
           subtitle: 'Track your earnings and payouts',
-          onTap: onPayouts,
+          onTap: widget.onPayouts,
         ),
       ],
     );
@@ -247,7 +467,7 @@ class MoreScreen extends StatelessWidget {
           icon: Icons.file_upload_outlined,
           title: 'Bulk Products',
           subtitle: 'Import or manage products in bulk',
-          onTap: onBulkProducts,
+          onTap: widget.onBulkProducts,
         ),
       ],
     );
@@ -267,19 +487,19 @@ class MoreScreen extends StatelessWidget {
           icon: Icons.lock_outlined,
           title: 'Change Password',
           subtitle: 'Update your account password',
-          onTap: onChangePassword,
+          onTap: widget.onChangePassword,
         ),
         _buildMenuItem(
           icon: Icons.settings_outlined,
           title: 'Settings',
           subtitle: 'Manage your store preferences',
-          onTap: onSettings,
+          onTap: widget.onSettings,
         ),
         _buildMenuItem(
           icon: Icons.verified_user_outlined,
           title: 'KYC Verification',
           subtitle: 'View your verification status',
-          onTap: onKycVerification,
+          onTap: widget.onKycVerification,
           trailing: _buildStatusBadge('Verification'),
         ),
       ],
@@ -300,19 +520,19 @@ class MoreScreen extends StatelessWidget {
           icon: Icons.confirmation_number_outlined,
           title: 'Tickets',
           subtitle: 'Create and track support tickets',
-          onTap: onTickets,
+          onTap: widget.onTickets,
         ),
         _buildMenuItem(
           icon: Icons.rate_review_outlined,
           title: 'Reviews & Q&A',
           subtitle: 'Manage product reviews and questions',
-          onTap: onReviewsAndQuestions,
+          onTap: widget.onReviewsAndQuestions,
         ),
         _buildMenuItem(
           icon: Icons.headset_mic_outlined,
           title: 'Support',
           subtitle: 'Contact the Gatbi support team',
-          onTap: onSupport,
+          onTap: widget.onSupport,
         ),
       ],
     );
@@ -332,15 +552,175 @@ class MoreScreen extends StatelessWidget {
           icon: Icons.analytics_outlined,
           title: 'Analytics',
           subtitle: 'Track sales and store performance',
-          onTap: onAnalytics,
+          onTap: widget.onAnalytics,
         ),
         _buildMenuItem(
           icon: Icons.campaign_outlined,
           title: 'Campaigns',
           subtitle: 'Create and manage promotional campaigns',
-          onTap: onCampaigns,
+          onTap: widget.onCampaigns,
         ),
       ],
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // LOGOUT SECTION
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildLogoutSection() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.logout_rounded,
+                  size: 18,
+                  color: AppColors.error,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Account',
+                      style: AppTextStyles.titleMedium.copyWith(
+                        color: AppColors.navy,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Sign out of your vendor account',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 10),
+
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AppColors.border),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.025),
+                  blurRadius: 14,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: _isLoggingOut ? null : _handleLogout,
+                borderRadius: BorderRadius.circular(18),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 14,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: AppColors.error.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(13),
+                        ),
+                        child: _isLoggingOut
+                            ? const SizedBox(
+                                width: 21,
+                                height: 21,
+                                child: Padding(
+                                  padding: EdgeInsets.all(11),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              )
+                            : const Icon(
+                                Icons.logout_rounded,
+                                size: 21,
+                                color: AppColors.error,
+                              ),
+                      ),
+
+                      const SizedBox(width: 12),
+
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _isLoggingOut ? 'Logging out...' : 'Logout',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.bodyLarge.copyWith(
+                                color: _isLoggingOut
+                                    ? AppColors.textSecondary
+                                    : AppColors.error,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+
+                            const SizedBox(height: 3),
+
+                            Text(
+                              _isLoggingOut
+                                  ? 'Please wait while we sign you out'
+                                  : 'Sign out from your vendor account',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.caption.copyWith(
+                                color: AppColors.textSecondary,
+                                height: 1.3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(width: 8),
+
+                      Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        size: 15,
+                        color: _isLoggingOut
+                            ? AppColors.border
+                            : AppColors.error,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
