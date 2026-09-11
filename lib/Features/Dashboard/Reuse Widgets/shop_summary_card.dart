@@ -42,18 +42,16 @@ class ShopSummaryCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildHeader(),
-
-          const SizedBox(height: 16),
-
+          const SizedBox(height: 14),
           _buildDivider(),
+          const SizedBox(height: 2),
 
-          const SizedBox(height: 4),
-
+          // ---------------- ROWS ----------------
           _buildInfoRow(
             icon: Icons.verified_outlined,
             label: 'Store Status',
             value: status,
-            valueWidget: _buildStatusBadge(status, isKyc: false),
+            valueWidget: _buildStatusBadge(status),
           ),
 
           _buildInfoDivider(),
@@ -62,7 +60,7 @@ class ShopSummaryCard extends StatelessWidget {
             icon: Icons.fact_check_outlined,
             label: 'KYC Status',
             value: kycStatus,
-            valueWidget: _buildStatusBadge(kycStatus, isKyc: true),
+            valueWidget: _buildStatusBadge(kycStatus),
           ),
 
           _buildInfoDivider(),
@@ -87,6 +85,7 @@ class ShopSummaryCard extends StatelessWidget {
             icon: Icons.email_outlined,
             label: 'Support Email',
             value: supportEmail,
+            valueMaxLines: 2,
           ),
 
           _buildInfoDivider(),
@@ -117,9 +116,7 @@ class ShopSummaryCard extends StatelessWidget {
             size: 21,
           ),
         ),
-
         const SizedBox(width: 11),
-
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -134,9 +131,7 @@ class ShopSummaryCard extends StatelessWidget {
                   fontSize: 15,
                 ),
               ),
-
               const SizedBox(height: 2),
-
               Text(
                 'Your store information',
                 maxLines: 1,
@@ -154,7 +149,7 @@ class ShopSummaryCard extends StatelessWidget {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // INFO ROW
+  // INFO ROW  —  Left label  |  Right value (right-aligned)
   // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildInfoRow({
@@ -162,50 +157,56 @@ class ShopSummaryCard extends StatelessWidget {
     required String label,
     required String value,
     Widget? valueWidget,
+    int valueMaxLines = 1,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 11),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          // LEFT — Icon
           _buildIcon(icon),
 
           const SizedBox(width: 11),
 
+          // LEFT — Label (fixed-ish width, expands as needed)
           Expanded(
+            flex: 3,
             child: Text(
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: AppTextStyles.bodyMedium.copyWith(
                 color: AppColors.textSecondary,
-                fontSize: 11,
+                fontSize: 11.5,
                 fontWeight: FontWeight.w500,
               ),
             ),
           ),
 
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
 
+          // RIGHT — Value (right-aligned, takes remaining space)
           Flexible(
-            flex: 2,
-            child:
-                valueWidget ??
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Text(
+            flex: 4,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child:
+                  valueWidget ??
+                  Text(
                     value.isEmpty ? '—' : value,
-                    maxLines: 2,
+                    maxLines: valueMaxLines,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.right,
+                    softWrap: true,
                     style: AppTextStyles.bodyMedium.copyWith(
                       color: AppColors.navy,
-                      fontSize: 11,
+                      fontSize: 11.5,
                       fontWeight: FontWeight.w700,
-                      height: 1.25,
+                      height: 1.3,
                     ),
                   ),
-                ),
+            ),
           ),
         ],
       ),
@@ -213,7 +214,7 @@ class ShopSummaryCard extends StatelessWidget {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // ADDRESS ROW
+  // ADDRESS ROW  —  top-aligned (multi-line)
   // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildAddressRow() {
@@ -222,37 +223,51 @@ class ShopSummaryCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildIcon(Icons.location_on_outlined),
+          // Icon
+          Padding(
+            padding: const EdgeInsets.only(top: 1),
+            child: _buildIcon(Icons.location_on_outlined),
+          ),
 
           const SizedBox(width: 11),
 
+          // Label
           Expanded(
-            child: Text(
-              'Warehouse Address',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
+            flex: 3,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                'Warehouse Address',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w500,
+                  height: 1.3,
+                ),
               ),
             ),
           ),
 
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
 
+          // Value (multi-line, right-aligned)
           Flexible(
-            flex: 2,
-            child: Text(
-              warehouseAddress.isEmpty ? '—' : warehouseAddress,
-              maxLines: 4,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.right,
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: AppColors.navy,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                height: 1.3,
+            flex: 4,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                warehouseAddress.isEmpty ? '—' : warehouseAddress,
+                maxLines: 4,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.right,
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.navy,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  height: 1.35,
+                ),
               ),
             ),
           ),
@@ -281,7 +296,7 @@ class ShopSummaryCard extends StatelessWidget {
   // STATUS BADGE
   // ═══════════════════════════════════════════════════════════════════════════
 
-  Widget _buildStatusBadge(String value, {required bool isKyc}) {
+  Widget _buildStatusBadge(String value) {
     final normalized = value.trim().toLowerCase();
 
     final bool isApproved =
@@ -313,33 +328,35 @@ class ShopSummaryCard extends StatelessWidget {
       icon = Icons.error_outline_rounded;
     }
 
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 125),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-      decoration: BoxDecoration(
-        color: badgeColor,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 13, color: textColor),
-
-          const SizedBox(width: 4),
-
-          Flexible(
-            child: Text(
-              value.isEmpty ? '—' : value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.caption.copyWith(
-                color: textColor,
-                fontSize: 9.5,
-                fontWeight: FontWeight.w800,
+    // Right-aligned badge
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 140),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+        decoration: BoxDecoration(
+          color: badgeColor,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 13, color: textColor),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                value.isEmpty ? '—' : value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.caption.copyWith(
+                  color: textColor,
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

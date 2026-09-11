@@ -20,6 +20,9 @@ class BottomMainScreen extends StatefulWidget {
 class _BottomMainScreenState extends State<BottomMainScreen> {
   late BottomTab _currentTab;
 
+  /// Dashboard ko fresh state ke saath rebuild karne ke liye.
+  int _dashboardVersion = 0;
+
   @override
   void initState() {
     super.initState();
@@ -32,16 +35,38 @@ class _BottomMainScreenState extends State<BottomMainScreen> {
   // ═══════════════════════════════════════════════════════════════════════════
 
   void _onTabChanged(BottomTab tab) {
+    // Agar already isi tab par hain aur dobara tap kiya gaya hai.
     if (_currentTab == tab) {
       _refreshCurrentTab(tab);
+
+      if (tab == BottomTab.dashboard) {
+        _resetDashboard();
+      }
+
       return;
     }
 
     setState(() {
       _currentTab = tab;
+
+      // Dashboard par wapas aane par fresh DashboardScreen create hogi.
+      if (tab == BottomTab.dashboard) {
+        _dashboardVersion++;
+      }
     });
 
     _refreshCurrentTab(tab);
+  }
+
+  /// Dashboard ko fresh state mein reset karta hai.
+  ///
+  /// Is se DashboardHeader ka:
+  /// _isExpanded = false
+  /// dobara initialize hota hai.
+  void _resetDashboard() {
+    setState(() {
+      _dashboardVersion++;
+    });
   }
 
   void _refreshCurrentTab(BottomTab tab) {
@@ -126,7 +151,7 @@ class _BottomMainScreenState extends State<BottomMainScreen> {
       body: IndexedStack(
         index: _currentTab.index,
         children: [
-          const DashboardScreen(),
+          DashboardScreen(key: ValueKey<int>(_dashboardVersion)),
 
           const MyProductScreen(),
 

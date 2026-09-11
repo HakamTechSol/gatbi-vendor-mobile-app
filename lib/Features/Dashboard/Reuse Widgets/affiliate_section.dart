@@ -11,13 +11,13 @@ class AffiliateSection extends StatelessWidget {
     required this.commissionPercentage,
   });
 
-  /// Products visible and available for affiliates.
+  /// Products available for affiliates.
   final int affiliateReadyProducts;
 
   /// Products hidden from affiliates.
   final int hiddenFromAffiliates;
 
-  /// Example: 2.00
+  /// Example: 2.01
   final double commissionPercentage;
 
   @override
@@ -69,7 +69,7 @@ class AffiliateSection extends StatelessWidget {
               color: AppColors.primaryLight,
               borderRadius: BorderRadius.circular(15),
             ),
-            child: Icon(
+            child: const Icon(
               Icons.campaign_outlined,
               color: AppColors.primary,
               size: 24,
@@ -126,7 +126,7 @@ class AffiliateSection extends StatelessWidget {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // AFFILIATE COMMISSION NOTE
+  // COMMISSION NOTE
   // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildCommissionNote() {
@@ -143,7 +143,7 @@ class AffiliateSection extends StatelessWidget {
               color: AppColors.primary.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(15),
             ),
-            child: Icon(
+            child: const Icon(
               Icons.percent_rounded,
               color: AppColors.primary,
               size: 25,
@@ -182,7 +182,8 @@ class AffiliateSection extends StatelessWidget {
                     children: [
                       const TextSpan(
                         text:
-                            'If your product sells via an affiliate, the affiliate earns ',
+                            'If your product sells via an affiliate, '
+                            'the affiliate earns ',
                       ),
 
                       TextSpan(

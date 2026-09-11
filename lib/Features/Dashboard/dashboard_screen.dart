@@ -6,10 +6,17 @@ import '../../../Routes/app_route.dart';
 import '../../../Services/api_exception.dart';
 import '../../../Theme/app_colors.dart';
 
+import '../../Core/Bottom Naigation Bar/bottom_bar_screen.dart';
+import '../../Routes/route_observer.dart';
+import '../Settings/settings_controller.dart';
+import '../Settings/settings_model.dart';
 import 'Controller/dashboard_controller.dart';
 import 'Models/dashboard_model.dart';
+import 'Reuse Widgets/affiliate_section.dart';
 import 'Reuse Widgets/dashboard_header.dart';
+import 'Reuse Widgets/dashboard_shimmer.dart';
 import 'Reuse Widgets/dashboard_stats_section.dart';
+import 'Reuse Widgets/earnings_summary_section.dart';
 import 'Reuse Widgets/kyc_banner.dart';
 import 'Reuse Widgets/need_help_card.dart';
 import 'Reuse Widgets/order_status_section.dart';
@@ -25,13 +32,21 @@ class DashboardScreen extends ConsumerStatefulWidget {
   ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+class _DashboardScreenState extends ConsumerState<DashboardScreen>
+    with RouteAware {
   DashboardModel? _dashboard;
+  SettingsModel? _settings;
 
   bool _isLoading = true;
   bool _isRefreshing = false;
 
   String? _errorMessage;
+
+  /// Header ko route return par fresh/default state mein recreate
+  /// karne ke liye key version.
+  int _headerVersion = 0;
+
+  bool _isRouteSubscribed = false;
 
   @override
   void initState() {
@@ -41,6 +56,55 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       _loadDashboard();
     });
   }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (!_isRouteSubscribed) {
+      final route = ModalRoute.of(context);
+
+      if (route is PageRoute) {
+        routeObserver.subscribe(this, route);
+        _isRouteSubscribed = true;
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    if (_isRouteSubscribed) {
+      routeObserver.unsubscribe(this);
+    }
+
+    super.dispose();
+  }
+
+  // ============================================================
+  // ROUTE AWARE
+  // ============================================================
+
+  @override
+  void didPushNext() {
+    // Dashboard se kisi doosri screen par gaye.
+  }
+
+  @override
+  void didPopNext() {
+    // Kisi doosri screen se back hokar Dashboard par aaye.
+
+    if (!mounted) return;
+
+    setState(() {
+      _headerVersion++;
+    });
+  }
+
+  @override
+  void didPush() {}
+
+  @override
+  void didPop() {}
 
   // ============================================================
   // LOAD DASHBOARD
@@ -55,14 +119,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
 
     try {
-      final controller = ref.read(dashboardControllerProvider);
+      final dashboardController = ref.read(dashboardControllerProvider);
 
-      final result = await controller.getDashboard();
+      final settingsController = ref.read(settingsControllerProvider);
+
+      final dashboardResult = await dashboardController.getDashboard();
+
+      final settingsResult = await settingsController.getSettings();
 
       if (!mounted) return;
 
       setState(() {
-        _dashboard = result;
+        _dashboard = dashboardResult;
+        _settings = settingsResult;
+
         _isLoading = false;
         _errorMessage = null;
       });
@@ -73,7 +143,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         _isLoading = false;
         _errorMessage = error.message;
       });
-    } catch (error) {
+    } catch (_) {
       if (!mounted) return;
 
       setState(() {
@@ -82,7 +152,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       });
     }
   }
-
   // ============================================================
   // REFRESH DASHBOARD
   // ============================================================
@@ -95,14 +164,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     });
 
     try {
-      final controller = ref.read(dashboardControllerProvider);
+      final dashboardController = ref.read(dashboardControllerProvider);
 
-      final result = await controller.getDashboard();
+      final settingsController = ref.read(settingsControllerProvider);
+
+      final dashboardResult = await dashboardController.getDashboard();
+
+      final settingsResult = await settingsController.getSettings();
 
       if (!mounted) return;
 
       setState(() {
-        _dashboard = result;
+        _dashboard = dashboardResult;
+        _settings = settingsResult;
+
         _errorMessage = null;
         _isRefreshing = false;
       });
@@ -113,7 +188,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         _errorMessage = error.message;
         _isRefreshing = false;
       });
-    } catch (error) {
+    } catch (_) {
       if (!mounted) return;
 
       setState(() {
@@ -122,7 +197,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       });
     }
   }
-
   // ============================================================
   // BUILD
   // ============================================================
@@ -168,6 +242,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final ordersToday = stats?.ordersToday ?? 0;
     final lowStock = stats?.lowStock ?? 0;
     final outOfStock = stats?.outOfStock ?? 0;
+
+    final vendorGross = stats?.vendorGross ?? 0;
+    final vendorShippingTotal = stats?.vendorShippingTotal ?? 0;
+    final vendorCommission = stats?.vendorCommission ?? 0;
+    final vendorNet = stats?.vendorNet ?? 0;
+
+    final commissionRate = stats?.commissionRateDisplay ?? 0;
+
+    final affiliateReadyProducts = stats?.affiliateAllowed ?? 0;
+    final hiddenFromAffiliates = stats?.affiliateBlocked ?? 0;
+
+    final affiliateCommissionRate = stats?.affiliateCommissionRateDisplay ?? 0;
 
     final storeStatus = merchant?.status ?? '';
     final kycStatus = merchant?.kycStatus ?? '';
@@ -222,6 +308,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 // HEADER
                 // ==========================================================
                 DashboardHeader(
+                  key: ValueKey<int>(_headerVersion),
+
                   vendorName: _displayValue(
                     merchant?.name,
                     fallback: 'My Store',
@@ -261,29 +349,28 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
                 // ==========================================================
                 // EARNINGS
-                //
-                // Dashboard API does not provide complete earnings
-                // breakdown, so we don't send fake values here.
                 // ==========================================================
+                EarningsSummarySection(
+                  grossAmount: vendorGross,
+                  shippingAmount: vendorShippingTotal,
+                  commissionAmount: vendorCommission,
+                  netPayable: vendorNet,
+                  commissionPercentage: commissionRate,
+                  currencySymbol: 'د.إ',
+                ),
 
-                // NOTE:
-                // EarningsSummarySection intentionally skipped for now.
-                //
-                // Reason:
-                // gross / commission / net payable aggregate values
-                // are not available in dashboard API.
+                const SizedBox(height: 16),
 
                 // ==========================================================
                 // AFFILIATE
-                //
-                // Dashboard API does not provide affiliate-ready count.
                 // ==========================================================
+                AffiliateSection(
+                  affiliateReadyProducts: affiliateReadyProducts,
+                  hiddenFromAffiliates: hiddenFromAffiliates,
+                  commissionPercentage: affiliateCommissionRate,
+                ),
 
-                // NOTE:
-                // AffiliateSection intentionally skipped for now.
-                //
-                // We will connect it when affiliate dashboard API fields
-                // are available.
+                const SizedBox(height: 20),
 
                 // ==========================================================
                 // DASHBOARD STATS
@@ -291,13 +378,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 DashboardStatsSection(
                   totalProducts: totalProducts,
                   activeProducts: activeProducts,
-
                   totalOrders: totalOrders,
                   pendingOrders: pendingOrders,
-
                   totalRevenue: totalRevenue,
                   thisMonthRevenue: monthlyRevenue,
-
                   ordersToday: ordersToday,
                   lowStockCount: lowStock,
                   outOfStockCount: outOfStock,
@@ -311,8 +395,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 RecentOrdersSection(
                   orders: _mapRecentOrders(dashboard.recentOrders),
 
-                  onViewAll: () {
-                    context.push(AppRoutes.orders);
+                  onViewAll: () async {
+                    // Orders screen open karo aur uske close/back hone ka wait karo.
+                    await context.push(AppRoutes.orders);
+
+                    // User Orders se Dashboard par wapas aa gaya.
+                    if (!mounted) return;
+
+                    // Fresh Dashboard API data load karo.
+                    await _refreshDashboard();
                   },
 
                   onOrderTap: (order) {
@@ -357,10 +448,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       : null,
 
                   onManageProducts: () {
-                    debugPrint('Manage products');
-
-                    // Products route available ho to:
-                    // context.push(AppRoutes.products);
+                    context.push(
+                      AppRoutes.bottombar,
+                      extra: BottomTab.products,
+                    );
                   },
 
                   onProductTap: (product) {
@@ -399,16 +490,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 // NEED HELP
                 // ==========================================================
                 NeedHelpCard(
-                  onEmailSupport: () {
-                    debugPrint('Email Support');
-                  },
-
-                  onCallSupport: () {
-                    debugPrint('Call Support');
-                  },
-
+                  supportEmail: _settings?.data?.vendorSupport?.email ?? '',
+                  supportPhone: _settings?.data?.vendorSupport?.phone ?? '',
                   onCreateTicket: () {
-                    debugPrint('Create Support Ticket');
+                    context.push(AppRoutes.createTicket);
                   },
                 ),
               ],
@@ -553,38 +638,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Widget _buildLoadingState(double horizontalPadding) {
     return Scaffold(
       backgroundColor: AppColors.background,
-
       body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(
-                  width: 32,
-                  height: 32,
-                  child: CircularProgressIndicator(strokeWidth: 3),
-                ),
-
-                const SizedBox(height: 14),
-
-                Text(
-                  'Loading dashboard...',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+        child: DashboardShimmer(horizontalPadding: horizontalPadding),
       ),
     );
   }
-
   // ============================================================
   // ERROR STATE
   // ============================================================

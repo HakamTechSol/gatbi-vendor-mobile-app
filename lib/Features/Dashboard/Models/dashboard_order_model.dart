@@ -19,6 +19,7 @@ class DashboardOrderModel {
     this.walletAmount,
     this.paymentSurcharge,
     this.paymentMethod,
+    this.transactionId,
     this.stripePaymentIntentId,
     this.checkoutcomPaymentId,
     this.paymenntPaymentId,
@@ -26,6 +27,7 @@ class DashboardOrderModel {
     this.tamaraPaymentId,
     this.paymentStatus,
     this.orderStatus,
+    this.stockRestored = 0,
     this.deliveredAt,
     this.shippingAddressId,
     this.billingAddressId,
@@ -38,6 +40,10 @@ class DashboardOrderModel {
     this.userEmail,
   });
 
+  // ------------------------------------------------------------
+  // Order Identification
+  // ------------------------------------------------------------
+
   final int? id;
   final int? userId;
   final int? affiliateId;
@@ -45,20 +51,32 @@ class DashboardOrderModel {
   final int? affiliateClickId;
   final String? orderNumber;
 
+  // ------------------------------------------------------------
+  // Amounts
+  // ------------------------------------------------------------
+
   final double? subtotal;
   final double? shipping;
   final double? tax;
   final double? discount;
   final String? couponCode;
+
   final double? commissionRate;
   final double? commissionTotal;
   final double? affiliateCommissionTotal;
+
   final double? total;
+
+  // ------------------------------------------------------------
+  // Payment
+  // ------------------------------------------------------------
 
   final String? currency;
   final double? walletAmount;
   final double? paymentSurcharge;
   final String? paymentMethod;
+
+  final String? transactionId;
 
   final String? stripePaymentIntentId;
   final String? checkoutcomPaymentId;
@@ -69,10 +87,25 @@ class DashboardOrderModel {
   final String? paymentStatus;
   final String? orderStatus;
 
+  // ------------------------------------------------------------
+  // Stock
+  // ------------------------------------------------------------
+
+  final int stockRestored;
+
+  // ------------------------------------------------------------
+  // Addresses / Delivery
+  // ------------------------------------------------------------
+
   final String? deliveredAt;
   final int? shippingAddressId;
   final int? billingAddressId;
   final int? shippingMethodId;
+
+  // ------------------------------------------------------------
+  // Additional Information
+  // ------------------------------------------------------------
+
   final String? notes;
   final String? paymentDetails;
   final String? paidAt;
@@ -86,12 +119,15 @@ class DashboardOrderModel {
     }
 
     return DashboardOrderModel(
+      // Order identification
       id: _parseInt(json['id']),
       userId: _parseInt(json['user_id']),
       affiliateId: _parseInt(json['affiliate_id']),
       affiliateCode: _parseString(json['affiliate_code']),
       affiliateClickId: _parseInt(json['affiliate_click_id']),
       orderNumber: _parseString(json['order_number']),
+
+      // Amounts
       subtotal: _parseDouble(json['subtotal']),
       shipping: _parseDouble(json['shipping']),
       tax: _parseDouble(json['tax']),
@@ -99,26 +135,37 @@ class DashboardOrderModel {
       couponCode: _parseString(json['coupon_code']),
       commissionRate: _parseDouble(json['commission_rate']),
       commissionTotal: _parseDouble(json['commission_total']),
-      affiliateCommissionTotal:
-          _parseDouble(json['affiliate_commission_total']),
+      affiliateCommissionTotal: _parseDouble(
+        json['affiliate_commission_total'],
+      ),
       total: _parseDouble(json['total']),
+
+      // Payment
       currency: _parseString(json['currency']),
       walletAmount: _parseDouble(json['wallet_amount']),
       paymentSurcharge: _parseDouble(json['payment_surcharge']),
       paymentMethod: _parseString(json['payment_method']),
-      stripePaymentIntentId:
-          _parseString(json['stripe_payment_intent_id']),
-      checkoutcomPaymentId:
-          _parseString(json['checkoutcom_payment_id']),
+      transactionId: _parseString(json['transaction_id']),
+
+      stripePaymentIntentId: _parseString(json['stripe_payment_intent_id']),
+      checkoutcomPaymentId: _parseString(json['checkoutcom_payment_id']),
       paymenntPaymentId: _parseString(json['paymennt_payment_id']),
       tabbyPaymentId: _parseString(json['tabby_payment_id']),
       tamaraPaymentId: _parseString(json['tamara_payment_id']),
+
       paymentStatus: _parseString(json['payment_status']),
       orderStatus: _parseString(json['order_status']),
+
+      // Stock
+      stockRestored: _parseInt(json['stock_restored']) ?? 0,
+
+      // Addresses / delivery
       deliveredAt: _parseString(json['delivered_at']),
       shippingAddressId: _parseInt(json['shipping_address_id']),
       billingAddressId: _parseInt(json['billing_address_id']),
       shippingMethodId: _parseInt(json['shipping_method_id']),
+
+      // Additional information
       notes: _parseString(json['notes']),
       paymentDetails: _parseString(json['payment_details']),
       paidAt: _parseString(json['paid_at']),
@@ -130,12 +177,15 @@ class DashboardOrderModel {
 
   Map<String, dynamic> toJson() {
     return {
+      // Order identification
       'id': id,
       'user_id': userId,
       'affiliate_id': affiliateId,
       'affiliate_code': affiliateCode,
       'affiliate_click_id': affiliateClickId,
       'order_number': orderNumber,
+
+      // Amounts
       'subtotal': subtotal,
       'shipping': shipping,
       'tax': tax,
@@ -145,10 +195,13 @@ class DashboardOrderModel {
       'commission_total': commissionTotal,
       'affiliate_commission_total': affiliateCommissionTotal,
       'total': total,
+
+      // Payment
       'currency': currency,
       'wallet_amount': walletAmount,
       'payment_surcharge': paymentSurcharge,
       'payment_method': paymentMethod,
+      'transaction_id': transactionId,
       'stripe_payment_intent_id': stripePaymentIntentId,
       'checkoutcom_payment_id': checkoutcomPaymentId,
       'paymennt_payment_id': paymenntPaymentId,
@@ -156,10 +209,17 @@ class DashboardOrderModel {
       'tamara_payment_id': tamaraPaymentId,
       'payment_status': paymentStatus,
       'order_status': orderStatus,
+
+      // Stock
+      'stock_restored': stockRestored,
+
+      // Addresses / delivery
       'delivered_at': deliveredAt,
       'shipping_address_id': shippingAddressId,
       'billing_address_id': billingAddressId,
       'shipping_method_id': shippingMethodId,
+
+      // Additional information
       'notes': notes,
       'payment_details': paymentDetails,
       'paid_at': paidAt,
@@ -170,29 +230,45 @@ class DashboardOrderModel {
   }
 
   static String? _parseString(dynamic value) {
-    if (value == null) return null;
+    if (value == null) {
+      return null;
+    }
 
-    if (value is String) return value;
+    if (value is String) {
+      return value;
+    }
 
     return value.toString();
   }
 
   static int? _parseInt(dynamic value) {
-    if (value is int) return value;
+    if (value is int) {
+      return value;
+    }
 
-    if (value is num) return value.toInt();
+    if (value is num) {
+      return value.toInt();
+    }
 
-    if (value is String) return int.tryParse(value);
+    if (value is String) {
+      return int.tryParse(value);
+    }
 
     return null;
   }
 
   static double? _parseDouble(dynamic value) {
-    if (value is double) return value;
+    if (value is double) {
+      return value;
+    }
 
-    if (value is num) return value.toDouble();
+    if (value is num) {
+      return value.toDouble();
+    }
 
-    if (value is String) return double.tryParse(value);
+    if (value is String) {
+      return double.tryParse(value);
+    }
 
     return null;
   }

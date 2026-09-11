@@ -3,42 +3,42 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../Services/api_exception.dart';
 import '../../../../Services/dio.dart';
 import '../../../../Services/dio_client.dart';
-import '../Models/dashboard_model.dart';
-import '../Repo/dashboard_repository.dart';
+import 'settings_model.dart';
+import 'settings_repo.dart';
 
 // ============================================================
-// Dashboard Provider
+// Settings Provider
 // ============================================================
 
-final dashboardControllerProvider = Provider<DashboardController>((ref) {
+final settingsControllerProvider = Provider<SettingsController>((ref) {
   final dioClient = ref.watch(dioProvider);
 
-  return DashboardController(dioClient: dioClient);
+  return SettingsController(dioClient: dioClient);
 });
 
 // ============================================================
-// Dashboard Controller
+// Settings Controller
 // ============================================================
 
-class DashboardController {
-  DashboardController({required DioClient dioClient})
-    : _repository = DashboardRepository(dioClient);
+class SettingsController {
+  SettingsController({required DioClient dioClient})
+    : _repository = SettingsRepository(dioClient);
 
-  final DashboardRepository _repository;
+  final SettingsRepository _repository;
 
   // ==========================================================
-  // Get Dashboard
+  // Get Settings
   // ==========================================================
 
-  Future<DashboardModel> getDashboard() async {
+  Future<SettingsModel> getSettings() async {
     try {
-      final result = await _repository.getDashboard();
+      final result = await _repository.getSettings();
 
       return result;
     } on ApiException {
       // Existing API exception ko as-is UI tak jane dein.
-      // Is se statusCode, code aur validation/error details
-      // preserve rehti hain.
+      //
+      // Is se statusCode, code aur errors preserve rehte hain.
       rethrow;
     } catch (error) {
       // Unexpected errors ko standard ApiException mein convert

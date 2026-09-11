@@ -44,9 +44,7 @@ class OrderStatusSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildHeader(),
-
           const SizedBox(height: 16),
-
           _buildStatusGrid(),
         ],
       ),
@@ -90,9 +88,7 @@ class OrderStatusSection extends StatelessWidget {
                   fontSize: 15,
                 ),
               ),
-
               const SizedBox(height: 2),
-
               Text(
                 'Track your order progress',
                 maxLines: 1,
@@ -110,7 +106,7 @@ class OrderStatusSection extends StatelessWidget {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // STATUS GRID
+  // STATUS GRID  —  First 4 in 2x2, last one centered
   // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildStatusGrid() {
@@ -154,16 +150,59 @@ class OrderStatusSection extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final spacing = 10.0;
+        const spacing = 10.0;
 
-        final itemWidth = (constraints.maxWidth - spacing) / 2;
+        // Half width card (for 2-col grid)
+        final halfWidth = (constraints.maxWidth - spacing) / 2;
 
-        return Wrap(
-          spacing: spacing,
-          runSpacing: spacing,
-          children: statuses.map((status) {
-            return SizedBox(width: itemWidth, child: _buildStatusCard(status));
-          }).toList(),
+        // Full width for the centered last item (same width as a grid item)
+        final centeredWidth = halfWidth;
+
+        // Split into pairs (grid) + leftovers (centered)
+        final gridItems = statuses.take(statuses.length - (statuses.length % 2 == 0 ? 0 : 1)).toList();
+        final leftoverItems = statuses.skip(gridItems.length).toList();
+
+        return Column(
+          children: [
+            // --------------------------------------------------------
+            // 2x2 GRID (first 4 items)
+            // --------------------------------------------------------
+            for (int i = 0; i < gridItems.length; i += 2)
+              Padding(
+                padding: EdgeInsets.only(
+                  bottom: i + 2 < gridItems.length ? spacing : 0,
+                ),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: halfWidth,
+                      child: _buildStatusCard(gridItems[i]),
+                    ),
+                    const SizedBox(width: spacing),
+                    if (i + 1 < gridItems.length)
+                      SizedBox(
+                        width: halfWidth,
+                        child: _buildStatusCard(gridItems[i + 1]),
+                      )
+                    else
+                      const SizedBox(width: 0),
+                  ],
+                ),
+              ),
+
+            // --------------------------------------------------------
+            // LAST ITEM (centered, if odd count)
+            // --------------------------------------------------------
+            if (leftoverItems.isNotEmpty) ...[
+              const SizedBox(height: spacing),
+              Center(
+                child: SizedBox(
+                  width: centeredWidth,
+                  child: _buildStatusCard(leftoverItems.first),
+                ),
+              ),
+            ],
+          ],
         );
       },
     );
@@ -214,9 +253,7 @@ class OrderStatusSection extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-
                     const SizedBox(height: 2),
-
                     Text(
                       '${status.count}',
                       maxLines: 1,

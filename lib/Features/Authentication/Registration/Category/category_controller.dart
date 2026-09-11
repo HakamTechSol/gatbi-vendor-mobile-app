@@ -3,46 +3,52 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../Services/api_exception.dart';
 import '../../../../Services/dio.dart';
 import '../../../../Services/dio_client.dart';
-import '../Models/dashboard_model.dart';
-import '../Repo/dashboard_repository.dart';
+
+import 'category_model.dart';
+import 'category_repo.dart';
 
 // ============================================================
-// Dashboard Provider
+// Category Provider
 // ============================================================
 
-final dashboardControllerProvider = Provider<DashboardController>((ref) {
+final categoryControllerProvider = Provider<CategoryController>((ref) {
   final dioClient = ref.watch(dioProvider);
 
-  return DashboardController(dioClient: dioClient);
+  return CategoryController(dioClient: dioClient);
 });
 
 // ============================================================
-// Dashboard Controller
+// Category Controller
 // ============================================================
 
-class DashboardController {
-  DashboardController({required DioClient dioClient})
-    : _repository = DashboardRepository(dioClient);
+class CategoryController {
+  CategoryController({required DioClient dioClient})
+    : _repository = CategoryRepository(dioClient);
 
-  final DashboardRepository _repository;
+  final CategoryRepository _repository;
 
   // ==========================================================
-  // Get Dashboard
+  // Get Categories
   // ==========================================================
 
-  Future<DashboardModel> getDashboard() async {
+  Future<CategoryModel> getCategories({bool includeChildren = true}) async {
     try {
-      final result = await _repository.getDashboard();
+      final result = await _repository.getCategories(
+        includeChildren: includeChildren,
+      );
 
       return result;
     } on ApiException {
       // Existing API exception ko as-is UI tak jane dein.
+      //
       // Is se statusCode, code aur validation/error details
       // preserve rehti hain.
+
       rethrow;
     } catch (error) {
-      // Unexpected errors ko standard ApiException mein convert
-      // kar rahe hain.
+      // Unexpected errors ko standard ApiException mein
+      // convert kar rahe hain.
+
       throw ApiException(
         message: 'Something went wrong. Please try again.',
         code: 'UNKNOWN_ERROR',

@@ -10,12 +10,20 @@ class DashboardRepository {
 
   final DioClient _dioClient;
 
+  // ============================================================
+  // Get Dashboard
+  // ============================================================
+
   Future<DashboardModel> getDashboard() async {
     final response = await _dioClient.get<Map<String, dynamic>>(
       ApiUrls.dashboard,
     );
 
     final data = response.data;
+
+    // ----------------------------------------------------------
+    // Validate Response
+    // ----------------------------------------------------------
 
     if (data == null) {
       throw const ApiException(
@@ -24,53 +32,208 @@ class DashboardRepository {
       );
     }
 
+    // ----------------------------------------------------------
+    // Convert API Response -> Dashboard Model
+    // ----------------------------------------------------------
+
     final result = DashboardModel.fromJson(data);
 
+    // ----------------------------------------------------------
+    // Debug Logs
+    // ----------------------------------------------------------
+
     if (kDebugMode) {
+      final merchant = result.merchant;
+      final stats = result.stats;
+      final productAccess = result.productAccess;
+
       debugPrint('');
       debugPrint('========== DASHBOARD RESULT ==========');
+
+      // --------------------------------------------------------
+      // General
+      // --------------------------------------------------------
+
       debugPrint('SUCCESS: ${result.success}');
 
-      debugPrint('MERCHANT: ${result.merchant?.name ?? 'N/A'}');
+      // --------------------------------------------------------
+      // Merchant
+      // --------------------------------------------------------
 
-      debugPrint('MERCHANT ID: ${result.merchant?.id ?? 'N/A'}');
+      debugPrint('');
+      debugPrint('---------- MERCHANT ----------');
+      debugPrint('MERCHANT ID: ${merchant?.id ?? 'N/A'}');
+      debugPrint('MERCHANT NAME: ${merchant?.name ?? 'N/A'}');
+      debugPrint('MERCHANT EMAIL: ${merchant?.email ?? 'N/A'}');
+      debugPrint('MERCHANT PHONE: ${merchant?.phone ?? 'N/A'}');
+      debugPrint('MERCHANT STATUS: ${merchant?.status ?? 'N/A'}');
+      debugPrint('KYC STATUS: ${merchant?.kycStatus ?? 'N/A'}');
+      debugPrint('BUSINESS TYPE: ${merchant?.businessType ?? 'N/A'}');
 
-      debugPrint('KYC STATUS: ${result.merchant?.kycStatus ?? 'N/A'}');
+      // --------------------------------------------------------
+      // Basic Stats
+      // --------------------------------------------------------
 
-      debugPrint('TOTAL PRODUCTS: ${result.stats?.totalProducts ?? 0}');
+      debugPrint('');
+      debugPrint('---------- BASIC STATS ----------');
+      debugPrint('TOTAL PRODUCTS: ${stats?.totalProducts ?? 0}');
+      debugPrint('ACTIVE PRODUCTS: ${stats?.activeProducts ?? 0}');
+      debugPrint('TOTAL ORDERS: ${stats?.totalOrders ?? 0}');
+      debugPrint('PENDING ORDERS: ${stats?.pendingOrders ?? 0}');
+      debugPrint('LOW STOCK: ${stats?.lowStock ?? 0}');
+      debugPrint('OUT OF STOCK: ${stats?.outOfStock ?? 0}');
+      debugPrint('ORDERS TODAY: ${stats?.ordersToday ?? 0}');
 
-      debugPrint('ACTIVE PRODUCTS: ${result.stats?.activeProducts ?? 0}');
+      // --------------------------------------------------------
+      // Vendor Revenue
+      // --------------------------------------------------------
 
-      debugPrint('TOTAL ORDERS: ${result.stats?.totalOrders ?? 0}');
+      debugPrint('');
+      debugPrint('---------- VENDOR REVENUE ----------');
+      debugPrint('VENDOR GROSS: ${stats?.vendorGross ?? 0}');
+      debugPrint(
+        'VENDOR SHIPPING TOTAL: '
+        '${stats?.vendorShippingTotal ?? 0}',
+      );
+      debugPrint('VENDOR COMMISSION: ${stats?.vendorCommission ?? 0}');
+      debugPrint('VENDOR NET: ${stats?.vendorNet ?? 0}');
+      debugPrint('TOTAL REVENUE: ${stats?.totalRevenue ?? 0}');
 
-      debugPrint('TOTAL REVENUE: ${result.stats?.totalRevenue ?? 0}');
+      // --------------------------------------------------------
+      // Commission
+      // --------------------------------------------------------
 
-      debugPrint('PENDING ORDERS: ${result.stats?.pendingOrders ?? 0}');
+      debugPrint('');
+      debugPrint('---------- COMMISSION ----------');
+      debugPrint(
+        'COMMISSION RATE DISPLAY: '
+        '${stats?.commissionRateDisplay ?? 0}',
+      );
+      debugPrint(
+        'COMMISSION RATE: '
+        '${stats?.commissionRate ?? 0}',
+      );
+      debugPrint(
+        'AFFILIATE COMMISSION RATE DISPLAY: '
+        '${stats?.affiliateCommissionRateDisplay ?? 0}',
+      );
+      debugPrint(
+        'AFFILIATE ALLOWED: '
+        '${stats?.affiliateAllowed ?? 0}',
+      );
+      debugPrint(
+        'AFFILIATE BLOCKED: '
+        '${stats?.affiliateBlocked ?? 0}',
+      );
 
-      debugPrint('LOW STOCK: ${result.stats?.lowStock ?? 0}');
+      // --------------------------------------------------------
+      // Monthly Revenue
+      // --------------------------------------------------------
 
-      debugPrint('OUT OF STOCK: ${result.stats?.outOfStock ?? 0}');
+      debugPrint('');
+      debugPrint('---------- MONTHLY REVENUE ----------');
+      debugPrint(
+        'MONTHLY REVENUE PRODUCTS: '
+        '${stats?.monthlyRevenueProducts ?? 0}',
+      );
+      debugPrint(
+        'MONTHLY REVENUE COMMISSION: '
+        '${stats?.monthlyRevenueCommission ?? 0}',
+      );
+      debugPrint(
+        'MONTHLY REVENUE: '
+        '${stats?.monthlyRevenue ?? 0}',
+      );
 
-      debugPrint('MONTHLY REVENUE: ${result.stats?.monthlyRevenue ?? 0}');
+      // --------------------------------------------------------
+      // Orders By Status
+      // --------------------------------------------------------
 
-      debugPrint('ORDERS TODAY: ${result.stats?.ordersToday ?? 0}');
-
+      debugPrint('');
+      debugPrint('---------- ORDERS BY STATUS ----------');
       debugPrint('ORDERS BY STATUS: ${result.ordersByStatus}');
 
-      debugPrint('RECENT ORDERS: ${result.recentOrders.length}');
+      // --------------------------------------------------------
+      // Recent Orders
+      // --------------------------------------------------------
 
-      debugPrint('RECENT PRODUCTS: ${result.recentProducts.length}');
+      debugPrint('');
+      debugPrint('---------- RECENT ORDERS ----------');
+      debugPrint(
+        'RECENT ORDERS COUNT: '
+        '${result.recentOrders.length}',
+      );
 
+      if (result.recentOrders.isNotEmpty) {
+        for (final order in result.recentOrders) {
+          debugPrint(
+            'ORDER: '
+            '${order.orderNumber ?? 'N/A'} | '
+            'STATUS: ${order.orderStatus ?? 'N/A'} | '
+            'PAYMENT: ${order.paymentStatus ?? 'N/A'} | '
+            'TOTAL: ${order.total ?? 0} '
+            '${order.currency ?? ''} | '
+            'TRANSACTION: '
+            '${order.transactionId ?? 'N/A'} | '
+            'STOCK RESTORED: ${order.stockRestored}',
+          );
+        }
+      }
+
+      // --------------------------------------------------------
+      // Recent Products
+      // --------------------------------------------------------
+
+      debugPrint('');
+      debugPrint('---------- RECENT PRODUCTS ----------');
+      debugPrint(
+        'RECENT PRODUCTS COUNT: '
+        '${result.recentProducts.length}',
+      );
+
+      if (result.recentProducts.isNotEmpty) {
+        for (final product in result.recentProducts) {
+          debugPrint(
+            'PRODUCT: '
+            '${product.name ?? 'N/A'} | '
+            'ID: ${product.id ?? 'N/A'} | '
+            'PRICE: ${product.price ?? 0} '
+            '${product.currency ?? ''} | '
+            'STOCK: ${product.stockQuantity ?? 0} | '
+            'STATUS: ${product.stockStatus ?? 'N/A'} | '
+            'VARIANTS: ${product.variants.length}',
+          );
+        }
+      }
+
+      // --------------------------------------------------------
+      // Product Access / KYC Limit
+      // --------------------------------------------------------
+
+      debugPrint('');
+      debugPrint('---------- PRODUCT ACCESS ----------');
+      debugPrint(
+        'KYC STATUS: '
+        '${productAccess?.kycStatus ?? 'N/A'}',
+      );
       debugPrint(
         'KYC PRODUCT LIMIT: '
-        '${result.productAccess?.kycLimit ?? 0}',
+        '${productAccess?.kycLimit ?? 0}',
       );
-
       debugPrint(
         'KYC LIMIT REACHED: '
-        '${result.productAccess?.kycLimitReached ?? false}',
+        '${productAccess?.kycLimitReached ?? false}',
+      );
+      debugPrint(
+        'REMAINING SLOTS: '
+        '${productAccess?.remainingSlots ?? 'N/A'}',
       );
 
+      // --------------------------------------------------------
+      // End
+      // --------------------------------------------------------
+
+      debugPrint('');
       debugPrint('=====================================');
       debugPrint('');
     }

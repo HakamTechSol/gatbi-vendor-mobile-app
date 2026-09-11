@@ -35,6 +35,7 @@ import '../Features/Ticket/List Ticket/ticket_list_screen.dart';
 import '../Features/Ticket/Models/create_ticket_model.dart';
 import '../Features/Ticket/Models/ticket_model.dart';
 import '../Features/analytics/Screens/analytics_screen.dart';
+import 'route_observer.dart';
 
 abstract final class AppRoutes {
   AppRoutes._();
@@ -112,6 +113,7 @@ final GoRouter appRouter = GoRouter(
   initialLocation: AppRoutes.splash,
 
   debugLogDiagnostics: true,
+  observers: [routeObserver],
 
   routes: [
     // ═══════════════════════════════════════════════════════════════════════
@@ -206,26 +208,26 @@ final GoRouter appRouter = GoRouter(
     // LOGIN VERIFICATION
     // ═══════════════════════════════════════════════════════════════════════
     GoRoute(
-  path: AppRoutes.loginotpVerification,
-  name: 'loginotpVerification',
-  builder: (context, state) {
-    final extra = state.extra;
+      path: AppRoutes.loginotpVerification,
+      name: 'loginotpVerification',
+      builder: (context, state) {
+        final extra = state.extra;
 
-    final data = extra is Map
-        ? Map<String, dynamic>.from(extra)
-        : <String, dynamic>{};
+        final data = extra is Map
+            ? Map<String, dynamic>.from(extra)
+            : <String, dynamic>{};
 
-    final email = data['email'] as String? ?? '';
-    final merchantId = data['merchant_id'] as int? ?? 0;
-    final expiresInMinutes = data['expires_in_minutes'] as int? ?? 0;
+        final email = data['email'] as String? ?? '';
+        final merchantId = data['merchant_id'] as int? ?? 0;
+        final expiresInMinutes = data['expires_in_minutes'] as int? ?? 0;
 
-    return LoginOtpVerificationScreen(
-      email: email,
-      merchantId: merchantId,
-      expiresInMinutes: expiresInMinutes,
-    );
-  },
-),
+        return LoginOtpVerificationScreen(
+          email: email,
+          merchantId: merchantId,
+          expiresInMinutes: expiresInMinutes,
+        );
+      },
+    ),
 
     // ═══════════════════════════════════════════════════════════════════════
     // FORGET PASSWORD

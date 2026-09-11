@@ -253,11 +253,12 @@ abstract final class AppColors {
   /// Overlay for modal / bottom sheet.
   static const Color overlay = Color(0x66000000);
 
-  /// Skeleton/shimmer base.
-  static const Color shimmerBase = Color(0xFFE9EDF4);
+  /// Base = darker grey, Highlight = lighter grey (shimmer pass)
+  static const Color shimmerBase = Color(0xFFE2E6EC);
+  static const Color shimmerHighlight = Color(0xFFF5F7FA);
 
-  /// Skeleton/shimmer highlight.
-  static const Color shimmerHighlight = Color(0xFFF7F9FC);
+  /// Card background (same as real dashboard cards)
+  static const Color shimmerCard = Color(0xFFFFFFFF);
 
   /// Disabled button background.
   static const Color disabled = Color(0xFFE1E5EC);

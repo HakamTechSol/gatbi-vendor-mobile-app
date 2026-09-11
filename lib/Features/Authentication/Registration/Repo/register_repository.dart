@@ -10,19 +10,37 @@ class RegisterRepository {
 
   final DioClient _dioClient;
 
+  // ============================================================
+  // REGISTER
+  // ============================================================
+
   Future<RegisterModel> register({
-    required String businessName,
+    required String storeName,
+    required String businessType,
     required String email,
+    required String phoneFull,
+    required String phoneCountry,
+    required String address,
+    required int categoryId,
+    required String about,
+    String? tradeLicenseNumber,
     required String password,
     required String passwordConfirmation,
-    String? phone,
+    required String termsAgreed,
   }) async {
     final model = RegisterModel(
-      businessName: businessName.trim(),
+      storeName: storeName.trim(),
+      businessType: businessType.trim(),
       email: email.trim(),
+      phoneFull: phoneFull.trim(),
+      phoneCountry: phoneCountry.trim(),
+      address: address.trim(),
+      categoryId: categoryId,
+      about: about.trim(),
+      tradeLicenseNumber: tradeLicenseNumber?.trim(),
       password: password,
       passwordConfirmation: passwordConfirmation,
-      phone: phone?.trim(),
+      termsAgreed: termsAgreed,
     );
 
     final response = await _dioClient.post<Map<String, dynamic>>(
@@ -46,8 +64,9 @@ class RegisterRepository {
       debugPrint('========== REGISTER RESULT ==========');
       debugPrint('SUCCESS: ${result.success}');
       debugPrint('MESSAGE: ${result.message}');
-      debugPrint('MERCHANT ID: ${result.merchantId}');
-      debugPrint('REQUIRES OTP: ${result.requiresOtp}');
+      debugPrint('MERCHANT ID: ${result.data?.merchantId}');
+      debugPrint('EMAIL: ${result.data?.email}');
+      debugPrint('STATUS: ${result.data?.status}');
       debugPrint('=====================================');
       debugPrint('');
     }

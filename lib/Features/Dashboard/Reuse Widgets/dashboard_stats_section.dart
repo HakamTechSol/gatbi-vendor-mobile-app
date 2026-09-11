@@ -34,81 +34,128 @@ class DashboardStatsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isSmallScreen = constraints.maxWidth < 360;
+        final width = constraints.maxWidth;
 
-        final crossAxisCount = constraints.maxWidth >= 700 ? 4 : 2;
+        // Responsive grid
+        final crossAxisCount = width >= 900
+            ? 4
+            : width >= 600
+            ? 3
+            : 2;
 
-        final childAspectRatio = isSmallScreen ? 1.05 : 1.18;
+        final isSmallScreen = width < 360;
+
+        // Aspect ratio tuned to avoid overflow on all screens
+        final childAspectRatio = isSmallScreen
+            ? 0.92
+            : width < 600
+            ? 0.98
+            : 1.05;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Store Overview',
-              style: AppTextStyles.titleLarge.copyWith(
-                color: AppColors.navy,
-                fontWeight: FontWeight.w800,
-                fontSize: 18,
-              ),
+            // ============================================================
+            // SECTION HEADER
+            // ============================================================
+            Row(
+              children: [
+                Container(
+                  width: 4,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Store Overview',
+                        style: AppTextStyles.titleLarge.copyWith(
+                          color: AppColors.navy,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 17,
+                          height: 1.1,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'A quick look at your store performance',
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: AppColors.textSecondary,
+                          fontSize: 11.5,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
 
-            const SizedBox(height: 4),
+            const SizedBox(height: 16),
 
-            Text(
-              'A quick look at your store performance',
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
-                fontSize: 12,
-              ),
-            ),
-
-            const SizedBox(height: 14),
-
+            // ============================================================
+            // STATS GRID
+            // ============================================================
             GridView.count(
               crossAxisCount: crossAxisCount,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
+              mainAxisSpacing: 20,
+              crossAxisSpacing: 20,
               childAspectRatio: childAspectRatio,
               children: [
                 _DashboardStatCard(
                   icon: Icons.inventory_2_outlined,
-                  iconBackgroundColor: AppColors.primaryLight,
-                  iconColor: AppColors.primary,
                   title: 'Total Products',
                   value: totalProducts.toString(),
                   subtitle: '$activeProducts active',
+                  accentColor: const Color(0xFF6366F1), // indigo
+                  subtitleTone: _SubtitleTone.neutral,
+                  isCompact: isSmallScreen,
                 ),
 
                 _DashboardStatCard(
                   icon: Icons.shopping_bag_outlined,
-                  iconBackgroundColor: AppColors.primaryLight,
-                  iconColor: AppColors.primary,
                   title: 'Total Orders',
                   value: totalOrders.toString(),
                   subtitle: '$pendingOrders pending',
+                  accentColor: const Color(0xFFF59E0B), // amber
+                  subtitleTone: pendingOrders > 0
+                      ? _SubtitleTone.warning
+                      : _SubtitleTone.neutral,
+                  isCompact: isSmallScreen,
                 ),
 
                 _DashboardStatCard(
                   icon: Icons.account_balance_wallet_outlined,
-                  iconBackgroundColor: AppColors.primaryLight,
-                  iconColor: AppColors.primary,
                   title: 'Total Revenue',
                   value: _formatAmount(totalRevenue),
                   subtitle: '${_formatAmount(thisMonthRevenue)} this month',
+                  accentColor: const Color(0xFF10B981), // emerald
+                  subtitleTone: _SubtitleTone.success,
+                  isCompact: isSmallScreen,
                 ),
 
                 _DashboardStatCard(
                   icon: Icons.today_outlined,
-                  iconBackgroundColor: AppColors.primaryLight,
-                  iconColor: AppColors.primary,
                   title: 'Orders Today',
                   value: ordersToday.toString(),
                   subtitle:
-                      '$lowStockCount low stock • '
+                      '$lowStockCount low · '
                       '$outOfStockCount out',
-                  subtitleMaxLines: 2,
+                  accentColor: const Color(0xFF3B82F6), // blue
+                  subtitleTone: outOfStockCount > 0
+                      ? _SubtitleTone.danger
+                      : lowStockCount > 0
+                      ? _SubtitleTone.warning
+                      : _SubtitleTone.neutral,
+                  isCompact: isSmallScreen,
                 ),
               ],
             ),
@@ -122,14 +169,18 @@ class DashboardStatsSection extends StatelessWidget {
     if (amount >= 1000000) {
       return 'AED ${(amount / 1000000).toStringAsFixed(1)}M';
     }
-
     if (amount >= 1000) {
       return 'AED ${(amount / 1000).toStringAsFixed(1)}K';
     }
-
     return 'AED ${amount.toStringAsFixed(0)}';
   }
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// SUBTITLE TONE
+// ═════════════════════════════════════════════════════════════════════════════
+
+enum _SubtitleTone { neutral, success, warning, danger }
 
 // ═════════════════════════════════════════════════════════════════════════════
 // STAT CARD
@@ -138,115 +189,181 @@ class DashboardStatsSection extends StatelessWidget {
 class _DashboardStatCard extends StatelessWidget {
   const _DashboardStatCard({
     required this.icon,
-    required this.iconBackgroundColor,
-    required this.iconColor,
     required this.title,
     required this.value,
     required this.subtitle,
-    this.subtitleMaxLines = 1,
+    required this.accentColor,
+    required this.subtitleTone,
+    required this.isCompact,
   });
 
   final IconData icon;
-  final Color iconBackgroundColor;
-  final Color iconColor;
-
   final String title;
   final String value;
   final String subtitle;
-
-  final int subtitleMaxLines;
+  final Color accentColor;
+  final _SubtitleTone subtitleTone;
+  final bool isCompact;
 
   @override
   Widget build(BuildContext context) {
+    final Color subtitleColor = switch (subtitleTone) {
+      _SubtitleTone.success => const Color(0xFF10B981),
+      _SubtitleTone.warning => const Color(0xFFF59E0B),
+      _SubtitleTone.danger => const Color(0xFFEF4444),
+      _SubtitleTone.neutral => AppColors.textSecondary,
+    };
+
+    final Color subtitleBg = switch (subtitleTone) {
+      _SubtitleTone.success => const Color(0xFF10B981).withValues(alpha: 0.10),
+      _SubtitleTone.warning => const Color(0xFFF59E0B).withValues(alpha: 0.10),
+      _SubtitleTone.danger => const Color(0xFFEF4444).withValues(alpha: 0.10),
+      _SubtitleTone.neutral => AppColors.divider.withValues(alpha: 0.35),
+    };
+
     return Container(
-      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.divider),
+        border: Border.all(color: AppColors.divider.withValues(alpha: 0.7)),
         boxShadow: [
           BoxShadow(
-            color: AppColors.shadowStrong.withValues(alpha: 0.06),
-            blurRadius: 14,
-            offset: const Offset(0, 5),
+            color: accentColor.withValues(alpha: 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isCompact = constraints.maxWidth < 165;
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: Stack(
+          children: [
+            // ============================================================
+            // TOP ACCENT BAR
+            // ============================================================
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                height: 3,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [accentColor, accentColor.withValues(alpha: 0.35)],
+                  ),
+                ),
+              ),
+            ),
 
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ICON + TITLE
-              Row(
+            // ============================================================
+            // SOFT GLOW (corner)
+            // ============================================================
+            Positioned(
+              top: -20,
+              right: -20,
+              child: Container(
+                width: 70,
+                height: 70,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: accentColor.withValues(alpha: 0.08),
+                ),
+              ),
+            ),
+
+            // ============================================================
+            // CONTENT
+            // ============================================================
+            Padding(
+              padding: EdgeInsets.all(isCompact ? 12 : 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: isCompact ? 34 : 38,
-                    height: isCompact ? 34 : 38,
-                    decoration: BoxDecoration(
-                      color: iconBackgroundColor,
-                      borderRadius: BorderRadius.circular(11),
-                    ),
-                    child: Icon(
-                      icon,
-                      color: iconColor,
-                      size: isCompact ? 18 : 20,
+                  // ---------- ICON + TITLE ----------
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: isCompact ? 34 : 38,
+                        height: isCompact ? 34 : 38,
+                        decoration: BoxDecoration(
+                          color: accentColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(11),
+                          border: Border.all(
+                            color: accentColor.withValues(alpha: 0.20),
+                            width: 1,
+                          ),
+                        ),
+                        child: Icon(
+                          icon,
+                          color: accentColor,
+                          size: isCompact ? 17 : 19,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: AppColors.textSecondary,
+                            fontSize: isCompact ? 10.5 : 11.5,
+                            fontWeight: FontWeight.w600,
+                            height: 1.15,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const Spacer(),
+
+                  // ---------- VALUE ----------
+                  FittedBox(
+                    alignment: Alignment.center,
+                    child: Text(
+                      value,
+                      maxLines: 1,
+                      style: AppTextStyles.titleLarge.copyWith(
+                        color: AppColors.navy,
+                        fontWeight: FontWeight.w800,
+                        fontSize: isCompact ? 22 : 26,
+                        height: 1.15,
+                        letterSpacing: -0.5,
+                      ),
                     ),
                   ),
 
-                  const SizedBox(width: 8),
+                  const SizedBox(height: 8),
 
-                  Expanded(
+                  // ---------- SUBTITLE CHIP ----------
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isCompact ? 7 : 8,
+                      vertical: isCompact ? 3 : 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: subtitleBg,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
                     child: Text(
-                      title,
-                      maxLines: 2,
+                      subtitle,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        color: AppColors.textSecondary,
-                        fontSize: isCompact ? 10 : 11,
-                        fontWeight: FontWeight.w600,
-                        height: 1.15,
+                      style: AppTextStyles.caption.copyWith(
+                        color: subtitleColor,
+                        fontSize: isCompact ? 9.5 : 10.5,
+                        fontWeight: FontWeight.w700,
+                        height: 1.2,
                       ),
                     ),
                   ),
                 ],
               ),
-
-              const Spacer(),
-
-              // VALUE
-              FittedBox(
-                alignment: Alignment.centerLeft,
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  value,
-                  maxLines: 1,
-                  style: AppTextStyles.titleLarge.copyWith(
-                    color: AppColors.navy,
-                    fontWeight: FontWeight.w800,
-                    fontSize: isCompact ? 20 : 22,
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 4),
-
-              // SUBTITLE
-              Text(
-                subtitle,
-                maxLines: subtitleMaxLines,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.caption.copyWith(
-                  color: AppColors.textSecondary,
-                  fontSize: isCompact ? 9 : 10,
-                  height: 1.25,
-                ),
-              ),
-            ],
-          );
-        },
+            ),
+          ],
+        ),
       ),
     );
   }

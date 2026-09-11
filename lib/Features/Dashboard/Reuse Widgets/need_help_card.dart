@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../Theme/app_colors.dart';
 import '../../../Theme/app_text_styles.dart';
@@ -6,14 +7,173 @@ import '../../../Theme/app_text_styles.dart';
 class NeedHelpCard extends StatelessWidget {
   const NeedHelpCard({
     super.key,
-    this.onEmailSupport,
-    this.onCallSupport,
+    required this.supportEmail,
+    required this.supportPhone,
     this.onCreateTicket,
   });
 
-  final VoidCallback? onEmailSupport;
-  final VoidCallback? onCallSupport;
+  /// Email received from Settings API.
+  final String supportEmail;
+
+  /// Phone number received from Settings API.
+  final String supportPhone;
+
   final VoidCallback? onCreateTicket;
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // OPEN EMAIL
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Future<void> _openEmail(BuildContext context) async {
+    final email = supportEmail.trim();
+
+    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    debugPrint('[NeedHelpCard] Email button clicked');
+    debugPrint('[NeedHelpCard] Support email: "$email"');
+
+    if (email.isEmpty) {
+      debugPrint('[NeedHelpCard] ERROR: Support email is empty.');
+
+      if (!context.mounted) {
+        return;
+      }
+
+      _showError(context, 'Support email is not available.');
+      return;
+    }
+
+    final emailUri = Uri(scheme: 'mailto', path: email);
+
+    debugPrint('[NeedHelpCard] Email URI: $emailUri');
+
+    try {
+      final launched = await launchUrl(
+        emailUri,
+        mode: LaunchMode.externalApplication,
+      );
+
+      debugPrint('[NeedHelpCard] Email launch result: $launched');
+
+      if (!launched) {
+        debugPrint('[NeedHelpCard] ERROR: Email app could not be opened.');
+
+        if (!context.mounted) {
+          return;
+        }
+
+        _showError(context, 'No email app is available on this device.');
+
+        return;
+      }
+
+      debugPrint('[NeedHelpCard] Email app opened successfully.');
+    } catch (error, stackTrace) {
+      debugPrint('[NeedHelpCard] EMAIL LAUNCH ERROR: $error');
+
+      debugPrint('[NeedHelpCard] EMAIL STACK TRACE:\n$stackTrace');
+
+      if (!context.mounted) {
+        return;
+      }
+
+      _showError(context, 'Unable to open email app.');
+    }
+
+    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // OPEN PHONE DIALER
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Future<void> _openPhone(BuildContext context) async {
+    final phone = supportPhone.trim();
+
+    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    debugPrint('[NeedHelpCard] Phone button clicked');
+    debugPrint('[NeedHelpCard] Support phone: "$phone"');
+
+    if (phone.isEmpty) {
+      debugPrint('[NeedHelpCard] ERROR: Support phone is empty.');
+
+      if (!context.mounted) {
+        return;
+      }
+
+      _showError(context, 'Support phone number is not available.');
+
+      return;
+    }
+
+    final phoneUri = Uri(scheme: 'tel', path: phone);
+
+    debugPrint('[NeedHelpCard] Phone URI: $phoneUri');
+
+    try {
+      final launched = await launchUrl(
+        phoneUri,
+        mode: LaunchMode.externalApplication,
+      );
+
+      debugPrint('[NeedHelpCard] Phone launch result: $launched');
+
+      if (!launched) {
+        debugPrint('[NeedHelpCard] ERROR: Phone dialer could not be opened.');
+
+        if (!context.mounted) {
+          return;
+        }
+
+        _showError(context, 'Unable to open phone dialer.');
+
+        return;
+      }
+
+      debugPrint('[NeedHelpCard] Phone dialer opened successfully.');
+    } catch (error, stackTrace) {
+      debugPrint('[NeedHelpCard] PHONE LAUNCH ERROR: $error');
+
+      debugPrint('[NeedHelpCard] PHONE STACK TRACE:\n$stackTrace');
+
+      if (!context.mounted) {
+        return;
+      }
+
+      _showError(context, 'Unable to open phone dialer.');
+    }
+
+    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ERROR
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  void _showError(BuildContext context, String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            message,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: AppColors.white,
+              fontSize: 13,
+            ),
+          ),
+          backgroundColor: AppColors.errorDark,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // BUILD
+  // ═══════════════════════════════════════════════════════════════════════════
 
   @override
   Widget build(BuildContext context) {
@@ -51,7 +211,7 @@ class NeedHelpCard extends StatelessWidget {
 
           const SizedBox(height: 15),
 
-          _buildSupportActions(),
+          _buildSupportActions(context),
         ],
       ),
     );
@@ -118,18 +278,20 @@ class NeedHelpCard extends StatelessWidget {
   // SUPPORT ACTIONS
   // ═══════════════════════════════════════════════════════════════════════════
 
-  Widget _buildSupportActions() {
+  Widget _buildSupportActions(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Small mobile screens:
-        // Stack buttons vertically to guarantee zero overflow.
+        // ----------------------------------------------------------
+        // Small mobile screens
+        // ----------------------------------------------------------
+
         if (constraints.maxWidth < 390) {
           return Column(
             children: [
               _buildActionButton(
                 icon: Icons.email_outlined,
                 label: 'Email Support',
-                onPressed: onEmailSupport,
+                onPressed: () => _openEmail(context),
                 isPrimary: true,
               ),
 
@@ -141,7 +303,7 @@ class NeedHelpCard extends StatelessWidget {
                     child: _buildActionButton(
                       icon: Icons.phone_outlined,
                       label: 'Call Support',
-                      onPressed: onCallSupport,
+                      onPressed: () => _openPhone(context),
                     ),
                   ),
 
@@ -160,14 +322,17 @@ class NeedHelpCard extends StatelessWidget {
           );
         }
 
-        // Normal mobile / larger screens.
+        // ----------------------------------------------------------
+        // Normal mobile / larger screens
+        // ----------------------------------------------------------
+
         return Row(
           children: [
             Expanded(
               child: _buildActionButton(
                 icon: Icons.email_outlined,
                 label: 'Email Support',
-                onPressed: onEmailSupport,
+                onPressed: () => _openEmail(context),
                 isPrimary: true,
               ),
             ),
@@ -178,7 +343,7 @@ class NeedHelpCard extends StatelessWidget {
               child: _buildActionButton(
                 icon: Icons.phone_outlined,
                 label: 'Call Support',
-                onPressed: onCallSupport,
+                onPressed: () => _openPhone(context),
               ),
             ),
 

@@ -3,46 +3,49 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../Services/api_exception.dart';
 import '../../../../Services/dio.dart';
 import '../../../../Services/dio_client.dart';
-import '../Models/dashboard_model.dart';
-import '../Repo/dashboard_repository.dart';
+import 'business_type_model.dart';
+import 'business_type_repository.dart';
 
 // ============================================================
-// Dashboard Provider
+// Business Type Provider
 // ============================================================
 
-final dashboardControllerProvider = Provider<DashboardController>((ref) {
+final businessTypeControllerProvider = Provider<BusinessTypeController>((ref) {
   final dioClient = ref.watch(dioProvider);
 
-  return DashboardController(dioClient: dioClient);
+  return BusinessTypeController(dioClient: dioClient);
 });
 
 // ============================================================
-// Dashboard Controller
+// Business Type Controller
 // ============================================================
 
-class DashboardController {
-  DashboardController({required DioClient dioClient})
-    : _repository = DashboardRepository(dioClient);
+class BusinessTypeController {
+  BusinessTypeController({required DioClient dioClient})
+    : _repository = BusinessTypeRepository(dioClient);
 
-  final DashboardRepository _repository;
+  final BusinessTypeRepository _repository;
 
   // ==========================================================
-  // Get Dashboard
+  // Get Business Types
   // ==========================================================
 
-  Future<DashboardModel> getDashboard() async {
+  Future<BusinessTypeModel> getBusinessTypes() async {
     try {
-      final result = await _repository.getDashboard();
+      final result = await _repository.getBusinessTypes();
 
       return result;
     } on ApiException {
       // Existing API exception ko as-is UI tak jane dein.
+      //
       // Is se statusCode, code aur validation/error details
       // preserve rehti hain.
+
       rethrow;
     } catch (error) {
-      // Unexpected errors ko standard ApiException mein convert
-      // kar rahe hain.
+      // Unexpected errors ko standard ApiException mein
+      // convert kar rahe hain.
+
       throw ApiException(
         message: 'Something went wrong. Please try again.',
         code: 'UNKNOWN_ERROR',

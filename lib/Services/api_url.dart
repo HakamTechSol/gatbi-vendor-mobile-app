@@ -12,6 +12,11 @@ class ApiUrls {
   static const String resendOtp = 'vendor/auth/resend-otp';
   static const String logout = 'vendor/auth/logout';
 
+  //Using registration
+  static const String businesstype = 'vendor/business-types';
+  static const String catagery = 'categories';
+  static const String phoneRules = 'vendor/phone-rules';
+
   // Vendor
   static const String me = 'vendor/me';
 
@@ -109,7 +114,7 @@ class ApiUrls {
   static const String requestPayout = 'vendor/payouts/request';
 
   // Settings
-  static const String settings = 'vendor/settings';
+  static const String settings = 'settings';
 
   static const String updateProfile = 'vendor/settings/profile';
 

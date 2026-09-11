@@ -7,14 +7,18 @@ class EarningsSummarySection extends StatelessWidget {
   const EarningsSummarySection({
     super.key,
     required this.grossAmount,
+    required this.shippingAmount,
     required this.commissionAmount,
     required this.netPayable,
     required this.commissionPercentage,
-    this.currencySymbol = '₨',
+    this.currencySymbol = 'د.إ',
   });
 
   /// Total products gross amount.
   final double grossAmount;
+
+  /// Total shipping amount.
+  final double shippingAmount;
 
   /// Gatbi commission amount.
   final double commissionAmount;
@@ -25,6 +29,7 @@ class EarningsSummarySection extends StatelessWidget {
   /// Example: 5.00
   final double commissionPercentage;
 
+  /// API dashboard currently uses AED.
   final String currencySymbol;
 
   @override
@@ -32,10 +37,6 @@ class EarningsSummarySection extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-
-        // ═══════════════════════════════════════════════════════════════════
-        // SMALL MOBILE
-        // ═══════════════════════════════════════════════════════════════════
 
         if (width < 360) {
           return Column(
@@ -53,13 +54,10 @@ class EarningsSummarySection extends StatelessWidget {
           );
         }
 
-        // ═══════════════════════════════════════════════════════════════════
-        // NORMAL MOBILE / TABLET
-        // ═══════════════════════════════════════════════════════════════════
-
         return Column(
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Expanded(child: _buildGrossCard()),
 
@@ -90,7 +88,9 @@ class EarningsSummarySection extends StatelessWidget {
       title: 'Your Products Gross',
       amount: grossAmount,
       currencySymbol: currencySymbol,
-      subtitle: 'Products total value',
+      subtitle: 'Products: $currencySymbol ${grossAmount.toStringAsFixed(2)}',
+      secondarySubtitle:
+          'Shipping: $currencySymbol ${shippingAmount.toStringAsFixed(2)}',
     );
   }
 
@@ -140,15 +140,19 @@ class _EarningsSummaryCard extends StatelessWidget {
     required this.amount,
     required this.currencySymbol,
     required this.subtitle,
+    this.secondarySubtitle,
   });
 
   final IconData icon;
   final Color iconColor;
   final Color iconBackgroundColor;
+
   final String title;
   final double amount;
   final String currencySymbol;
+
   final String subtitle;
+  final String? secondarySubtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -226,6 +230,20 @@ class _EarningsSummaryCard extends StatelessWidget {
                     fontSize: 9.5,
                   ),
                 ),
+
+                if (secondarySubtitle != null) ...[
+                  const SizedBox(height: 2),
+
+                  Text(
+                    secondarySubtitle!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.textSecondary,
+                      fontSize: 9,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

@@ -9,20 +9,38 @@ class RegisterController {
 
   final RegisterRepository _repository;
 
+  // ============================================================
+  // REGISTER
+  // ============================================================
+
   Future<RegisterModel> register({
-    required String businessName,
+    required String storeName,
+    required String businessType,
     required String email,
+    required String phoneFull,
+    required String phoneCountry,
+    required String address,
+    required int categoryId,
+    required String about,
+    String? tradeLicenseNumber,
     required String password,
     required String passwordConfirmation,
-    String? phone,
+    required String termsAgreed,
   }) async {
     try {
       final result = await _repository.register(
-        businessName: businessName,
+        storeName: storeName,
+        businessType: businessType,
         email: email,
+        phoneFull: phoneFull,
+        phoneCountry: phoneCountry,
+        address: address,
+        categoryId: categoryId,
+        about: about,
+        tradeLicenseNumber: tradeLicenseNumber,
         password: password,
         passwordConfirmation: passwordConfirmation,
-        phone: phone,
+        termsAgreed: termsAgreed,
       );
 
       return result;
