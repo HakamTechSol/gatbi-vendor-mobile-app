@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
-import '../Models/top_product_model.dart';
+import '../Models/analytics_model.dart';
 import 'top_product_item.dart';
 
 class TopProductsSection extends StatelessWidget {
@@ -16,11 +16,13 @@ class TopProductsSection extends StatelessWidget {
     this.onViewAllTap,
   });
 
-  final List<TopProductModel> products;
+  final List<AnalyticsTopProductModel> products;
+
   final String title;
   final String subtitle;
   final int maxItems;
-  final ValueChanged<TopProductModel>? onProductTap;
+
+  final ValueChanged<AnalyticsTopProductModel>? onProductTap;
   final VoidCallback? onViewAllTap;
 
   @override
@@ -76,6 +78,7 @@ class TopProductsSection extends StatelessWidget {
             ],
           ),
         ),
+
         if (onViewAllTap != null) ...[
           const SizedBox(width: 12),
           TextButton(

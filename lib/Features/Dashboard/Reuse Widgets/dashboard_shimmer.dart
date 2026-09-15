@@ -28,99 +28,132 @@ class DashboardShimmer extends StatelessWidget {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       physics: const NeverScrollableScrollPhysics(),
-      padding: EdgeInsets.fromLTRB(
-        horizontalPadding,
-        16,
-        horizontalPadding,
-        30,
-      ),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. HEADER CARD
-          _HeaderCardShimmer(),
-          SizedBox(height: 16),
+          // ============================================================
+          // 1. HEADER — FULL WIDTH
+          // ============================================================
+          const _HeaderCardShimmer(),
 
-          // 2. GROSS CARD
-          _InfoCardShimmer(
-            lines: [
-              _LineSpec(widthFactor: 0.45, height: 11),
-              _LineSpec(widthFactor: 0.35, height: 24, topGap: 12),
-              _LineSpec(widthFactor: 0.42, height: 10, topGap: 14),
-              _LineSpec(widthFactor: 0.38, height: 10, topGap: 8),
-            ],
+          // ============================================================
+          // REST OF DASHBOARD — WITH HORIZONTAL PADDING
+          // ============================================================
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              horizontalPadding,
+              16,
+              horizontalPadding,
+              30,
+            ),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ------------------------------------------------------
+                // 2. GROSS CARD
+                // ------------------------------------------------------
+                _InfoCardShimmer(
+                  lines: [
+                    _LineSpec(widthFactor: 0.45, height: 11),
+                    _LineSpec(widthFactor: 0.35, height: 24, topGap: 12),
+                    _LineSpec(widthFactor: 0.42, height: 10, topGap: 14),
+                    _LineSpec(widthFactor: 0.38, height: 10, topGap: 8),
+                  ],
+                ),
+
+                SizedBox(height: 14),
+
+                // ------------------------------------------------------
+                // 3. COMMISSION CARD
+                // ------------------------------------------------------
+                _InfoCardShimmer(
+                  lines: [
+                    _LineSpec(widthFactor: 0.55, height: 11),
+                    _LineSpec(widthFactor: 0.30, height: 24, topGap: 12),
+                    _LineSpec(widthFactor: 0.58, height: 10, topGap: 14),
+                  ],
+                ),
+
+                SizedBox(height: 14),
+
+                // ------------------------------------------------------
+                // 4. NET PAYABLE CARD
+                // ------------------------------------------------------
+                _InfoCardShimmer(
+                  lines: [
+                    _LineSpec(widthFactor: 0.42, height: 11),
+                    _LineSpec(widthFactor: 0.36, height: 24, topGap: 12),
+                    _LineSpec(widthFactor: 0.52, height: 10, topGap: 14),
+                  ],
+                ),
+
+                SizedBox(height: 14),
+
+                // ------------------------------------------------------
+                // 5. AFFILIATE-READY CARD
+                // ------------------------------------------------------
+                _InfoCardShimmer(
+                  lines: [
+                    _LineSpec(widthFactor: 0.58, height: 11),
+                    _LineSpec(widthFactor: 0.10, height: 24, topGap: 12),
+                    _LineSpec(widthFactor: 0.45, height: 10, topGap: 14),
+                  ],
+                ),
+
+                SizedBox(height: 24),
+
+                // ------------------------------------------------------
+                // 6. STATS SECTION
+                // ------------------------------------------------------
+                _SectionTitleShimmer(),
+                SizedBox(height: 12),
+
+                Row(
+                  children: [
+                    Expanded(child: _StatTileShimmer()),
+                    SizedBox(width: 12),
+                    Expanded(child: _StatTileShimmer()),
+                  ],
+                ),
+
+                SizedBox(height: 12),
+
+                Row(
+                  children: [
+                    Expanded(child: _StatTileShimmer()),
+                    SizedBox(width: 12),
+                    Expanded(child: _StatTileShimmer()),
+                  ],
+                ),
+
+                SizedBox(height: 24),
+
+                // ------------------------------------------------------
+                // 7. RECENT ORDERS
+                // ------------------------------------------------------
+                _SectionTitleShimmer(),
+                SizedBox(height: 12),
+
+                _RecentTileShimmer(),
+                SizedBox(height: 10),
+                _RecentTileShimmer(),
+                SizedBox(height: 10),
+                _RecentTileShimmer(),
+
+                SizedBox(height: 24),
+
+                // ------------------------------------------------------
+                // 8. PRODUCTS PREVIEW
+                // ------------------------------------------------------
+                _SectionTitleShimmer(),
+                SizedBox(height: 12),
+
+                _ProductTileShimmer(),
+                SizedBox(height: 10),
+                _ProductTileShimmer(),
+              ],
+            ),
           ),
-          SizedBox(height: 14),
-
-          // 3. COMMISSION CARD
-          _InfoCardShimmer(
-            lines: [
-              _LineSpec(widthFactor: 0.55, height: 11),
-              _LineSpec(widthFactor: 0.30, height: 24, topGap: 12),
-              _LineSpec(widthFactor: 0.58, height: 10, topGap: 14),
-            ],
-          ),
-          SizedBox(height: 14),
-
-          // 4. NET PAYABLE CARD
-          _InfoCardShimmer(
-            lines: [
-              _LineSpec(widthFactor: 0.42, height: 11),
-              _LineSpec(widthFactor: 0.36, height: 24, topGap: 12),
-              _LineSpec(widthFactor: 0.52, height: 10, topGap: 14),
-            ],
-          ),
-          SizedBox(height: 14),
-
-          // 5. AFFILIATE-READY CARD
-          _InfoCardShimmer(
-            lines: [
-              _LineSpec(widthFactor: 0.58, height: 11),
-              _LineSpec(widthFactor: 0.10, height: 24, topGap: 12),
-              _LineSpec(widthFactor: 0.45, height: 10, topGap: 14),
-            ],
-          ),
-
-          SizedBox(height: 24),
-
-          // 6. STATS SECTION
-          _SectionTitleShimmer(),
-          SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(child: _StatTileShimmer()),
-              SizedBox(width: 12),
-              Expanded(child: _StatTileShimmer()),
-            ],
-          ),
-          SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(child: _StatTileShimmer()),
-              SizedBox(width: 12),
-              Expanded(child: _StatTileShimmer()),
-            ],
-          ),
-
-          SizedBox(height: 24),
-
-          // 7. RECENT ORDERS
-          _SectionTitleShimmer(),
-          SizedBox(height: 12),
-          _RecentTileShimmer(),
-          SizedBox(height: 10),
-          _RecentTileShimmer(),
-          SizedBox(height: 10),
-          _RecentTileShimmer(),
-
-          SizedBox(height: 24),
-
-          // 8. PRODUCTS PREVIEW
-          _SectionTitleShimmer(),
-          SizedBox(height: 12),
-          _ProductTileShimmer(),
-          SizedBox(height: 10),
-          _ProductTileShimmer(),
         ],
       ),
     );
@@ -181,7 +214,7 @@ class _LineSpec {
 }
 
 // ============================================================
-// HEADER CARD
+// HEADER SHIMMER
 // ============================================================
 
 class _HeaderCardShimmer extends StatelessWidget {
@@ -189,54 +222,77 @@ class _HeaderCardShimmer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    final isSmallScreen = size.width < 380;
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      height: 77,
+      padding: EdgeInsets.only(
+        left: isSmallScreen ? 14 : 18,
+        right: isSmallScreen ? 10 : 14,
+      ),
       decoration: BoxDecoration(
         color: AppColors.shimmerCard,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border(
+          bottom: BorderSide(color: AppColors.divider.withValues(alpha: 0.65)),
+        ),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Circle icon
-          const _ShimmerBlock(width: 52, height: 52, radius: 26),
+          // --------------------------------------------------
+          // AVATAR
+          // --------------------------------------------------
+          _ShimmerBlock(
+            width: isSmallScreen ? 44 : 48,
+            height: isSmallScreen ? 44 : 48,
+            radius: 50,
+          ),
 
-          const SizedBox(width: 14),
+          SizedBox(width: isSmallScreen ? 10 : 13),
 
-          // Text lines
+          // --------------------------------------------------
+          // WELCOME CONTENT
+          // --------------------------------------------------
           Expanded(
             child: LayoutBuilder(
-              builder: (_, c) => Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _ShimmerBlock(width: c.maxWidth * 0.55, height: 16),
-                  const SizedBox(height: 10),
-                  _ShimmerBlock(width: c.maxWidth * 0.95, height: 11),
-                  const SizedBox(height: 6),
-                  _ShimmerBlock(width: c.maxWidth * 0.75, height: 11),
-                ],
-              ),
+              builder: (_, constraints) {
+                return Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _ShimmerBlock(
+                      width: constraints.maxWidth * 0.58,
+                      height: isSmallScreen ? 15 : 17,
+                      radius: 5,
+                    ),
+                    const SizedBox(height: 7),
+                    _ShimmerBlock(
+                      width: constraints.maxWidth * 0.88,
+                      height: isSmallScreen ? 9 : 10,
+                      radius: 4,
+                    ),
+                  ],
+                );
+              },
             ),
           ),
 
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
 
-          // Menu dots
-          const _ShimmerBlock(width: 36, height: 36, radius: 10),
+          // --------------------------------------------------
+          // MENU BUTTON
+          // --------------------------------------------------
+          _ShimmerBlock(
+            width: isSmallScreen ? 40 : 44,
+            height: isSmallScreen ? 40 : 44,
+            radius: 13,
+          ),
         ],
       ),
     );
   }
 }
-
 // ============================================================
 // INFO CARD
 // ============================================================

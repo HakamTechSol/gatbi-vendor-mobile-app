@@ -7,7 +7,7 @@ import '../../../Core/Custom Widgets/custom_button.dart';
 import '../../../Theme/app_colors.dart';
 import '../../../Theme/app_text_styles.dart';
 
-class DashboardHeader extends StatefulWidget {
+class DashboardHeader extends StatelessWidget implements PreferredSizeWidget {
   const DashboardHeader({
     super.key,
     required this.vendorName,
@@ -30,163 +30,127 @@ class DashboardHeader extends StatefulWidget {
   final bool isStoreApproved;
 
   @override
-  State<DashboardHeader> createState() => _DashboardHeaderState();
-}
-
-class _DashboardHeaderState extends State<DashboardHeader>
-    with SingleTickerProviderStateMixin {
-  bool _isExpanded = false;
-
-  late final AnimationController _animationController;
-  late final Animation<double> _fadeAnimation;
-  late final Animation<Offset> _slideAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 260),
-    );
-
-    _fadeAnimation = CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOutCubic,
-    );
-
-    _slideAnimation =
-        Tween<Offset>(begin: const Offset(0, -0.08), end: Offset.zero).animate(
-          CurvedAnimation(
-            parent: _animationController,
-            curve: Curves.easeOutCubic,
-          ),
-        );
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
+  Size get preferredSize => const Size.fromHeight(76);
 
   // ============================================================
-  // RESET HEADER
+  // ADD PRODUCT
   // ============================================================
 
-  /// Header ko default/closed state mein reset karta hai.
-  ///
-  /// Dashboard par wapas aane par parent screen is method ko call
-  /// karegi through GlobalKey.
-  void resetHeader() {
-    if (!_isExpanded) return;
-
-    setState(() {
-      _isExpanded = false;
-    });
-
-    _animationController.reverse();
-  }
-
-  // ============================================================
-  // TOGGLE MENU
-  // ============================================================
-
-  void _toggleExpanded() {
+  void _handleAddProduct(BuildContext context) {
     HapticFeedback.selectionClick();
 
-    setState(() {
-      _isExpanded = !_isExpanded;
-    });
+    if (!isStoreApproved) return;
 
-    if (_isExpanded) {
-      _animationController.forward();
-    } else {
-      _animationController.reverse();
+    if (onAddProduct != null) {
+      onAddProduct!();
+      return;
+    }
+
+    context.push(AppRoutes.addProduct);
+  }
+
+  // ============================================================
+  // VIEW ORDERS
+  // ============================================================
+
+  void _handleViewOrders() {
+    HapticFeedback.selectionClick();
+
+    onViewOrders?.call();
+  }
+
+  // ============================================================
+  // SHOP SETTINGS
+  // ============================================================
+
+  void _handleShopSettings() {
+    HapticFeedback.selectionClick();
+
+    onShopSettings?.call();
+  }
+
+  // ============================================================
+  // ACTION SHEET
+  // ============================================================
+
+  Future<void> _showActionsMenu(BuildContext context) async {
+    HapticFeedback.selectionClick();
+
+    final selectedAction = await showModalBottomSheet<_DashboardAction>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: false,
+      useSafeArea: true,
+      builder: (sheetContext) {
+        return _DashboardActionsSheet(isStoreApproved: isStoreApproved);
+      },
+    );
+
+    if (selectedAction == null) return;
+
+    switch (selectedAction) {
+      case _DashboardAction.addProduct:
+        _handleAddProduct(context);
+        break;
+
+      case _DashboardAction.viewOrders:
+        _handleViewOrders();
+        break;
+
+      case _DashboardAction.shopSettings:
+        _handleShopSettings();
+        break;
     }
   }
 
   // ============================================================
-  // COLLAPSE + ACTION
+  // BUILD
   // ============================================================
-
-  void _collapseAndRun(VoidCallback action) {
-    if (_isExpanded) {
-      setState(() {
-        _isExpanded = false;
-      });
-
-      _animationController.reverse();
-    }
-
-    action();
-  }
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
     final isSmallScreen = size.width < 380;
 
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.divider.withValues(alpha: 0.75)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadowStrong.withValues(alpha: 0.07),
-            blurRadius: 20,
-            offset: const Offset(0, 7),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildHeader(context, isSmallScreen: isSmallScreen),
+    return AppBar(
+      automaticallyImplyLeading: false,
 
-            AnimatedSize(
-              duration: const Duration(milliseconds: 280),
-              curve: Curves.easeOutCubic,
-              alignment: Alignment.topCenter,
-              child: _isExpanded
-                  ? _buildExpandedActions(context, isSmallScreen: isSmallScreen)
-                  : const SizedBox.shrink(),
-            ),
+      toolbarHeight: 76,
+
+      elevation: 0,
+      scrolledUnderElevation: 0,
+
+      backgroundColor: AppColors.white,
+      surfaceTintColor: Colors.transparent,
+
+      titleSpacing: 0,
+
+      title: Padding(
+        padding: EdgeInsets.only(left: isSmallScreen ? 14 : 18, right: 4),
+        child: Row(
+          children: [
+            _buildAvatar(isSmallScreen: isSmallScreen),
+
+            SizedBox(width: isSmallScreen ? 10 : 13),
+
+            Expanded(child: _buildWelcomeContent(isSmallScreen: isSmallScreen)),
           ],
         ),
       ),
-    );
-  }
 
-  // ============================================================
-  // HEADER
-  // ============================================================
+      actions: [
+        Padding(
+          padding: EdgeInsets.only(right: isSmallScreen ? 10 : 14),
+          child: _buildMenuButton(context, isSmallScreen: isSmallScreen),
+        ),
+      ],
 
-  Widget _buildHeader(BuildContext context, {required bool isSmallScreen}) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        isSmallScreen ? 15 : 18,
-        isSmallScreen ? 14 : 16,
-        isSmallScreen ? 10 : 12,
-        isSmallScreen ? 14 : 16,
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          _buildAvatar(isSmallScreen),
-
-          SizedBox(width: isSmallScreen ? 11 : 14),
-
-          Expanded(child: _buildWelcomeContent(isSmallScreen: isSmallScreen)),
-
-          const SizedBox(width: 8),
-
-          _buildMenuButton(context, isSmallScreen: isSmallScreen),
-        ],
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(1),
+        child: Container(
+          height: 1,
+          color: AppColors.divider.withValues(alpha: 0.65),
+        ),
       ),
     );
   }
@@ -195,8 +159,8 @@ class _DashboardHeaderState extends State<DashboardHeader>
   // AVATAR
   // ============================================================
 
-  Widget _buildAvatar(bool isSmallScreen) {
-    final avatarSize = isSmallScreen ? 46.0 : 52.0;
+  Widget _buildAvatar({required bool isSmallScreen}) {
+    final avatarSize = isSmallScreen ? 44.0 : 48.0;
 
     return Container(
       width: avatarSize,
@@ -207,7 +171,7 @@ class _DashboardHeaderState extends State<DashboardHeader>
         boxShadow: [
           BoxShadow(
             color: AppColors.primaryShadow.withValues(alpha: 0.22),
-            blurRadius: 13,
+            blurRadius: 12,
             offset: const Offset(0, 5),
           ),
         ],
@@ -215,7 +179,7 @@ class _DashboardHeaderState extends State<DashboardHeader>
       child: Icon(
         Icons.storefront_rounded,
         color: AppColors.white,
-        size: isSmallScreen ? 22 : 25,
+        size: isSmallScreen ? 21 : 23,
       ),
     );
   }
@@ -226,31 +190,32 @@ class _DashboardHeaderState extends State<DashboardHeader>
 
   Widget _buildWelcomeContent({required bool isSmallScreen}) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Welcome back, ${widget.vendorName}!',
+          'Welcome back, $vendorName!',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: AppTextStyles.titleLarge.copyWith(
             color: AppColors.navy,
-            fontSize: isSmallScreen ? 17 : 20,
+            fontSize: isSmallScreen ? 16.5 : 19,
             fontWeight: FontWeight.w800,
             height: 1.15,
           ),
         ),
 
-        const SizedBox(height: 5),
+        const SizedBox(height: 4),
 
         Text(
-          widget.subtitle,
-          maxLines: 2,
+          subtitle,
+          maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: AppTextStyles.bodyMedium.copyWith(
             color: AppColors.textSecondary,
-            fontSize: isSmallScreen ? 10.5 : 11.5,
-            height: 1.35,
+            fontSize: isSmallScreen ? 10 : 11,
+            fontWeight: FontWeight.w500,
+            height: 1.2,
           ),
         ),
       ],
@@ -258,7 +223,7 @@ class _DashboardHeaderState extends State<DashboardHeader>
   }
 
   // ============================================================
-  // MENU / CLOSE BUTTON
+  // MENU BUTTON
   // ============================================================
 
   Widget _buildMenuButton(BuildContext context, {required bool isSmallScreen}) {
@@ -267,191 +232,190 @@ class _DashboardHeaderState extends State<DashboardHeader>
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: _toggleExpanded,
+        onTap: () => _showActionsMenu(context),
         borderRadius: BorderRadius.circular(13),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
+        child: Ink(
           width: buttonSize,
           height: buttonSize,
           decoration: BoxDecoration(
-            color: _isExpanded
-                ? AppColors.primary.withValues(alpha: 0.10)
-                : AppColors.background,
-            borderRadius: BorderRadius.circular(13),
-            border: Border.all(
-              color: _isExpanded
-                  ? AppColors.primary.withValues(alpha: 0.18)
-                  : AppColors.divider.withValues(alpha: 0.8),
-            ),
-          ),
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 180),
-            transitionBuilder: (child, animation) {
-              return ScaleTransition(
-                scale: animation,
-                child: FadeTransition(opacity: animation, child: child),
-              );
-            },
-            child: Icon(
-              _isExpanded ? Icons.close_rounded : Icons.more_vert_rounded,
-              key: ValueKey<bool>(_isExpanded),
-              color: _isExpanded ? AppColors.primary : AppColors.textSecondary,
-              size: isSmallScreen ? 21 : 23,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ============================================================
-  // EXPANDED ACTIONS
-  // ============================================================
-
-  Widget _buildExpandedActions(
-    BuildContext context, {
-    required bool isSmallScreen,
-  }) {
-    return FadeTransition(
-      opacity: _fadeAnimation,
-      child: SlideTransition(
-        position: _slideAnimation,
-        child: Container(
-          width: double.infinity,
-          margin: EdgeInsets.fromLTRB(
-            isSmallScreen ? 12 : 16,
-            0,
-            isSmallScreen ? 12 : 16,
-            isSmallScreen ? 12 : 16,
-          ),
-          padding: EdgeInsets.all(isSmallScreen ? 10 : 12),
-          decoration: BoxDecoration(
             color: AppColors.background,
-            borderRadius: BorderRadius.circular(15),
-            border: Border.all(color: AppColors.divider.withValues(alpha: 0.7)),
+            borderRadius: BorderRadius.circular(13),
+            border: Border.all(color: AppColors.divider.withValues(alpha: 0.8)),
           ),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              if (constraints.maxWidth >= 600) {
-                return Row(
-                  children: [
-                    Expanded(child: _buildAddProductButton(context)),
-                    const SizedBox(width: 10),
-                    Expanded(child: _buildViewOrdersButton()),
-                    const SizedBox(width: 10),
-                    Expanded(child: _buildShopSettingsButton()),
-                  ],
-                );
-              }
-
-              return Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  SizedBox(
-                    width: _getButtonWidth(constraints.maxWidth),
-                    child: _buildAddProductButton(context),
-                  ),
-                  SizedBox(
-                    width: _getButtonWidth(constraints.maxWidth),
-                    child: _buildViewOrdersButton(),
-                  ),
-                  SizedBox(
-                    width: _getButtonWidth(constraints.maxWidth),
-                    child: _buildShopSettingsButton(),
-                  ),
-                ],
-              );
-            },
+          child: Icon(
+            Icons.more_vert_rounded,
+            color: AppColors.textSecondary,
+            size: isSmallScreen ? 21 : 23,
           ),
         ),
       ),
     );
   }
+}
 
-  // ============================================================
-  // RESPONSIVE BUTTON WIDTH
-  // ============================================================
+// ============================================================================
+// DASHBOARD ACTIONS
+// ============================================================================
 
-  double _getButtonWidth(double availableWidth) {
-    if (availableWidth < 340) {
-      return availableWidth;
-    }
+enum _DashboardAction { addProduct, viewOrders, shopSettings }
 
-    return (availableWidth - 10) / 2;
-  }
+// ============================================================================
+// ACTIONS SHEET
+// ============================================================================
 
-  // ============================================================
-  // ADD PRODUCT
-  // ============================================================
+class _DashboardActionsSheet extends StatelessWidget {
+  const _DashboardActionsSheet({required this.isStoreApproved});
 
-  Widget _buildAddProductButton(BuildContext context) {
-    return CustomButton(
-      text: 'Add Product',
-      icon: Icons.add_box_outlined,
-      onPressed: widget.isStoreApproved
-          ? () {
-              _collapseAndRun(() {
-                if (widget.onAddProduct != null) {
-                  widget.onAddProduct!();
-                  return;
-                }
+  final bool isStoreApproved;
 
-                context.push(AppRoutes.addProduct);
-              });
-            }
-          : null,
-      type: CustomButtonType.outlined,
-      height: 44,
-      borderRadius: 11,
-      foregroundColor: AppColors.primary,
-      borderColor: AppColors.primary,
-      backgroundColor: AppColors.white,
-    );
-  }
+  @override
+  Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.paddingOf(context).bottom;
 
-  // ============================================================
-  // VIEW ORDERS
-  // ============================================================
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+      padding: EdgeInsets.fromLTRB(12, 10, 12, 12 + bottomPadding),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.divider.withValues(alpha: 0.7)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.shadowStrong.withValues(alpha: 0.12),
+            blurRadius: 25,
+            offset: const Offset(0, -5),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // ========================================================
+          // HANDLE
+          // ========================================================
+          Container(
+            width: 38,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 14),
+            decoration: BoxDecoration(
+              color: AppColors.divider,
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
 
-  Widget _buildViewOrdersButton() {
-    return CustomButton(
-      text: 'View Orders',
-      icon: Icons.receipt_long_outlined,
-      onPressed: widget.onViewOrders == null
-          ? null
-          : () {
-              _collapseAndRun(widget.onViewOrders!);
+          // ========================================================
+          // HEADER
+          // ========================================================
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    gradient: AppColors.primaryGradient,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primaryShadow.withValues(alpha: 0.18),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.dashboard_customize_outlined,
+                    color: AppColors.white,
+                    size: 20,
+                  ),
+                ),
+
+                const SizedBox(width: 11),
+
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Quick Actions',
+                        style: AppTextStyles.titleMedium.copyWith(
+                          color: AppColors.navy,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Manage your store',
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // ========================================================
+          // ADD PRODUCT
+          // ========================================================
+          CustomButton(
+            text: 'Add Product',
+            icon: Icons.add_box_outlined,
+            onPressed: isStoreApproved
+                ? () {
+                    Navigator.of(context).pop(_DashboardAction.addProduct);
+                  }
+                : null,
+            type: CustomButtonType.outlined,
+            height: 46,
+            borderRadius: 12,
+            foregroundColor: AppColors.primary,
+            borderColor: AppColors.primary,
+            backgroundColor: AppColors.white,
+          ),
+
+          const SizedBox(height: 9),
+
+          // ========================================================
+          // VIEW ORDERS
+          // ========================================================
+          CustomButton(
+            text: 'View Orders',
+            icon: Icons.receipt_long_outlined,
+            onPressed: () {
+              Navigator.of(context).pop(_DashboardAction.viewOrders);
             },
-      type: CustomButtonType.outlined,
-      height: 44,
-      borderRadius: 11,
-      foregroundColor: AppColors.primary,
-      borderColor: AppColors.primary,
-      backgroundColor: AppColors.white,
-    );
-  }
+            type: CustomButtonType.outlined,
+            height: 46,
+            borderRadius: 12,
+            foregroundColor: AppColors.primary,
+            borderColor: AppColors.primary,
+            backgroundColor: AppColors.white,
+          ),
 
-  // ============================================================
-  // SHOP SETTINGS
-  // ============================================================
+          const SizedBox(height: 9),
 
-  Widget _buildShopSettingsButton() {
-    return CustomButton(
-      text: 'Shop Settings',
-      icon: Icons.settings_outlined,
-      onPressed: widget.onShopSettings == null
-          ? null
-          : () {
-              _collapseAndRun(widget.onShopSettings!);
+          // ========================================================
+          // SHOP SETTINGS
+          // ========================================================
+          CustomButton(
+            text: 'Shop Settings',
+            icon: Icons.settings_outlined,
+            onPressed: () {
+              Navigator.of(context).pop(_DashboardAction.shopSettings);
             },
-      type: CustomButtonType.outlined,
-      height: 44,
-      borderRadius: 11,
-      foregroundColor: AppColors.primaryShadow,
-      borderColor: AppColors.primaryShadow,
-      backgroundColor: AppColors.white,
+            type: CustomButtonType.outlined,
+            height: 46,
+            borderRadius: 12,
+            foregroundColor: AppColors.primaryShadow,
+            borderColor: AppColors.primaryShadow,
+            backgroundColor: AppColors.white,
+          ),
+        ],
+      ),
     );
   }
 }

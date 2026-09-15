@@ -16,12 +16,19 @@ class ApiUrls {
   static const String businesstype = 'vendor/business-types';
   static const String catagery = 'categories';
   static const String phoneRules = 'vendor/phone-rules';
+  static const String countries = 'countries';
 
   // Vendor
   static const String me = 'vendor/me';
 
   // Dashboard
   static const String dashboard = 'vendor/dashboard';
+
+  // analytics
+  static const String analytics = 'vendor/analytics';
+
+  // campaigns
+  static const String campaigns = 'vendor/campaigns';
 
   // Products
   static const String products = 'vendor/products';

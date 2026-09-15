@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../Theme/app_colors.dart';
 import '../../../Theme/app_text_styles.dart';
+import '../Campain Type/campain_type_model.dart';
 import '../Data/dummy_campaign_data.dart';
 import '../Models/campaign_model.dart';
 import '../Reuse widgets/campaign_card.dart';
@@ -193,10 +194,8 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
     _showComingSoonMessage('Support contact flow will be connected here.');
   }
 
-  void _handleIdeaTap(CampaignIdeaModel idea) {
-    _showComingSoonMessage(
-      '${idea.title} campaign flow will be connected here.',
-    );
+  void _handleIdeaTap(CampaignTypeModel campaign) {
+    _showComingSoonMessage('${campaign.name ?? 'Campaign'} campaign selected.');
   }
 
   void _handleCampaignTap(CampaignModel campaign) {

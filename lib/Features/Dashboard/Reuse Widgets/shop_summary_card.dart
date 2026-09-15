@@ -85,7 +85,7 @@ class ShopSummaryCard extends StatelessWidget {
             icon: Icons.email_outlined,
             label: 'Support Email',
             value: supportEmail,
-            valueMaxLines: 2,
+            valueMaxLines: 1,
           ),
 
           _buildInfoDivider(),
@@ -198,7 +198,7 @@ class ShopSummaryCard extends StatelessWidget {
                     maxLines: valueMaxLines,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.right,
-                    softWrap: true,
+                    softWrap: false,
                     style: AppTextStyles.bodyMedium.copyWith(
                       color: AppColors.navy,
                       fontSize: 11.5,

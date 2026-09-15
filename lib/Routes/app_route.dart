@@ -525,6 +525,9 @@ final GoRouter appRouter = GoRouter(
           onProductsTap: () {
             context.push(AppRoutes.bottombar, extra: BottomTab.products);
           },
+          onOrdersTap:() {
+            context.push(AppRoutes.orders);
+          },
         );
       },
     ),

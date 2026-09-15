@@ -1,66 +1,60 @@
 import 'package:flutter/material.dart';
+import 'package:shimmer/shimmer.dart';
 
 import '../../../../Theme/app_colors.dart';
 
 class AnalyticsLoading extends StatelessWidget {
-  const AnalyticsLoading({
-    super.key,
-    this.showHeader = true,
-    this.showStats = true,
-    this.showProducts = true,
-    this.showInsights = true,
-  });
-
-  final bool showHeader;
-  final bool showStats;
-  final bool showProducts;
-  final bool showInsights;
+  const AnalyticsLoading({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        if (showHeader) ...[
-          const _AnalyticsHeaderSkeleton(),
-          const SizedBox(height: 24),
-        ],
-        if (showStats) ...[
-          const _AnalyticsStatsSkeleton(),
-          const SizedBox(height: 24),
-        ],
-        if (showProducts) ...[
-          const _AnalyticsSectionTitleSkeleton(),
-          const SizedBox(height: 12),
-          const _AnalyticsProductSkeletonList(),
-          const SizedBox(height: 24),
-        ],
-        if (showInsights) ...[
-          const _AnalyticsSectionTitleSkeleton(),
-          const SizedBox(height: 12),
-          const _AnalyticsInsightSkeletonList(),
-        ],
+        // 1. Header Skeleton (Back button + Title + Subtitle)
+        const _HeaderSkeleton(),
+        const SizedBox(height: 24),
+
+        // 2. Action Buttons (Orders & Products)
+        const _ActionButtonsSkeleton(),
+        const SizedBox(height: 20),
+
+        // 3. Filter Card (Start Date & End Date)
+        const _FilterSkeleton(),
+        const SizedBox(height: 24),
+
+        // 4. Overview Title
+        const _SectionTitleSkeleton(),
+        const SizedBox(height: 12),
+
+        // 5. Stats Grid (2x2 Cards)
+        const _StatsGridSkeleton(),
       ],
     );
   }
 }
 
-class _AnalyticsHeaderSkeleton extends StatelessWidget {
-  const _AnalyticsHeaderSkeleton();
+// ============================================================
+// 1. Header Skeleton
+// ============================================================
+class _HeaderSkeleton extends StatelessWidget {
+  const _HeaderSkeleton();
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        _ShimmerBox(width: 48, height: 48, borderRadius: 14),
+        const _ShimmerBox(width: 44, height: 44, borderRadius: 12),
         const SizedBox(width: 14),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _ShimmerBox(width: 130, height: 22, borderRadius: 6),
-              const SizedBox(height: 8),
-              _ShimmerBox(width: 230, height: 14, borderRadius: 5),
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              _ShimmerBox(width: 120, height: 22, borderRadius: 6),
+              SizedBox(height: 6),
+              _ShimmerBox(width: 200, height: 14, borderRadius: 5),
             ],
           ),
         ),
@@ -69,29 +63,167 @@ class _AnalyticsHeaderSkeleton extends StatelessWidget {
   }
 }
 
-class _AnalyticsStatsSkeleton extends StatelessWidget {
-  const _AnalyticsStatsSkeleton();
+// ============================================================
+// 2. Action Buttons Skeleton
+// ============================================================
+class _ActionButtonsSkeleton extends StatelessWidget {
+  const _ActionButtonsSkeleton();
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final columns = constraints.maxWidth < 360 ? 1 : 2;
-
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: 4,
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: columns,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: columns == 1 ? 2.35 : 1.08,
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            height: 52,
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: const Center(
+              child: _ShimmerBox(width: 80, height: 18, borderRadius: 6),
+            ),
           ),
-          itemBuilder: (context, index) {
-            return const _StatCardSkeleton();
-          },
-        );
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Container(
+            height: 52,
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: const Center(
+              child: _ShimmerBox(width: 80, height: 18, borderRadius: 6),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ============================================================
+// 3. Filter Skeleton (Start & End Dates)
+// ============================================================
+class _FilterSkeleton extends StatelessWidget {
+  const _FilterSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Row(
+              children: [
+                const _ShimmerBox(width: 32, height: 32, borderRadius: 8),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      _ShimmerBox(width: 50, height: 10, borderRadius: 4),
+                      SizedBox(height: 6),
+                      _ShimmerBox(width: 70, height: 14, borderRadius: 5),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Row(
+              children: [
+                const _ShimmerBox(width: 32, height: 32, borderRadius: 8),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      _ShimmerBox(width: 50, height: 10, borderRadius: 4),
+                      SizedBox(height: 6),
+                      _ShimmerBox(width: 70, height: 14, borderRadius: 5),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================
+// 4. Section Title Skeleton (Overview)
+// ============================================================
+class _SectionTitleSkeleton extends StatelessWidget {
+  const _SectionTitleSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: const [
+        _ShimmerBox(width: 100, height: 20, borderRadius: 6),
+        SizedBox(height: 6),
+        _ShimmerBox(width: 220, height: 13, borderRadius: 5),
+      ],
+    );
+  }
+}
+
+// ============================================================
+// 5. Stats Grid Skeleton (FIXED 2 COLUMNS - EXACT UI MATCH)
+// ============================================================
+class _StatsGridSkeleton extends StatelessWidget {
+  const _StatsGridSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    // Screen ki width le rahe hain
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    // Horizontal padding (AnalyticsScrollView se aata hai, approx 16)
+    const horizontalPadding = 16.0;
+    const crossAxisSpacing = 12.0;
+
+    // Available width for grid
+    final availableWidth = screenWidth - (horizontalPadding * 2);
+
+    // Har card ki width (2 columns)
+    final cardWidth = (availableWidth - crossAxisSpacing) / 2;
+
+    // Card ki height fix kar rahe hain (approx 155) taaki image jaisa lage
+    const cardHeight = 155.0;
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: 6, // 4 cards (2x2)
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2, // HAMESHA 2 columns, chahe screen choti ho ya badi
+        mainAxisSpacing: 12,
+        crossAxisSpacing: crossAxisSpacing,
+        // Aspect ratio calculate kar rahe hain taaki exact height mile aur overflow na ho
+        childAspectRatio: cardWidth / cardHeight,
+      ),
+      itemBuilder: (context, index) {
+        return const _StatCardSkeleton();
       },
     );
   }
@@ -103,7 +235,7 @@ class _StatCardSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14), // Image ke hisaab se padding
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
@@ -111,157 +243,36 @@ class _StatCardSkeleton extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _ShimmerBox(width: 42, height: 42, borderRadius: 12),
-          const SizedBox(height: 14),
-          const _ShimmerBox(width: 90, height: 13, borderRadius: 5),
-          const SizedBox(height: 8),
-          const _ShimmerBox(width: 125, height: 21, borderRadius: 6),
-          const SizedBox(height: 7),
-          const _ShimmerBox(width: 85, height: 12, borderRadius: 5),
+        mainAxisAlignment: MainAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: const [
+          // 1. Icon Box (Image mein 42x42 hai)
+          _ShimmerBox(width: 42, height: 42, borderRadius: 12),
+
+          SizedBox(height: 14),
+
+          // 2. Title (e.g., "Gross Sales") - Image mein chota text hai
+          _ShimmerBox(width: 75, height: 12, borderRadius: 4),
+
+          SizedBox(height: 8),
+
+          // 3. Big Value (e.g., "18.00") - Image mein bold aur bada hai
+          _ShimmerBox(width: 85, height: 22, borderRadius: 5),
+
+          SizedBox(height: 6),
+
+          // 4. Subtitle (e.g., "Before commission") - Image mein sabse chota
+          _ShimmerBox(width: 95, height: 10, borderRadius: 4),
         ],
       ),
     );
   }
 }
 
-class _AnalyticsSectionTitleSkeleton extends StatelessWidget {
-  const _AnalyticsSectionTitleSkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _ShimmerBox(width: 125, height: 19, borderRadius: 6),
-        SizedBox(height: 7),
-        _ShimmerBox(width: 245, height: 13, borderRadius: 5),
-      ],
-    );
-  }
-}
-
-class _AnalyticsProductSkeletonList extends StatelessWidget {
-  const _AnalyticsProductSkeletonList();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: List.generate(
-        3,
-        (index) => const Padding(
-          padding: EdgeInsets.only(bottom: 10),
-          child: _ProductSkeleton(),
-        ),
-      ),
-    );
-  }
-}
-
-class _ProductSkeleton extends StatelessWidget {
-  const _ProductSkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceSoft,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: const Row(
-        children: [
-          _ShimmerBox(width: 24, height: 16, borderRadius: 4),
-          SizedBox(width: 10),
-          _ShimmerBox(width: 52, height: 52, borderRadius: 12),
-          SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _ShimmerBox(width: 150, height: 14, borderRadius: 5),
-                SizedBox(height: 7),
-                _ShimmerBox(width: 90, height: 11, borderRadius: 4),
-                SizedBox(height: 7),
-                _ShimmerBox(width: 80, height: 10, borderRadius: 4),
-              ],
-            ),
-          ),
-          SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              _ShimmerBox(width: 72, height: 14, borderRadius: 5),
-              SizedBox(height: 6),
-              _ShimmerBox(width: 30, height: 10, borderRadius: 4),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AnalyticsInsightSkeletonList extends StatelessWidget {
-  const _AnalyticsInsightSkeletonList();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: List.generate(
-        2,
-        (index) => const Padding(
-          padding: EdgeInsets.only(bottom: 10),
-          child: _InsightSkeleton(),
-        ),
-      ),
-    );
-  }
-}
-
-class _InsightSkeleton extends StatelessWidget {
-  const _InsightSkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: const Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _ShimmerBox(width: 40, height: 40, borderRadius: 11),
-          SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _ShimmerBox(width: 120, height: 15, borderRadius: 5),
-                SizedBox(height: 8),
-                _ShimmerBox(
-                  width: double.infinity,
-                  height: 12,
-                  borderRadius: 4,
-                ),
-                SizedBox(height: 6),
-                _ShimmerBox(width: 190, height: 12, borderRadius: 4),
-                SizedBox(height: 12),
-                _ShimmerBox(width: 105, height: 30, borderRadius: 8),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ShimmerBox extends StatefulWidget {
+// ============================================================
+// Shimmer Box Wrapper
+// ============================================================
+class _ShimmerBox extends StatelessWidget {
   const _ShimmerBox({
     required this.width,
     required this.height,
@@ -273,52 +284,18 @@ class _ShimmerBox extends StatefulWidget {
   final double borderRadius;
 
   @override
-  State<_ShimmerBox> createState() => _ShimmerBoxState();
-}
-
-class _ShimmerBoxState extends State<_ShimmerBox>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _animation;
-
-  @override
-  void initState() {
-    super.initState();
-
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat(reverse: true);
-
-    _animation = Tween<double>(
-      begin: 0.45,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _animation,
-      builder: (context, child) {
-        return Opacity(
-          opacity: _animation.value,
-          child: Container(
-            width: widget.width,
-            height: widget.height,
-            decoration: BoxDecoration(
-              color: AppColors.shimmerBase,
-              borderRadius: BorderRadius.circular(widget.borderRadius),
-            ),
-          ),
-        );
-      },
+    return Shimmer.fromColors(
+      baseColor: AppColors.shimmerBase,
+      highlightColor: AppColors.surface,
+      child: Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          color: AppColors.shimmerBase,
+          borderRadius: BorderRadius.circular(borderRadius),
+        ),
+      ),
     );
   }
 }

@@ -2,31 +2,17 @@ import 'package:flutter/material.dart';
 
 import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
-import '../Data/dummy_campaign_data.dart';
+import '../Campain Type/campain_type_model.dart';
 
 class CampaignIdeaCard extends StatelessWidget {
-  const CampaignIdeaCard({super.key, required this.idea, this.onTap});
+  const CampaignIdeaCard({super.key, required this.campaign, this.onTap});
 
-  final CampaignIdeaModel idea;
+  final CampaignTypeModel campaign;
   final VoidCallback? onTap;
-
-  IconData get _icon {
-    switch (idea.icon) {
-      case 'flash':
-        return Icons.flash_on_rounded;
-      case 'star':
-        return Icons.star_outline_rounded;
-      case 'bundle':
-        return Icons.inventory_2_outlined;
-      case 'shipping':
-        return Icons.local_shipping_outlined;
-      default:
-        return Icons.campaign_outlined;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    final campaignName = campaign.name?.trim();
+
     return Material(
       color: AppColors.surface,
       borderRadius: BorderRadius.circular(16),
@@ -50,23 +36,24 @@ class CampaignIdeaCard extends StatelessWidget {
                   gradient: AppColors.primaryGradient,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(_icon, size: 21, color: AppColors.white),
+                child: const Icon(
+                  Icons.campaign_outlined,
+                  size: 21,
+                  color: AppColors.white,
+                ),
               ),
+
               const SizedBox(height: 14),
+
               Text(
-                idea.title,
-                maxLines: 1,
+                campaignName?.isNotEmpty == true ? campaignName! : 'Campaign',
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.titleSmall,
               ),
-              const SizedBox(height: 6),
-              Text(
-                idea.description,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.captionMedium,
-              ),
-              const SizedBox(height: 12),
+
+              const Spacer(),
+
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [

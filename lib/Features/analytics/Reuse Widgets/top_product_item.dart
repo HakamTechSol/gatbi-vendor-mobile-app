@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
-import '../Models/top_product_model.dart';
+import '../Models/analytics_model.dart';
 
 class TopProductItem extends StatelessWidget {
   const TopProductItem({
@@ -12,7 +12,7 @@ class TopProductItem extends StatelessWidget {
     this.onTap,
   });
 
-  final TopProductModel product;
+  final AnalyticsTopProductModel product;
   final int? rank;
   final VoidCallback? onTap;
 
@@ -33,8 +33,6 @@ class TopProductItem extends StatelessWidget {
           child: Row(
             children: [
               _buildRank(),
-              const SizedBox(width: 10),
-              _buildProductImage(),
               const SizedBox(width: 12),
               Expanded(child: _buildProductInfo()),
               const SizedBox(width: 8),
@@ -64,65 +62,20 @@ class TopProductItem extends StatelessWidget {
     );
   }
 
-  Widget _buildProductImage() {
-    return Container(
-      width: 52,
-      height: 52,
-      decoration: BoxDecoration(
-        color: AppColors.surfaceMuted,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: product.imageUrl != null && product.imageUrl!.trim().isNotEmpty
-          ? Image.network(
-              product.imageUrl!,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return _buildPlaceholderIcon();
-              },
-              loadingBuilder: (context, child, loadingProgress) {
-                if (loadingProgress == null) {
-                  return child;
-                }
-
-                return _buildPlaceholderIcon();
-              },
-            )
-          : _buildPlaceholderIcon(),
-    );
-  }
-
-  Widget _buildPlaceholderIcon() {
-    return const Center(
-      child: Icon(
-        Icons.inventory_2_outlined,
-        size: 23,
-        color: AppColors.iconMuted,
-      ),
-    );
-  }
 
   Widget _buildProductInfo() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          product.name,
+          product.name ?? 'Unnamed Product',
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: AppTextStyles.productName,
         ),
-        if (product.sku != null && product.sku!.trim().isNotEmpty) ...[
-          const SizedBox(height: 4),
-          Text(
-            'SKU: ${product.sku}',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.productSku,
-          ),
-        ],
+
         const SizedBox(height: 5),
+
         Row(
           children: [
             const Icon(
@@ -133,7 +86,7 @@ class TopProductItem extends StatelessWidget {
             const SizedBox(width: 4),
             Flexible(
               child: Text(
-                '${product.paidOrders} paid orders',
+                '${product.units} units sold',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.captionMedium,
@@ -160,16 +113,14 @@ class TopProductItem extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 3),
-        Text(product.currency, style: AppTextStyles.captionMedium),
+        Text('Revenue', style: AppTextStyles.captionMedium),
       ],
     );
   }
 
   String _formatAmount(double amount) {
-    final formatted = amount
+    return amount
         .toStringAsFixed(2)
         .replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',');
-
-    return formatted;
   }
 }

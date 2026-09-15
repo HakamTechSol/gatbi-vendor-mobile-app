@@ -2,17 +2,32 @@ import 'package:flutter/material.dart';
 
 import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
-import '../Models/analytics_stat_model.dart';
 
 class AnalyticsStatCard extends StatelessWidget {
-  const AnalyticsStatCard({super.key, required this.stat});
+  const AnalyticsStatCard({
+    super.key,
+    required this.title,
+    required this.value,
+    this.subtitle,
+    this.icon = Icons.analytics_outlined,
+    this.iconColor,
+    this.iconBackgroundColor,
+  });
 
-  final AnalyticsStatModel stat;
+  final String title;
+  final String value;
+  final String? subtitle;
+
+  final IconData icon;
+  final Color? iconColor;
+  final Color? iconBackgroundColor;
 
   @override
   Widget build(BuildContext context) {
-    final iconColor = stat.iconColor ?? AppColors.primary;
-    final iconBackground = stat.iconBackgroundColor ?? AppColors.primaryLight;
+    final effectiveIconColor = iconColor ?? AppColors.primary;
+
+    final effectiveIconBackground =
+        iconBackgroundColor ?? AppColors.primaryLight;
 
     return Container(
       width: double.infinity,
@@ -32,54 +47,38 @@ class AnalyticsStatCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ─────────────────────────────────────────────────────────────
-          // ICON
-          // ─────────────────────────────────────────────────────────────
           Container(
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: iconBackground,
+              color: effectiveIconBackground,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(
-              stat.icon ?? Icons.analytics_outlined,
-              size: 21,
-              color: iconColor,
-            ),
+            child: Icon(icon, size: 21, color: effectiveIconColor),
           ),
 
           const SizedBox(height: 10),
 
-          // ─────────────────────────────────────────────────────────────
-          // TITLE
-          // ─────────────────────────────────────────────────────────────
           Text(
-            stat.title,
+            title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: AppTextStyles.metricLabel,
           ),
 
-          const SizedBox(height: 4),
+          Spacer(),
 
-          // ─────────────────────────────────────────────────────────────
-          // VALUE
-          // ─────────────────────────────────────────────────────────────
           Text(
-            stat.value,
+            value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: AppTextStyles.metricValue,
           ),
 
-          // ─────────────────────────────────────────────────────────────
-          // SUBTITLE
-          // ─────────────────────────────────────────────────────────────
-          if (stat.subtitle != null && stat.subtitle!.trim().isNotEmpty) ...[
+          if (subtitle != null && subtitle!.trim().isNotEmpty) ...[
             const SizedBox(height: 3),
             Text(
-              stat.subtitle!,
+              subtitle!,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: AppTextStyles.captionMedium,

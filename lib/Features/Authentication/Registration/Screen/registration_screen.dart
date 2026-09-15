@@ -12,7 +12,9 @@ import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
 import '../Category/category_dropdown.dart';
 import '../Controller/register_controller.dart';
+import '../Country Code/country_model.dart';
 import '../Phone Rule/phone_code_dropdown.dart';
+import '../Phone Rule/phone_rules_controller.dart';
 import '../Phone Rule/phone_rules_model.dart';
 import '../business Type/business_type_dropdown.dart';
 
@@ -64,6 +66,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   late final RegisterController _registerController;
 
+  // ignore: unused_field
+  late final Future<PhoneRulesModel> _phoneRulesFuture;
+
   // ═══════════════════════════════════════════════════════════════════════════
   // FORM KEYS
   // ═══════════════════════════════════════════════════════════════════════════
@@ -85,8 +90,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   /// API expects country code such as AE / PK.
   String? _selectedPhoneCountryCode;
 
+  CountryItemModel? _selectedPhoneCountry;
+
   /// Selected phone rule is used for local phone validation.
   PhoneRuleItemModel? _selectedPhoneRule;
+
+  bool _isPhoneRuleLoading = false;
+
+  int _phoneRuleRequestId = 0;
 
   // ═══════════════════════════════════════════════════════════════════════════
   // STATE
@@ -123,6 +134,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _aboutFocusNode = FocusNode();
     _passwordFocusNode = FocusNode();
     _passwordConfirmationFocusNode = FocusNode();
+
+    _phoneRulesFuture = ref.read(phoneRulesControllerProvider).getPhoneRules();
 
     // Existing DioClient architecture.
     _registerController = RegisterController(dioClient: ref.read(dioProvider));
@@ -197,6 +210,95 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     });
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SET PHONE DIAL CODE IN FIELD
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  void _setPhoneDialCode(
+    CountryItemModel? country, {
+    CountryItemModel? previousCountry,
+  }) {
+    if (country == null) {
+      return;
+    }
+
+    final dialCode = country.dialCode?.trim();
+
+    if (dialCode == null || dialCode.isEmpty) {
+      return;
+    }
+
+    final normalizedDialCode = dialCode.startsWith('+')
+        ? dialCode
+        : '+$dialCode';
+
+    var currentValue = _phoneController.text.trim();
+
+    // ------------------------------------------------------------
+    // Remove previous country's dial code.
+    //
+    // Example:
+    // Previous: +971
+    // Current:  +971501234567
+    //
+    // Result:
+    // 501234567
+    // ------------------------------------------------------------
+
+    if (previousCountry != null) {
+      final previousDialCode = previousCountry.dialCode?.trim();
+
+      if (previousDialCode != null && previousDialCode.isNotEmpty) {
+        final normalizedPreviousDialCode = previousDialCode.startsWith('+')
+            ? previousDialCode
+            : '+$previousDialCode';
+
+        if (currentValue.startsWith(normalizedPreviousDialCode)) {
+          currentValue = currentValue
+              .substring(normalizedPreviousDialCode.length)
+              .trim();
+        }
+      }
+    }
+
+    // ------------------------------------------------------------
+    // If current value already starts with the new dial code,
+    // don't add it again.
+    // ------------------------------------------------------------
+
+    if (currentValue.startsWith(normalizedDialCode)) {
+      return;
+    }
+
+    // ------------------------------------------------------------
+    // Remove formatting from local number.
+    // ------------------------------------------------------------
+
+    currentValue = currentValue
+        .replaceAll(' ', '')
+        .replaceAll('-', '')
+        .replaceAll('(', '')
+        .replaceAll(')', '');
+
+    // ------------------------------------------------------------
+    // Put dial code directly INSIDE the phone field.
+    //
+    // Empty:
+    // +92 |
+    //
+    // Existing local number:
+    // +92 3212513290
+    // ------------------------------------------------------------
+
+    final newValue = currentValue.isEmpty
+        ? '$normalizedDialCode '
+        : '$normalizedDialCode $currentValue';
+
+    _phoneController.value = TextEditingValue(
+      text: newValue,
+      selection: TextSelection.collapsed(offset: newValue.length),
+    );
+  }
   // ═══════════════════════════════════════════════════════════════════════════
   // REGISTRATION SUCCESS DIALOG
   // ═══════════════════════════════════════════════════════════════════════════
@@ -318,9 +420,22 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     final businessType = _selectedBusinessType;
     final categoryId = _selectedCategoryId;
     final phoneCountry = _selectedPhoneCountryCode;
+    final phoneFull = _buildPhoneFull();
 
     if (businessType == null || businessType.isEmpty) {
       _showError('Please select a business type.');
+      return;
+    }
+
+    if (phoneFull == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Unable to determine phone country code. Please select a country again.',
+          ),
+        ),
+      );
+
       return;
     }
 
@@ -366,8 +481,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     });
 
     try {
-      final phoneFull = phone;
-
       // ==========================================================
       // REGISTER REQUEST
       // ==========================================================
@@ -403,6 +516,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               result.message ??
               'Registration successful. Please verify your email before logging in.',
         );
+
         return;
       }
 
@@ -417,7 +531,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       }
 
       _showError(error.message);
-    } catch (error) {
+    } catch (_) {
       if (!mounted) {
         return;
       }
@@ -434,6 +548,92 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // UPDATE PHONE RULE FOR COUNTRY
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Future<void> _updatePhoneRuleForCountry(CountryItemModel? country) async {
+    if (!mounted) {
+      return;
+    }
+
+    final requestId = ++_phoneRuleRequestId;
+
+    // ------------------------------------------------------------
+    // Country cleared
+    // ------------------------------------------------------------
+
+    if (country == null || country.code == null) {
+      setState(() {
+        _selectedPhoneRule = null;
+        _isPhoneRuleLoading = false;
+      });
+
+      return;
+    }
+
+    final countryCode = country.code!.trim().toUpperCase();
+
+    if (countryCode.isEmpty) {
+      setState(() {
+        _selectedPhoneRule = null;
+        _isPhoneRuleLoading = false;
+      });
+
+      return;
+    }
+
+    // ------------------------------------------------------------
+    // Loading
+    // ------------------------------------------------------------
+
+    setState(() {
+      _selectedPhoneRule = null;
+      _isPhoneRuleLoading = true;
+    });
+
+    try {
+      final phoneRules = await _phoneRulesFuture;
+
+      if (!mounted) {
+        return;
+      }
+
+      // Ignore an old request if user selected another country.
+      if (requestId != _phoneRuleRequestId) {
+        return;
+      }
+
+      PhoneRuleItemModel? matchedRule;
+
+      for (final rule in phoneRules.phoneRules) {
+        final ruleCountryCode = rule.countryCode?.trim().toUpperCase();
+
+        if (ruleCountryCode == countryCode) {
+          matchedRule = rule;
+          break;
+        }
+      }
+
+      setState(() {
+        _selectedPhoneRule = matchedRule;
+        _isPhoneRuleLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      if (requestId != _phoneRuleRequestId) {
+        return;
+      }
+
+      setState(() {
+        _selectedPhoneRule = null;
+        _isPhoneRuleLoading = false;
+      });
+    }
+  }
   // ═══════════════════════════════════════════════════════════════════════════
   // ERROR SNACKBAR
   // ═══════════════════════════════════════════════════════════════════════════
@@ -992,39 +1192,78 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               margin: const EdgeInsets.only(right: 8),
               child: PhoneCodeDropdown(
                 value: _selectedPhoneCountryCode,
+
+                // ==================================================
+                // COUNTRY CODE
+                // ==================================================
                 onChanged: (value) {
                   setState(() {
                     _selectedPhoneCountryCode = value;
                   });
                 },
-                onRuleChanged: (rule) {
-                  setState(() {
-                    _selectedPhoneRule = rule;
 
-                    if (rule?.countryCode != null) {
-                      _selectedPhoneCountryCode = rule!.countryCode;
+                // ==================================================
+                // COMPLETE COUNTRY
+                // ==================================================
+                onCountryChanged: (country) {
+                  final previousCountry = _selectedPhoneCountry;
+
+                  setState(() {
+                    _selectedPhoneCountry = country;
+
+                    if (country?.code != null) {
+                      _selectedPhoneCountryCode = country!.code;
                     }
                   });
+
+                  // Load matching validation rule.
+                  _updatePhoneRuleForCountry(country);
+
+                  // Put dial code directly inside the phone text field.
+                  _setPhoneDialCode(country, previousCountry: previousCountry);
                 },
               ),
             ),
 
+            // ====================================================
+            // PHONE NUMBER
+            // ====================================================
             Expanded(
               child: CustomTextField(
                 controller: _phoneController,
                 focusNode: _phoneFocusNode,
+
                 hintText: example != null
                     ? 'Example: $example'
                     : 'Enter phone number',
+
+                // IMPORTANT:
+                // Dial code ab prefixText mein nahi hoga.
+                prefixText: null,
+
                 keyboardType: TextInputType.phone,
                 textInputAction: TextInputAction.done,
+
                 validator: _validatePhone,
               ),
             ),
           ],
         ),
 
-        if (_selectedPhoneRule != null) ...[
+        // ======================================================
+        // PHONE RULE HINT
+        // ======================================================
+        if (_isPhoneRuleLoading) ...[
+          const SizedBox(height: 6),
+
+          Text(
+            'Loading phone validation rules...',
+            style: AppTextStyles.bodyMedium.copyWith(
+              fontSize: 11,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ] else if (_selectedPhoneRule != null) ...[
           const SizedBox(height: 6),
 
           Text(
@@ -1044,21 +1283,91 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   // ═══════════════════════════════════════════════════════════════════════════
 
   String? _validatePhone(String? value) {
-    final phone = value?.trim() ?? '';
+    final rawPhone = value?.trim() ?? '';
+
+    if (rawPhone.isEmpty) {
+      return 'Phone number is required';
+    }
+
+    // ------------------------------------------------------------
+    // Country
+    // ------------------------------------------------------------
+
+    final country = _selectedPhoneCountry;
+
+    if (country == null) {
+      return 'Please select a country';
+    }
+
+    // ------------------------------------------------------------
+    // Phone Rule
+    // ------------------------------------------------------------
+
+    final rule = _selectedPhoneRule;
+
+    if (rule == null) {
+      if (_isPhoneRuleLoading) {
+        return 'Phone rules are still loading. Please try again.';
+      }
+
+      return 'Phone validation rule is not available for this country.';
+    }
+
+    // ------------------------------------------------------------
+    // Dial Code
+    // ------------------------------------------------------------
+
+    final dialCode = country.dialCode?.trim();
+
+    if (dialCode == null || dialCode.isEmpty) {
+      return 'Country dial code is not available';
+    }
+
+    final normalizedDialCode = dialCode.startsWith('+')
+        ? dialCode
+        : '+$dialCode';
+
+    // ------------------------------------------------------------
+    // Remove country dial code.
+    //
+    // Field:
+    // +92 3212513290
+    //
+    // Local number:
+    // 3212513290
+    // ------------------------------------------------------------
+
+    String phone = rawPhone;
+
+    if (phone.startsWith(normalizedDialCode)) {
+      phone = phone.substring(normalizedDialCode.length).trim();
+    }
+
+    // ------------------------------------------------------------
+    // Remove formatting
+    // ------------------------------------------------------------
+
+    phone = phone
+        .replaceAll(' ', '')
+        .replaceAll('-', '')
+        .replaceAll('(', '')
+        .replaceAll(')', '');
 
     if (phone.isEmpty) {
       return 'Phone number is required';
     }
 
-    final rule = _selectedPhoneRule;
-
-    if (rule == null) {
-      return 'Phone rules are still loading. Please try again.';
-    }
+    // ------------------------------------------------------------
+    // Digits only
+    // ------------------------------------------------------------
 
     if (!RegExp(r'^\d+$').hasMatch(phone)) {
       return 'Phone number must contain digits only';
     }
+
+    // ------------------------------------------------------------
+    // Length
+    // ------------------------------------------------------------
 
     final minLength = rule.minLength;
     final maxLength = rule.maxLength;
@@ -1066,39 +1375,107 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     final length = phone.length;
 
+    // ------------------------------------------------------------
+    // Minimum
+    // ------------------------------------------------------------
+
     if (minLength != null && length < minLength) {
       if (minLength == maxLength) {
         return example != null
-            ? 'Phone number must be $minLength digits. '
-                  'Example: $example'
+            ? 'Phone number must be $minLength digits. Example: $example'
             : 'Phone number must be $minLength digits';
       }
 
       return example != null
-          ? 'Phone number must be at least $minLength digits. '
-                'Example: $example'
+          ? 'Phone number must be at least $minLength digits. Example: $example'
           : 'Phone number must be at least $minLength digits';
     }
+
+    // ------------------------------------------------------------
+    // Maximum
+    // ------------------------------------------------------------
 
     if (maxLength != null && length > maxLength) {
       if (minLength == maxLength) {
         return example != null
-            ? 'Phone number must be $maxLength digits. '
-                  'Example: $example'
+            ? 'Phone number must be $maxLength digits. Example: $example'
             : 'Phone number must be $maxLength digits';
       }
 
+      final rangeText = minLength != null
+          ? '$minLength-$maxLength'
+          : 'up to $maxLength';
+
       return example != null
-          ? 'Phone number must be between '
-                '$minLength-$maxLength digits. '
-                'Example: $example'
-          : 'Phone number must be between '
-                '$minLength-$maxLength digits';
+          ? 'Phone number must be $rangeText digits. Example: $example'
+          : 'Phone number must be $rangeText digits';
     }
 
     return null;
   }
+  // ═══════════════════════════════════════════════════════════════════════════
+  // BUILD FULL PHONE NUMBER
+  // ═══════════════════════════════════════════════════════════════════════════
 
+  String? _buildPhoneFull() {
+    final country = _selectedPhoneCountry;
+
+    if (country == null) {
+      return null;
+    }
+
+    final dialCode = country.dialCode?.trim();
+
+    if (dialCode == null || dialCode.isEmpty) {
+      return null;
+    }
+
+    final normalizedDialCode = dialCode.startsWith('+')
+        ? dialCode
+        : '+$dialCode';
+
+    var phone = _phoneController.text.trim();
+
+    if (phone.isEmpty) {
+      return null;
+    }
+
+    // ------------------------------------------------------------
+    // Remove dial code from field.
+    //
+    // Field:
+    // +92 3212513290
+    //
+    // Becomes:
+    // 3212513290
+    // ------------------------------------------------------------
+
+    if (phone.startsWith(normalizedDialCode)) {
+      phone = phone.substring(normalizedDialCode.length).trim();
+    }
+
+    // ------------------------------------------------------------
+    // Remove formatting
+    // ------------------------------------------------------------
+
+    phone = phone
+        .replaceAll(' ', '')
+        .replaceAll('-', '')
+        .replaceAll('(', '')
+        .replaceAll(')', '');
+
+    if (phone.isEmpty) {
+      return null;
+    }
+
+    // ------------------------------------------------------------
+    // API requires:
+    //
+    // +923212513290
+    // ------------------------------------------------------------
+
+    return '$normalizedDialCode$phone';
+  }
   // ═══════════════════════════════════════════════════════════════════════════
   // PHONE RULE HINT
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1132,9 +1509,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
 
     final parts = <String>[
-      if (countryCode != null) countryCode,
+      if (countryCode != null && countryCode.isNotEmpty) countryCode,
       lengthText,
-      if (example != null) 'Example: $example',
+      if (example != null && example.isNotEmpty) 'Example: $example',
     ];
 
     return parts.join(' • ');

@@ -42,10 +42,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   String? _errorMessage;
 
-  /// Header ko route return par fresh/default state mein recreate
-  /// karne ke liye key version.
-  int _headerVersion = 0;
-
   bool _isRouteSubscribed = false;
 
   @override
@@ -91,13 +87,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   @override
   void didPopNext() {
-    // Kisi doosri screen se back hokar Dashboard par aaye.
-
     if (!mounted) return;
 
-    setState(() {
-      _headerVersion++;
-    });
+    Future.microtask(_refreshDashboard);
   }
 
   @override
@@ -159,9 +151,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   Future<void> _refreshDashboard() async {
     if (_isRefreshing) return;
 
-    setState(() {
-      _isRefreshing = true;
-    });
+    if (mounted) {
+      setState(() {
+        _isRefreshing = true;
+      });
+    }
 
     try {
       final dashboardController = ref.read(dashboardControllerProvider);
@@ -177,7 +171,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       setState(() {
         _dashboard = dashboardResult;
         _settings = settingsResult;
-
         _errorMessage = null;
         _isRefreshing = false;
       });
@@ -196,7 +189,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         _isRefreshing = false;
       });
     }
-  }
+  } 
   // ============================================================
   // BUILD
   // ============================================================
@@ -267,6 +260,30 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     return Scaffold(
       backgroundColor: AppColors.background,
 
+      // ==========================================================
+      // ACTUAL APP BAR
+      // ==========================================================
+      appBar: DashboardHeader(
+        vendorName: _displayValue(merchant?.name, fallback: 'My Store'),
+
+        isStoreApproved: isStoreApproved,
+
+        onAddProduct: () {
+          context.push(AppRoutes.addProduct);
+        },
+
+        onViewOrders: () {
+          context.push(AppRoutes.orders);
+        },
+
+        onShopSettings: () {
+          debugPrint('Shop Settings');
+        },
+      ),
+
+      // ==========================================================
+      // BODY
+      // ==========================================================
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _refreshDashboard,
@@ -286,58 +303,34 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ==========================================================
+                // ==================================================
                 // REFRESHING INDICATOR
-                // ==========================================================
+                // ==================================================
                 if (_isRefreshing)
                   const Padding(
                     padding: EdgeInsets.only(bottom: 10),
                     child: LinearProgressIndicator(minHeight: 2),
                   ),
 
-                // ==========================================================
+                // ==================================================
                 // ERROR MESSAGE
-                // ==========================================================
+                // ==================================================
                 if (_errorMessage != null)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: _buildInlineError(),
                   ),
 
-                // ==========================================================
-                // HEADER
-                // ==========================================================
-                DashboardHeader(
-                  key: ValueKey<int>(_headerVersion),
-
-                  vendorName: _displayValue(
-                    merchant?.name,
-                    fallback: 'My Store',
-                  ),
-
-                  isStoreApproved: isStoreApproved,
-
-                  onViewOrders: () {
-                    context.push(AppRoutes.orders);
-                  },
-
-                  onShopSettings: () {
-                    debugPrint('Shop Settings');
-                  },
-                ),
-
-                const SizedBox(height: 16),
-
-                // ==========================================================
+                // ==================================================
                 // STORE STATUS
-                // ==========================================================
+                // ==================================================
                 StoreStatusBanner(isStoreApproved: isStoreApproved),
 
                 if (!isStoreApproved) const SizedBox(height: 16),
 
-                // ==========================================================
+                // ==================================================
                 // KYC STATUS
-                // ==========================================================
+                // ==================================================
                 KycBanner(
                   isPending: isKycPending,
                   onView: () {
@@ -347,9 +340,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
                 if (isKycPending) const SizedBox(height: 16),
 
-                // ==========================================================
+                // ==================================================
                 // EARNINGS
-                // ==========================================================
+                // ==================================================
                 EarningsSummarySection(
                   grossAmount: vendorGross,
                   shippingAmount: vendorShippingTotal,
@@ -361,9 +354,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
                 const SizedBox(height: 16),
 
-                // ==========================================================
+                // ==================================================
                 // AFFILIATE
-                // ==========================================================
+                // ==================================================
                 AffiliateSection(
                   affiliateReadyProducts: affiliateReadyProducts,
                   hiddenFromAffiliates: hiddenFromAffiliates,
@@ -372,9 +365,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
                 const SizedBox(height: 20),
 
-                // ==========================================================
+                // ==================================================
                 // DASHBOARD STATS
-                // ==========================================================
+                // ==================================================
                 DashboardStatsSection(
                   totalProducts: totalProducts,
                   activeProducts: activeProducts,
@@ -389,20 +382,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
                 const SizedBox(height: 20),
 
-                // ==========================================================
+                // ==================================================
                 // RECENT ORDERS
-                // ==========================================================
+                // ==================================================
                 RecentOrdersSection(
                   orders: _mapRecentOrders(dashboard.recentOrders),
 
                   onViewAll: () async {
-                    // Orders screen open karo aur uske close/back hone ka wait karo.
                     await context.push(AppRoutes.orders);
 
-                    // User Orders se Dashboard par wapas aa gaya.
                     if (!mounted) return;
 
-                    // Fresh Dashboard API data load karo.
                     await _refreshDashboard();
                   },
 
@@ -413,9 +403,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
                 const SizedBox(height: 20),
 
-                // ==========================================================
+                // ==================================================
                 // ORDER STATUS
-                // ==========================================================
+                // ==================================================
                 OrderStatusSection(
                   pending: orderStatuses['pending'] ?? 0,
                   processing: orderStatuses['processing'] ?? 0,
@@ -435,9 +425,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
                 const SizedBox(height: 20),
 
-                // ==========================================================
+                // ==================================================
                 // PRODUCTS PREVIEW
-                // ==========================================================
+                // ==================================================
                 ProductsPreviewSection(
                   products: dashboard.recentProducts,
 
@@ -456,18 +446,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
                   onProductTap: (product) {
                     debugPrint(
-                      'Product tapped: ${product.id} - ${product.name}',
+                      'Product tapped: '
+                      '${product.id} - ${product.name}',
                     );
-
-                    // Product detail/edit route baad mein yahan connect kar sakte hain.
                   },
                 ),
 
                 const SizedBox(height: 20),
 
-                // ==========================================================
+                // ==================================================
                 // SHOP SUMMARY
-                // ==========================================================
+                // ==================================================
                 ShopSummaryCard(
                   status: _formatStatus(storeStatus),
 
@@ -476,7 +465,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                   businessType: _formatStatus(merchant?.businessType),
 
                   primaryCategory: merchant?.primaryCategoryId != null
-                      ? 'Category #${merchant!.primaryCategoryId}'
+                      ? 'Category #'
+                            '${merchant!.primaryCategoryId}'
                       : '—',
 
                   supportEmail: _displayValue(merchant?.email),
@@ -486,9 +476,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
                 const SizedBox(height: 20),
 
-                // ==========================================================
+                // ==================================================
                 // NEED HELP
-                // ==========================================================
+                // ==================================================
                 NeedHelpCard(
                   supportEmail: _settings?.data?.vendorSupport?.email ?? '',
                   supportPhone: _settings?.data?.vendorSupport?.phone ?? '',

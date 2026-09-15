@@ -3,41 +3,47 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
-import '../Phone Rule/phone_rules_controller.dart';
-import '../Phone Rule/phone_rules_model.dart';
+import '../Country Code/country_controller.dart';
+import '../Country Code/country_model.dart';
 
 class PhoneCodeDropdown extends ConsumerStatefulWidget {
   const PhoneCodeDropdown({
     super.key,
     required this.value,
     required this.onChanged,
-    this.onRuleChanged,
+    this.onCountryChanged,
   });
 
+  /// Selected country ISO code.
+  ///
+  /// Example:
+  /// PK
+  /// AE
   final String? value;
 
+  /// Returns selected country code.
   final ValueChanged<String?> onChanged;
 
-  /// Returns the complete API rule of the selected country.
-  final ValueChanged<PhoneRuleItemModel?>? onRuleChanged;
+  /// Returns complete selected country.
+  final ValueChanged<CountryItemModel?>? onCountryChanged;
 
   @override
   ConsumerState<PhoneCodeDropdown> createState() => _PhoneCodeDropdownState();
 }
 
 class _PhoneCodeDropdownState extends ConsumerState<PhoneCodeDropdown> {
-  late final Future<PhoneRulesModel> _future;
+  late final Future<CountryModel> _future;
 
   @override
   void initState() {
     super.initState();
 
-    _future = ref.read(phoneRulesControllerProvider).getPhoneRules();
+    _future = ref.read(countryControllerProvider).getCountries();
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<PhoneRulesModel>(
+    return FutureBuilder<CountryModel>(
       future: _future,
       builder: (context, snapshot) {
         // ======================================================
@@ -53,35 +59,39 @@ class _PhoneCodeDropdownState extends ConsumerState<PhoneCodeDropdown> {
         // ======================================================
 
         if (snapshot.hasError) {
-          return _buildError('Failed to load phone rules');
+          return _buildError('Failed to load countries');
         }
 
-        final phoneRules = snapshot.data?.phoneRules ?? [];
+        final countries = snapshot.data?.countries ?? [];
 
         // ======================================================
-        // Empty Rules
+        // Empty Countries
         // ======================================================
 
-        if (phoneRules.isEmpty) {
-          return _buildError('No phone rules available');
+        if (countries.isEmpty) {
+          return _buildError('No countries available');
         }
 
         // ======================================================
         // Selected Country
         // ======================================================
 
-        final selectedValue = _getSelectedValue(phoneRules);
+        final selectedValue = _getSelectedValue(countries);
 
         // ======================================================
-        // Notify Parent About Initial Rule
+        // Selected Country
+        // ======================================================
+
+        final selectedCountry = _findCountry(countries, selectedValue);
+
+        // ======================================================
+        // Notify Parent About Initial Country
         // ======================================================
 
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
 
-          final selectedRule = _findRule(phoneRules, selectedValue);
-
-          widget.onRuleChanged?.call(selectedRule);
+          widget.onCountryChanged?.call(selectedCountry);
         });
 
         // ======================================================
@@ -111,18 +121,22 @@ class _PhoneCodeDropdownState extends ConsumerState<PhoneCodeDropdown> {
             ),
           ),
 
-          items: phoneRules
+          items: countries
               .where(
-                (rule) =>
-                    rule.countryCode != null && rule.countryCode!.isNotEmpty,
+                (country) =>
+                    country.code != null && country.code!.trim().isNotEmpty,
               )
-              .map<DropdownMenuItem<String>>((rule) {
-                final countryCode = rule.countryCode!;
+              .map<DropdownMenuItem<String>>((country) {
+                final code = country.code!.trim();
+
+                final dialCode = country.dialCode?.trim();
 
                 return DropdownMenuItem<String>(
-                  value: countryCode,
+                  value: code,
                   child: Text(
-                    countryCode,
+                    dialCode != null && dialCode.isNotEmpty
+                        ? '$code $dialCode'
+                        : code,
                     overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.bodyMedium.copyWith(
                       fontSize: 13,
@@ -135,11 +149,11 @@ class _PhoneCodeDropdownState extends ConsumerState<PhoneCodeDropdown> {
               .toList(),
 
           onChanged: (value) {
-            final selectedRule = _findRule(phoneRules, value);
+            final selectedCountry = _findCountry(countries, value);
 
             widget.onChanged(value);
 
-            widget.onRuleChanged?.call(selectedRule);
+            widget.onCountryChanged?.call(selectedCountry);
           },
         );
       },
@@ -150,35 +164,35 @@ class _PhoneCodeDropdownState extends ConsumerState<PhoneCodeDropdown> {
   // Get Selected Value
   // ============================================================
 
-  String? _getSelectedValue(List<PhoneRuleItemModel> phoneRules) {
-    // If parent already has a valid selected country.
+  String? _getSelectedValue(List<CountryItemModel> countries) {
+    // Parent already has selected country.
     if (widget.value != null) {
-      final exists = phoneRules.any((rule) => rule.countryCode == widget.value);
+      final exists = countries.any((country) => country.code == widget.value);
 
       if (exists) {
         return widget.value;
       }
     }
 
-    // Otherwise select first API country.
-    return phoneRules.first.countryCode;
+    // Otherwise select first country from API.
+    return countries.first.code;
   }
 
   // ============================================================
-  // Find Rule
+  // Find Country
   // ============================================================
 
-  PhoneRuleItemModel? _findRule(
-    List<PhoneRuleItemModel> phoneRules,
-    String? countryCode,
+  CountryItemModel? _findCountry(
+    List<CountryItemModel> countries,
+    String? code,
   ) {
-    if (countryCode == null || countryCode.isEmpty) {
+    if (code == null || code.trim().isEmpty) {
       return null;
     }
 
-    for (final rule in phoneRules) {
-      if (rule.countryCode == countryCode) {
-        return rule;
+    for (final country in countries) {
+      if (country.code == code) {
+        return country;
       }
     }
 
