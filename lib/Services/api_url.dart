@@ -62,15 +62,16 @@ class ApiUrls {
       'vendor/products/$productId/variants/$variantId/delete';
 
   // Bulk Import
-  static const String sampleCsv = 'vendor/products/import/sample-csv';
+  static const String downloadSampleCsv = 'vendor/products/import/sample-csv';
 
-  static const String templateXlsx = 'vendor/products/import/template-xlsx';
+  static const String downloadSampleXlsx =
+      'vendor/products/import/template-xlsx';
 
   static const String importProducts = 'vendor/products/import';
 
-  static const String startImport = 'vendor/products/import/start';
+  static const String startProductImports = 'vendor/products/import/start';
 
-  static const String processImport = 'vendor/products/import/process';
+  static const String processProductImport = 'vendor/products/import/process';
 
   // Orders
   static const String orders = 'vendor/orders';

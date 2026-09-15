@@ -17,6 +17,7 @@ import '../Features/Chat/Screens/chat_detail_screen.dart';
 import '../Features/Chat/Screens/chat_list_screen.dart';
 import '../Features/Dashboard/dashboard_screen.dart';
 import '../Features/Edit Product/edit_product_screen.dart';
+import '../Features/KYC/Screens/kyc_screen.dart';
 import '../Features/More/more_screen.dart';
 import '../Features/My Product/Models/my_product_model.dart';
 import '../Features/My Product/my_products_screen.dart';
@@ -101,6 +102,8 @@ abstract final class AppRoutes {
   static const String campaigns = '/campaigns';
 
   static const String analytics = '/analytics';
+
+  static const String kyc = '/kyc';
 
   static const String more = '/more';
 }
@@ -525,10 +528,18 @@ final GoRouter appRouter = GoRouter(
           onProductsTap: () {
             context.push(AppRoutes.bottombar, extra: BottomTab.products);
           },
-          onOrdersTap:() {
+          onOrdersTap: () {
             context.push(AppRoutes.orders);
           },
         );
+      },
+    ),
+
+    GoRoute(
+      path: AppRoutes.kyc,
+      name: 'kyc',
+      builder: (context, state) {
+        return const KycScreen();
       },
     ),
 

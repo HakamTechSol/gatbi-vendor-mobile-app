@@ -1,27 +1,32 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:task_project/Routes/app_route.dart';
 
+import '../../../Core/Bottom Naigation Bar/bottom_bar_screen.dart';
 import '../../../Core/Custom Widgets/custom_button.dart';
+import '../../../Services/api_exception.dart';
 import '../../../Theme/app_colors.dart';
 import '../../../Theme/app_text_styles.dart';
+import '../Controller/change_password_controller.dart';
 import '../Reuse Widgets/change_password_form.dart';
 import '../Reuse Widgets/change_password_header.dart';
 
-class ChangePasswordScreen extends StatefulWidget {
+class ChangePasswordScreen extends ConsumerStatefulWidget {
   const ChangePasswordScreen({super.key, this.onBack, this.onPasswordChanged});
 
   /// Called when the user taps the back button.
   final VoidCallback? onBack;
 
-  /// UI-only callback for now.
-  ///
-  /// Later this can be connected to the API/state layer.
+  /// Called after password has been changed successfully.
   final VoidCallback? onPasswordChanged;
 
   @override
-  State<ChangePasswordScreen> createState() => _ChangePasswordScreenState();
+  ConsumerState<ChangePasswordScreen> createState() =>
+      _ChangePasswordScreenState();
 }
 
-class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
+class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
   // ============================================================
   // Controllers
   // ============================================================
@@ -66,70 +71,171 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   Future<void> _handleChangePassword() async {
     FocusScope.of(context).unfocus();
 
+    // ------------------------------------------------------------
+    // Validate Form
+    // ------------------------------------------------------------
+
     final isValid = _formKey.currentState?.validate() ?? false;
 
     if (!isValid) {
       return;
     }
 
+    // ------------------------------------------------------------
+    // Start Loading
+    // ------------------------------------------------------------
+
     setState(() {
       _isLoading = true;
     });
 
-    // ------------------------------------------------------------
-    // UI ONLY
-    // ------------------------------------------------------------
-    // API / Riverpod / Repository will be connected later.
-    await Future<void>.delayed(const Duration(milliseconds: 700));
+    try {
+      // ----------------------------------------------------------
+      // Get Controller
+      // ----------------------------------------------------------
 
-    if (!mounted) return;
+      final controller = ref.read(changePasswordControllerProvider);
 
-    setState(() {
-      _isLoading = false;
-    });
+      // ----------------------------------------------------------
+      // API Request
+      // ----------------------------------------------------------
 
-    widget.onPasswordChanged?.call();
+      final result = await controller.changePassword(
+        currentPassword: _currentPasswordController.text.trim(),
+        newPassword: _newPasswordController.text,
+        newPasswordConfirmation: _confirmPasswordController.text,
+      );
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        backgroundColor: AppColors.successDark,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        content: Row(
-          children: [
-            const Icon(
-              Icons.check_circle_outline_rounded,
-              color: AppColors.white,
-              size: 21,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'Password changed successfully.',
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: AppColors.white,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+      if (!mounted) return;
+
+      // ----------------------------------------------------------
+      // Check API Success
+      // ----------------------------------------------------------
+
+      if (result.success) {
+        context.push(AppRoutes.bottombar,extra: BottomTab.more);
+        // --------------------------------------------------------
+        // Clear Password Fields
+        // --------------------------------------------------------
+
+        _currentPasswordController.clear();
+        _newPasswordController.clear();
+        _confirmPasswordController.clear();
+
+        // --------------------------------------------------------
+        // Reset Form
+        // --------------------------------------------------------
+
+        _formKey.currentState?.reset();
+
+        // --------------------------------------------------------
+        // Stop Loading
+        // --------------------------------------------------------
+
+        setState(() {
+          _isLoading = false;
+        });
+
+        // --------------------------------------------------------
+        // Callback
+        // --------------------------------------------------------
+
+        widget.onPasswordChanged?.call();
+
+        // --------------------------------------------------------
+        // Success Message
+        // --------------------------------------------------------
+
+        _showSnackBar(
+          message: result.message ?? 'Password changed successfully.',
+          isSuccess: true,
+        );
+
+        return;
+      }
+
+      // ----------------------------------------------------------
+      // API Returned success = false
+      // ----------------------------------------------------------
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      _showSnackBar(
+        message: result.message ?? 'Unable to change password.',
+        isSuccess: false,
+      );
+    } on ApiException catch (error) {
+      // ----------------------------------------------------------
+      // API Exception
+      // ----------------------------------------------------------
+
+      if (!mounted) return;
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      _showSnackBar(message: error.message, isSuccess: false);
+    } catch (_) {
+      // ----------------------------------------------------------
+      // Unexpected Error
+      // ----------------------------------------------------------
+
+      if (!mounted) return;
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      _showSnackBar(
+        message: 'Something went wrong. Please try again.',
+        isSuccess: false,
+      );
+    }
   }
 
-  void _handleBack() {
-    FocusScope.of(context).unfocus();
+  // ============================================================
+  // SnackBar
+  // ============================================================
 
-    if (widget.onBack != null) {
-      widget.onBack!();
-      return;
-    }
+  void _showSnackBar({required String message, required bool isSuccess}) {
+    if (!mounted) return;
 
-    if (Navigator.of(context).canPop()) {
-      Navigator.of(context).pop();
-    }
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          backgroundColor: isSuccess ? AppColors.successDark : AppColors.error,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          content: Row(
+            children: [
+              Icon(
+                isSuccess
+                    ? Icons.check_circle_outline_rounded
+                    : Icons.error_outline_rounded,
+                color: AppColors.white,
+                size: 21,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  message,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.white,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
   }
 
   // ============================================================
@@ -171,7 +277,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
                     CustomButton(
                       text: 'Change Password',
-                      onPressed: _handleChangePassword,
+                      onPressed: _isLoading ? null : _handleChangePassword,
                       isLoading: _isLoading,
                       width: double.infinity,
                       height: 54,
@@ -181,38 +287,11 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     ),
 
                     const SizedBox(height: 14),
-
-                    _buildCancelButton(),
                   ],
                 ),
               ),
             );
           },
-        ),
-      ),
-    );
-  }
-  // ============================================================
-  // Cancel Button
-  // ============================================================
-
-  Widget _buildCancelButton() {
-    return SizedBox(
-      height: 48,
-      child: TextButton(
-        onPressed: _isLoading ? null : _handleBack,
-        style: TextButton.styleFrom(
-          foregroundColor: AppColors.textSecondary,
-          disabledForegroundColor: AppColors.textMuted,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        child: Text(
-          'Cancel',
-          style: AppTextStyles.buttonText.copyWith(
-            color: _isLoading ? AppColors.textMuted : AppColors.textSecondary,
-          ),
         ),
       ),
     );

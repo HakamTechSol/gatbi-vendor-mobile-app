@@ -1,194 +1,210 @@
-enum BulkImportStatus {
-  idle,
-  selectingFile,
-  ready,
-  importing,
-  completed,
-  failed,
-}
+enum BulkImportStatus { idle, ready, importing, completed, failed }
 
 class BulkImportModel {
   const BulkImportModel({
     this.status = BulkImportStatus.idle,
     this.csvFileName,
     this.imagesZipFileName,
-    this.jobId,
-    this.totalRows = 0,
+    this.autoGenerateArabic = false,
     this.processedRows = 0,
+    this.totalRows = 0,
     this.successCount = 0,
     this.failedCount = 0,
-    this.autoGenerateArabic = false,
     this.errorMessage,
   });
 
-  /// Current import state.
   final BulkImportStatus status;
 
-  /// Selected CSV/XLSX file name.
   final String? csvFileName;
 
-  /// Optional images ZIP file name.
   final String? imagesZipFileName;
 
-  /// Import job ID returned by backend.
-  final String? jobId;
-
-  /// Total number of products/rows.
-  final int totalRows;
-
-  /// Number of processed rows.
-  final int processedRows;
-
-  /// Successfully imported products.
-  final int successCount;
-
-  /// Failed products.
-  final int failedCount;
-
-  /// Whether Arabic draft generation is enabled.
   final bool autoGenerateArabic;
 
-  /// Error returned by import process.
+  /// Current processed offset returned by API.
+  final int processedRows;
+
+  /// Total rows returned by API.
+  final int totalRows;
+
+  /// Products successfully created by API.
+  final int successCount;
+
+  /// Rows skipped / failed by API.
+  final int failedCount;
+
+  /// General UI/API error message.
   final String? errorMessage;
 
-  /// Import progress between 0.0 and 1.0.
+  // ===========================================================================
+  // FILE STATE
+  // ===========================================================================
+
+  bool get hasCsvFile {
+    final value = csvFileName?.trim();
+
+    return value != null && value.isNotEmpty;
+  }
+
+  bool get hasImagesZipFile {
+    final value = imagesZipFileName?.trim();
+
+    return value != null && value.isNotEmpty;
+  }
+
+  // ===========================================================================
+  // IMPORT STATE
+  // ===========================================================================
+
+  bool get isIdle => status == BulkImportStatus.idle;
+
+  bool get isReady => status == BulkImportStatus.ready;
+
+  bool get isImporting => status == BulkImportStatus.importing;
+
+  bool get isCompleted => status == BulkImportStatus.completed;
+
+  bool get isFailed => status == BulkImportStatus.failed;
+
+  // ===========================================================================
+  // PROGRESS
+  // ===========================================================================
+
   double get progress {
-    if (totalRows <= 0) return 0;
+    if (totalRows <= 0) {
+      return 0;
+    }
 
     final value = processedRows / totalRows;
 
-    return value.clamp(0.0, 1.0);
+    if (value < 0) {
+      return 0;
+    }
+
+    if (value > 1) {
+      return 1;
+    }
+
+    return value;
   }
 
-  /// Progress percentage.
-  int get progressPercentage => (progress * 100).round();
+  int get progressPercentage {
+    return (progress * 100).round();
+  }
 
-  /// Whether CSV file has been selected.
-  bool get hasCsvFile =>
-      csvFileName != null && csvFileName!.trim().isNotEmpty;
+  // ===========================================================================
+  // ERROR
+  // ===========================================================================
 
-  /// Whether images ZIP has been selected.
-  bool get hasImagesZip =>
-      imagesZipFileName != null &&
-      imagesZipFileName!.trim().isNotEmpty;
+  bool get hasError {
+    final value = errorMessage?.trim();
 
-  /// Whether there is an import error.
-  bool get hasError =>
-      errorMessage != null && errorMessage!.trim().isNotEmpty;
+    return value != null && value.isNotEmpty;
+  }
 
-  /// Whether import has finished.
-  bool get isFinished => status == BulkImportStatus.completed;
-
-  /// Whether import is currently running.
-  bool get isImporting => status == BulkImportStatus.importing;
+  // ===========================================================================
+  // COPY WITH
+  // ===========================================================================
 
   BulkImportModel copyWith({
     BulkImportStatus? status,
     String? csvFileName,
     String? imagesZipFileName,
-    String? jobId,
-    int? totalRows,
+    bool? autoGenerateArabic,
     int? processedRows,
+    int? totalRows,
     int? successCount,
     int? failedCount,
-    bool? autoGenerateArabic,
     String? errorMessage,
     bool clearCsvFile = false,
     bool clearImagesZipFile = false,
-    bool clearJobId = false,
-    bool clearError = false,
+    bool clearErrorMessage = false,
   }) {
     return BulkImportModel(
       status: status ?? this.status,
-
-      csvFileName: clearCsvFile
-          ? null
-          : csvFileName ?? this.csvFileName,
-
+      csvFileName: clearCsvFile ? null : csvFileName ?? this.csvFileName,
       imagesZipFileName: clearImagesZipFile
           ? null
           : imagesZipFileName ?? this.imagesZipFileName,
-
-      jobId: clearJobId ? null : jobId ?? this.jobId,
-
-      totalRows: totalRows ?? this.totalRows,
+      autoGenerateArabic: autoGenerateArabic ?? this.autoGenerateArabic,
       processedRows: processedRows ?? this.processedRows,
+      totalRows: totalRows ?? this.totalRows,
       successCount: successCount ?? this.successCount,
       failedCount: failedCount ?? this.failedCount,
-
-      autoGenerateArabic:
-          autoGenerateArabic ?? this.autoGenerateArabic,
-
-      errorMessage:
-          clearError ? null : errorMessage ?? this.errorMessage,
+      errorMessage: clearErrorMessage
+          ? null
+          : errorMessage ?? this.errorMessage,
     );
   }
 
-  factory BulkImportModel.fromJson(Map<String, dynamic> json) {
+  // ===========================================================================
+  // API MAPPING
+  // ===========================================================================
+
+  /// Creates UI state from the process API response.
+  ///
+  /// API source:
+  /// ImportProcessModel
+  factory BulkImportModel.fromProcessResult(
+    dynamic result, {
+    required String? csvFileName,
+    required String? imagesZipFileName,
+    required bool autoGenerateArabic,
+  }) {
     return BulkImportModel(
-      status: _statusFromString(json['status']),
-      csvFileName: json['csv_file_name'] as String?,
-      imagesZipFileName: json['images_zip_file_name'] as String?,
-      jobId: json['job_id'] as String?,
-      totalRows: _toInt(json['total'] ?? json['total_rows']),
-      processedRows: _toInt(
-        json['processed'] ?? json['processed_rows'],
-      ),
-      successCount: _toInt(
-        json['success'] ?? json['success_count'],
-      ),
-      failedCount: _toInt(
-        json['failed'] ?? json['failed_count'],
-      ),
-      autoGenerateArabic:
-          json['auto_generate_arabic'] == true,
-      errorMessage: json['message'] as String?,
+      status: BulkImportStatus.importing,
+      csvFileName: csvFileName,
+      imagesZipFileName: imagesZipFileName,
+      autoGenerateArabic: autoGenerateArabic,
+      processedRows: result.offset,
+      totalRows: result.total,
+      successCount: result.created,
+      failedCount: result.skipped,
+      errorMessage: result.hasErrors ? result.errors.join('\n') : null,
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'status': status.name,
-      'csv_file_name': csvFileName,
-      'images_zip_file_name': imagesZipFileName,
-      'job_id': jobId,
-      'total': totalRows,
-      'processed': processedRows,
-      'success': successCount,
-      'failed': failedCount,
-      'auto_generate_arabic': autoGenerateArabic,
-      'message': errorMessage,
-    };
+  /// Creates completed UI state from the process API response.
+  factory BulkImportModel.fromCompletedProcess(
+    dynamic result, {
+    required String? csvFileName,
+    required String? imagesZipFileName,
+    required bool autoGenerateArabic,
+  }) {
+    return BulkImportModel(
+      status: BulkImportStatus.completed,
+      csvFileName: csvFileName,
+      imagesZipFileName: imagesZipFileName,
+      autoGenerateArabic: autoGenerateArabic,
+      processedRows: result.offset,
+      totalRows: result.total,
+      successCount: result.created,
+      failedCount: result.skipped,
+      errorMessage: result.hasErrors ? result.errors.join('\n') : null,
+    );
   }
 
-  static int _toInt(dynamic value) {
-    if (value is int) return value;
-    if (value is double) return value.toInt();
-
-    return int.tryParse(value?.toString() ?? '') ?? 0;
-  }
-
-  static BulkImportStatus _statusFromString(dynamic value) {
-    switch (value?.toString().toLowerCase()) {
-      case 'selecting_file':
-        return BulkImportStatus.selectingFile;
-
-      case 'ready':
-        return BulkImportStatus.ready;
-
-      case 'importing':
-        return BulkImportStatus.importing;
-
-      case 'completed':
-      case 'complete':
-        return BulkImportStatus.completed;
-
-      case 'failed':
-      case 'error':
-        return BulkImportStatus.failed;
-
-      default:
-        return BulkImportStatus.idle;
-    }
+  /// Creates failed UI state.
+  factory BulkImportModel.failed({
+    required String message,
+    String? csvFileName,
+    String? imagesZipFileName,
+    bool autoGenerateArabic = false,
+    int processedRows = 0,
+    int totalRows = 0,
+    int successCount = 0,
+    int failedCount = 0,
+  }) {
+    return BulkImportModel(
+      status: BulkImportStatus.failed,
+      csvFileName: csvFileName,
+      imagesZipFileName: imagesZipFileName,
+      autoGenerateArabic: autoGenerateArabic,
+      processedRows: processedRows,
+      totalRows: totalRows,
+      successCount: successCount,
+      failedCount: failedCount,
+      errorMessage: message,
+    );
   }
 }

@@ -141,6 +141,10 @@ class _BottomMainScreenState extends State<BottomMainScreen> {
     context.push(AppRoutes.changePassword);
   }
 
+  void _onKycVerification() {
+    context.push(AppRoutes.kyc);
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // BUILD
   // ═══════════════════════════════════════════════════════════════════════════
@@ -165,6 +169,7 @@ class _BottomMainScreenState extends State<BottomMainScreen> {
             onOrders: _openOrders,
             onSupport: _openSupport,
             onChangePassword: _openChangePassword,
+            onKycVerification: _onKycVerification,
           ),
         ],
       ),

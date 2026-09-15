@@ -123,13 +123,20 @@ class BulkImportProgressCard extends StatelessWidget {
   }
 
   Widget _buildProgress() {
+    final total = importData.totalRows;
+    final processed = importData.processedRows;
+
+    final progressText = total > 0
+        ? '$processed of $total products processed'
+        : 'Preparing products...';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(20),
           child: LinearProgressIndicator(
-            value: importData.progress,
+            value: total > 0 ? importData.progress : null,
             minHeight: 8,
             backgroundColor: AppColors.surfaceMuted,
             valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
@@ -139,11 +146,7 @@ class BulkImportProgressCard extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: Text(
-                '${importData.processedRows} of '
-                '${importData.totalRows} products processed',
-                style: AppTextStyles.captionMedium,
-              ),
+              child: Text(progressText, style: AppTextStyles.captionMedium),
             ),
             if (importData.failedCount > 0)
               Text(

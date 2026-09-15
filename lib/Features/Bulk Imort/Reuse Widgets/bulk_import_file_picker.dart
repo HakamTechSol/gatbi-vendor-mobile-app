@@ -1,9 +1,11 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
 
-class BulkImportFilePicker extends StatelessWidget {
+class BulkImportFilePicker extends StatefulWidget {
   const BulkImportFilePicker({
     super.key,
     required this.title,
@@ -14,6 +16,7 @@ class BulkImportFilePicker extends StatelessWidget {
     this.icon = Icons.insert_drive_file_outlined,
     this.required = false,
     this.allowedFormats,
+    this.onFileSelected,
   });
 
   final String title;
@@ -23,13 +26,34 @@ class BulkImportFilePicker extends StatelessWidget {
   final VoidCallback? onPick;
   final VoidCallback? onRemove;
 
+  /// Called after the actual file has been selected.
+  ///
+  /// This gives the parent screen the complete [PlatformFile]
+  /// so it can later upload the file through the API.
+  final ValueChanged<PlatformFile>? onFileSelected;
+
   final IconData icon;
   final bool required;
 
+  /// Example:
+  /// const ['csv']
+  /// const ['zip']
   final List<String>? allowedFormats;
 
-  bool get hasFile =>
-      selectedFileName != null && selectedFileName!.trim().isNotEmpty;
+  @override
+  State<BulkImportFilePicker> createState() =>
+      _BulkImportFilePickerState();
+}
+
+class _BulkImportFilePickerState
+    extends State<BulkImportFilePicker> {
+  bool _isPicking = false;
+
+  bool get hasFile {
+    final value = widget.selectedFileName?.trim();
+
+    return value != null && value.isNotEmpty;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,27 +69,41 @@ class BulkImportFilePicker extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: hasFile ? AppColors.primarySurface : AppColors.surfaceSoft,
+            color: hasFile
+                ? AppColors.primarySurface
+                : AppColors.surfaceSoft,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: hasFile ? AppColors.borderPrimary : AppColors.border,
+              color: hasFile
+                  ? AppColors.borderPrimary
+                  : AppColors.border,
             ),
           ),
-          child: hasFile ? _buildSelectedFile() : _buildEmptyState(),
+          child: hasFile
+              ? _buildSelectedFile()
+              : _buildEmptyState(),
         ),
 
-        if (helperText != null) ...[
+        if (widget.helperText != null) ...[
           const SizedBox(height: 7),
-          Text(helperText!, style: AppTextStyles.formHelper),
+          Text(
+            widget.helperText!,
+            style: AppTextStyles.formHelper,
+          ),
         ],
 
-        if (allowedFormats != null && allowedFormats!.isNotEmpty) ...[
+        if (widget.allowedFormats != null &&
+            widget.allowedFormats!.isNotEmpty) ...[
           const SizedBox(height: 9),
           Wrap(
             spacing: 6,
             runSpacing: 6,
-            children: allowedFormats!
-                .map((format) => _FormatChip(label: format))
+            children: widget.allowedFormats!
+                .map(
+                  (format) => _FormatChip(
+                    label: format.toUpperCase(),
+                  ),
+                )
                 .toList(),
           ),
         ],
@@ -73,25 +111,38 @@ class BulkImportFilePicker extends StatelessWidget {
     );
   }
 
+  // ===========================================================================
+  // LABEL
+  // ===========================================================================
+
   Widget _buildLabel() {
     return Row(
       children: [
-        Text(title, style: AppTextStyles.formLabel),
+        Text(
+          widget.title,
+          style: AppTextStyles.formLabel,
+        ),
 
-        if (required) ...[
+        if (widget.required) ...[
           const SizedBox(width: 3),
           Text(
             '*',
-            style: AppTextStyles.formLabel.copyWith(color: AppColors.error),
+            style: AppTextStyles.formLabel.copyWith(
+              color: AppColors.error,
+            ),
           ),
         ],
       ],
     );
   }
 
+  // ===========================================================================
+  // EMPTY STATE
+  // ===========================================================================
+
   Widget _buildEmptyState() {
     return InkWell(
-      onTap: onPick,
+      onTap: _isPicking ? null : _pickFile,
       borderRadius: BorderRadius.circular(10),
       child: Row(
         children: [
@@ -102,38 +153,68 @@ class BulkImportFilePicker extends StatelessWidget {
               color: AppColors.primaryLight,
               borderRadius: BorderRadius.circular(11),
             ),
-            child: Icon(icon, size: 22, color: AppColors.primary),
+            child: _isPicking
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(
+                        AppColors.primary,
+                      ),
+                    ),
+                  )
+                : Icon(
+                    widget.icon,
+                    size: 22,
+                    color: AppColors.primary,
+                  ),
           ),
 
           const SizedBox(width: 12),
 
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Choose File',
-                  style: AppTextStyles.titleSmall.copyWith(
+                  _isPicking
+                      ? 'Opening Files...'
+                      : 'Choose File',
+                  style:
+                      AppTextStyles.titleSmall.copyWith(
                     color: AppColors.primary,
                   ),
                 ),
                 const SizedBox(height: 3),
-                Text('Tap to select a file', style: AppTextStyles.caption),
+                Text(
+                  _isPicking
+                      ? 'Please wait...'
+                      : 'Tap to select a file',
+                  style: AppTextStyles.caption,
+                ),
               ],
             ),
           ),
 
           const SizedBox(width: 8),
 
-          const Icon(
-            Icons.upload_file_rounded,
-            size: 21,
-            color: AppColors.iconSecondary,
-          ),
+          if (!_isPicking)
+            const Icon(
+              Icons.upload_file_rounded,
+              size: 21,
+              color: AppColors.iconSecondary,
+            ),
         ],
       ),
     );
   }
+
+  // ===========================================================================
+  // SELECTED FILE
+  // ===========================================================================
 
   Widget _buildSelectedFile() {
     return Row(
@@ -156,10 +237,11 @@ class BulkImportFilePicker extends StatelessWidget {
 
         Expanded(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment:
+                CrossAxisAlignment.start,
             children: [
               Text(
-                selectedFileName!,
+                widget.selectedFileName!,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.titleSmall,
@@ -167,7 +249,8 @@ class BulkImportFilePicker extends StatelessWidget {
               const SizedBox(height: 3),
               Text(
                 'File selected successfully',
-                style: AppTextStyles.captionMedium.copyWith(
+                style:
+                    AppTextStyles.captionMedium.copyWith(
                   color: AppColors.successDark,
                 ),
               ),
@@ -178,7 +261,9 @@ class BulkImportFilePicker extends StatelessWidget {
         const SizedBox(width: 4),
 
         IconButton(
-          onPressed: onRemove,
+          onPressed: _isPicking
+              ? null
+              : widget.onRemove,
           tooltip: 'Remove file',
           icon: const Icon(
             Icons.close_rounded,
@@ -189,23 +274,253 @@ class BulkImportFilePicker extends StatelessWidget {
       ],
     );
   }
+
+  // ===========================================================================
+  // FILE PICKER
+  // ===========================================================================
+
+  Future<void> _pickFile() async {
+    if (_isPicking) {
+      return;
+    }
+
+    if (widget.allowedFormats == null ||
+        widget.allowedFormats!.isEmpty) {
+      await _pickAnyFile();
+      return;
+    }
+
+    await _pickCustomFile();
+  }
+
+  Future<void> _pickCustomFile() async {
+    setState(() {
+      _isPicking = true;
+    });
+
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions:
+            _normalizedExtensions,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      if (result.isEmpty) {
+        return;
+      }
+
+      final PlatformFile file = result.single;
+
+      final String fileName = file.name.trim();
+
+      if (fileName.isEmpty) {
+        _showSnackBar(
+          'Invalid file selected.',
+        );
+        return;
+      }
+
+      if (!_isValidExtension(fileName)) {
+        _showSnackBar(
+          'Please select a valid '
+          '${_allowedExtensionsText}.',
+        );
+        return;
+      }
+
+      widget.onFileSelected?.call(file);
+
+      widget.onPick?.call();
+    } on PlatformException catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      debugPrint(
+        'FILE PICKER PLATFORM ERROR: $error',
+      );
+
+      _showSnackBar(
+        'Unable to open file picker.',
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      debugPrint(
+        'FILE PICKER ERROR: $error',
+      );
+
+      _showSnackBar(
+        'Unable to select file. Please try again.',
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isPicking = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _pickAnyFile() async {
+    setState(() {
+      _isPicking = true;
+    });
+
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.any,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      if (result.isEmpty) {
+        return;
+      }
+
+      final PlatformFile file = result.single;
+
+      if (file.name.trim().isEmpty) {
+        _showSnackBar(
+          'Invalid file selected.',
+        );
+        return;
+      }
+
+      widget.onFileSelected?.call(file);
+
+      widget.onPick?.call();
+    } on PlatformException catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      debugPrint(
+        'FILE PICKER PLATFORM ERROR: $error',
+      );
+
+      _showSnackBar(
+        'Unable to open file picker.',
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      debugPrint(
+        'FILE PICKER ERROR: $error',
+      );
+
+      _showSnackBar(
+        'Unable to select file. Please try again.',
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isPicking = false;
+        });
+      }
+    }
+  }
+
+  // ===========================================================================
+  // VALIDATION
+  // ===========================================================================
+
+  List<String> get _normalizedExtensions {
+    return widget.allowedFormats!
+        .map(
+          (format) => format
+              .trim()
+              .toLowerCase()
+              .replaceFirst('.', ''),
+        )
+        .where((format) => format.isNotEmpty)
+        .toSet()
+        .toList();
+  }
+
+  String get _allowedExtensionsText {
+    return _normalizedExtensions
+        .map((extension) => '.$extension')
+        .join(', ');
+  }
+
+  bool _isValidExtension(String fileName) {
+    final lowerName = fileName.toLowerCase();
+
+    return _normalizedExtensions.any(
+      (extension) =>
+          lowerName.endsWith('.$extension'),
+    );
+  }
+
+  // ===========================================================================
+  // SNACKBAR
+  // ===========================================================================
+
+  void _showSnackBar(String message) {
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.fromLTRB(
+            16,
+            0,
+            16,
+            16,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+  }
 }
 
+// =============================================================================
+// FORMAT CHIP
+// =============================================================================
+
 class _FormatChip extends StatelessWidget {
-  const _FormatChip({required this.label});
+  const _FormatChip({
+    required this.label,
+  });
 
   final String label;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 9,
+        vertical: 5,
+      ),
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(7),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: AppColors.border,
+        ),
       ),
-      child: Text(label, style: AppTextStyles.captionMedium),
+      child: Text(
+        label,
+        style: AppTextStyles.captionMedium,
+      ),
     );
   }
 }
