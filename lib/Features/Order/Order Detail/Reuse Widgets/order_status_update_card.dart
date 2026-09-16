@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
-import '../../Order List/Models/order_model.dart';
 import 'order_status_dropdown.dart';
 import 'order_status_fields.dart';
 
@@ -18,8 +17,8 @@ class OrderStatusUpdateCard extends StatelessWidget {
     this.isLoading = false,
   });
 
-  final OrderStatus status;
-  final ValueChanged<OrderStatus> onStatusChanged;
+  final String status;
+  final ValueChanged<String> onStatusChanged;
   final VoidCallback? onUpdate;
 
   final TextEditingController? trackingController;
@@ -30,8 +29,7 @@ class OrderStatusUpdateCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final showTrackingFields =
-        status == OrderStatus.shipped || status == OrderStatus.delivered;
+    final showTrackingFields = status == 'shipped' || status == 'delivered';
 
     return Container(
       width: double.infinity,
@@ -71,7 +69,11 @@ class OrderStatusUpdateCard extends StatelessWidget {
 
           const SizedBox(height: 18),
 
-          OrderStatusDropdown(value: status, onChanged: onStatusChanged),
+          OrderStatusDropdown(
+            value: status,
+            onChanged: onStatusChanged,
+            enabled: !isLoading,
+          ),
 
           const SizedBox(height: 14),
 

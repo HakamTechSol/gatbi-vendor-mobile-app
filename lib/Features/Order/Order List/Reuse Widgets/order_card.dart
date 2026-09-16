@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
+
 import '../Models/order_model.dart';
 import 'order_status_badge.dart';
 
 class OrderCard extends StatelessWidget {
   const OrderCard({super.key, required this.order, this.onTap});
 
-  final OrderModel order;
+  final VendorOrderModel order;
   final VoidCallback? onTap;
 
   @override
@@ -44,7 +45,7 @@ class OrderCard extends StatelessWidget {
 
               const SizedBox(height: 14),
 
-              _buildDivider(),
+              const Divider(height: 1, thickness: 1, color: AppColors.divider),
 
               const SizedBox(height: 14),
 
@@ -60,6 +61,10 @@ class OrderCard extends StatelessWidget {
     );
   }
 
+  // ============================================================
+  // HEADER
+  // ============================================================
+
   Widget _buildHeader() {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -68,8 +73,15 @@ class OrderCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(order.orderNumber, style: AppTextStyles.orderNumber),
+              Text(
+                order.orderNumber ?? 'Order #${order.id ?? 'N/A'}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.orderNumber,
+              ),
+
               const SizedBox(height: 4),
+
               Text(
                 _formatDate(order.createdAt),
                 style: AppTextStyles.orderMeta,
@@ -78,12 +90,26 @@ class OrderCard extends StatelessWidget {
           ),
         ),
 
+        const SizedBox(width: 10),
+
         OrderStatusBadge(status: order.status),
       ],
     );
   }
 
+  // ============================================================
+  // CUSTOMER
+  // ============================================================
+
   Widget _buildCustomer() {
+    final customerName = order.customer?.name?.trim().isNotEmpty == true
+        ? order.customer!.name!
+        : 'Unknown customer';
+
+    final customerEmail = order.customer?.email?.trim().isNotEmpty == true
+        ? order.customer!.email!
+        : null;
+
     return Row(
       children: [
         Container(
@@ -107,7 +133,7 @@ class OrderCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                order.customer.name,
+                customerName,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.bodyMedium.copyWith(
@@ -115,10 +141,11 @@ class OrderCard extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              if (order.customer.email != null) ...[
+
+              if (customerEmail != null) ...[
                 const SizedBox(height: 2),
                 Text(
-                  order.customer.email!,
+                  customerEmail,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.orderMeta,
@@ -131,27 +158,18 @@ class OrderCard extends StatelessWidget {
     );
   }
 
-  Widget _buildDivider() {
-    return const Divider(height: 1, thickness: 1, color: AppColors.divider);
-  }
+  // ============================================================
+  // PRODUCT
+  // ============================================================
 
   Widget _buildProductPreview() {
-    if (order.items.isEmpty) {
-      return Row(
-        children: [
-          _buildProductIcon(),
-          const SizedBox(width: 10),
-          Text('${order.itemCount} items', style: AppTextStyles.productName),
-        ],
-      );
-    }
-
-    final firstItem = order.items.first;
-    final remainingItems = order.items.length - 1;
+    final productName = order.productName?.trim().isNotEmpty == true
+        ? order.productName!
+        : 'Product';
 
     return Row(
       children: [
-        _buildProductIcon(),
+        _buildProductImage(),
 
         const SizedBox(width: 10),
 
@@ -160,16 +178,16 @@ class OrderCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                firstItem.productName,
-                maxLines: 1,
+                productName,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.productName,
               ),
 
-              const SizedBox(height: 3),
+              const SizedBox(height: 4),
 
               Text(
-                _buildItemMeta(firstItem),
+                _buildProductMeta(),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.productSku,
@@ -177,55 +195,88 @@ class OrderCard extends StatelessWidget {
             ],
           ),
         ),
-
-        if (remainingItems > 0)
-          Container(
-            margin: const EdgeInsets.only(left: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-            decoration: BoxDecoration(
-              color: AppColors.chipBackground,
-              borderRadius: BorderRadius.circular(7),
-            ),
-            child: Text(
-              '+$remainingItems',
-              style: AppTextStyles.filterChip.copyWith(
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
       ],
     );
   }
 
-  Widget _buildProductIcon() {
+  // ============================================================
+  // PRODUCT IMAGE
+  // ============================================================
+
+  Widget _buildProductImage() {
+    final imageUrl = order.productImage?.trim();
+
     return Container(
-      width: 46,
-      height: 46,
+      width: 56,
+      height: 56,
       decoration: BoxDecoration(
         color: AppColors.inputIconBackground,
         borderRadius: BorderRadius.circular(10),
       ),
-      child: const Icon(
-        Icons.inventory_2_outlined,
-        color: AppColors.iconSecondary,
-        size: 22,
-      ),
+      clipBehavior: Clip.antiAlias,
+      child: imageUrl == null || imageUrl.isEmpty
+          ? const Icon(
+              Icons.inventory_2_outlined,
+              color: AppColors.iconSecondary,
+              size: 22,
+            )
+          : Image.network(
+              imageUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) {
+                return const Icon(
+                  Icons.inventory_2_outlined,
+                  color: AppColors.iconSecondary,
+                  size: 22,
+                );
+              },
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) {
+                  return child;
+                }
+
+                return const Center(
+                  child: SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                );
+              },
+            ),
     );
   }
 
+  // ============================================================
+  // PRODUCT META
+  // ============================================================
+
+  String _buildProductMeta() {
+    final quantity = order.vendorQuantity ?? 0;
+
+    return 'Qty: $quantity';
+  }
+
+  // ============================================================
+  // FOOTER
+  // ============================================================
+
   Widget _buildFooter() {
+    final total = order.vendorTotal ?? 0;
+
     return Row(
       children: [
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Total', style: AppTextStyles.orderMeta),
+            Text('Vendor Total', style: AppTextStyles.orderMeta),
+
             const SizedBox(height: 3),
-            Text(
-              '${order.currency} ${order.totalAmount.toStringAsFixed(2)}',
-              style: AppTextStyles.orderAmount,
-            ),
+
+            Text(_formatAmount(total), style: AppTextStyles.orderAmount),
           ],
         ),
 
@@ -235,10 +286,13 @@ class OrderCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              '${order.itemCount} ${order.itemCount == 1 ? 'item' : 'items'}',
+              '${order.vendorQuantity ?? 0} '
+              '${(order.vendorQuantity ?? 0) == 1 ? 'item' : 'items'}',
               style: AppTextStyles.orderMeta,
             ),
+
             const SizedBox(width: 8),
+
             const Icon(
               Icons.arrow_forward_ios_rounded,
               size: 13,
@@ -250,43 +304,57 @@ class OrderCard extends StatelessWidget {
     );
   }
 
-  String _buildItemMeta(dynamic item) {
-    final quantity = item.quantity;
-    final sku = item.sku;
+  // ============================================================
+  // AMOUNT
+  // ============================================================
 
-    if (sku != null && sku.isNotEmpty) {
-      return 'Qty: $quantity  •  SKU: $sku';
-    }
-
-    return 'Qty: $quantity';
+  String _formatAmount(num value) {
+    return 'AED ${value.toStringAsFixed(2)}';
   }
 
-  String _formatDate(DateTime date) {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
+  // ============================================================
+  // DATE
+  // ============================================================
 
-    final hour = date.hour > 12
-        ? date.hour - 12
-        : date.hour == 0
-        ? 12
-        : date.hour;
+  String _formatDate(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Date unavailable';
+    }
 
-    final minute = date.minute.toString().padLeft(2, '0');
-    final period = date.hour >= 12 ? 'PM' : 'AM';
+    try {
+      final date = DateTime.parse(value.replaceFirst(' ', 'T'));
 
-    return '${months[date.month - 1]} ${date.day}, ${date.year} • '
-        '$hour:$minute $period';
+      const months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+      ];
+
+      final hour = date.hour > 12
+          ? date.hour - 12
+          : date.hour == 0
+          ? 12
+          : date.hour;
+
+      final minute = date.minute.toString().padLeft(2, '0');
+
+      final period = date.hour >= 12 ? 'PM' : 'AM';
+
+      return '${months[date.month - 1]} '
+          '${date.day}, '
+          '${date.year} • '
+          '$hour:$minute $period';
+    } catch (_) {
+      return value;
+    }
   }
 }

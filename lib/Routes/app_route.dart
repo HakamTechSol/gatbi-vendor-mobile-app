@@ -22,7 +22,6 @@ import '../Features/More/more_screen.dart';
 import '../Features/My Product/Models/my_product_model.dart';
 import '../Features/My Product/my_products_screen.dart';
 import '../Features/Onboarding/onboarding_screen.dart';
-import '../Features/Order/Order Detail/Models/order_detail_model.dart';
 import '../Features/Order/Order Detail/screens/order_detail_screen.dart';
 import '../Features/Order/Order List/screens/orders_screen.dart';
 import '../Features/Product Detail/Model/product_detail_model.dart';
@@ -516,7 +515,9 @@ final GoRouter appRouter = GoRouter(
       path: AppRoutes.chatDetail,
       name: 'chat-detail',
       builder: (context, state) {
-        return const ChatDetailScreen();
+        return ChatDetailScreen(
+          chatId: int.parse(state.pathParameters['chatId']!),
+        );
       },
     ),
 
@@ -685,34 +686,28 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) {
         return OrdersScreen(
           onOrderTap: (order) {
-            final detailOrder = OrderDetailModel.fromJson({
-              ...order.toJson(),
-              'items': order.items.map((item) => item.toJson()).toList(),
-              'timeline': [],
-              'payment': null,
-              'shipping_address': null,
-              'billing_address': null,
-              'notes': null,
-              'payment_proof_url': null,
-            });
+            final orderId = order.id;
 
-            context.push(AppRoutes.orderDetail, extra: detailOrder);
+            if (orderId == null || orderId <= 0) {
+              return;
+            }
+
+            context.push(AppRoutes.orderDetail, extra: orderId);
           },
         );
       },
     ),
-
     GoRoute(
       path: AppRoutes.orderDetail,
       name: 'order-detail',
       builder: (context, state) {
         final extra = state.extra;
 
-        if (extra is! OrderDetailModel) {
+        if (extra is! int || extra <= 0) {
           return const Scaffold(
             body: Center(
               child: Text(
-                'Order data is missing.',
+                'Order ID is missing.',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
             ),
@@ -720,17 +715,16 @@ final GoRouter appRouter = GoRouter(
         }
 
         return OrderDetailScreen(
-          order: extra,
+          orderId: extra,
           onBack: () {
             context.pop();
           },
           onRefresh: () {
-            debugPrint('Refresh Order: ${extra.orderNumber}');
+            debugPrint('Refreshing Order ID: $extra');
           },
         );
       },
     ),
-
     // Profile
     // GoRoute(
     //   path: AppRoutes.profile,

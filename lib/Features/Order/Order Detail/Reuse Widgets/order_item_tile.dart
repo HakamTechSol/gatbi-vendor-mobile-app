@@ -5,21 +5,25 @@ import '../../../../Theme/app_text_styles.dart';
 import '../Models/order_detail_item_model.dart';
 
 class OrderItemTile extends StatelessWidget {
-  const OrderItemTile({
-    super.key,
-    required this.item,
-  });
+  const OrderItemTile({super.key, required this.item, this.currency});
 
-  final OrderDetailItemModel item;
+  final VendorOrderDetailItemModel item;
+  final String? currency;
 
   @override
   Widget build(BuildContext context) {
+    final currencyValue = currency?.trim().isNotEmpty == true
+        ? currency!.trim()
+        : 'AED';
+
+    final quantity = item.quantity ?? 0;
+    final price = item.price ?? 0;
+    final total = item.total ?? 0;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _ProductImage(
-          imageUrl: item.imageUrl,
-        ),
+        _ProductImage(imageUrl: item.image),
 
         const SizedBox(width: 12),
 
@@ -28,34 +32,23 @@ class OrderItemTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                item.productName,
+                item.name ?? 'Product',
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.productName,
               ),
 
-              if (item.variantName != null &&
-                  item.variantName!.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(
-                  item.variantName!,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.productSku,
-                ),
-              ],
-
               const SizedBox(height: 5),
 
               Text(
-                _buildMeta(),
+                'Product ID: ${item.productId ?? 'N/A'}',
                 style: AppTextStyles.productSku,
               ),
 
               const SizedBox(height: 7),
 
               Text(
-                '${item.quantity} × ${item.price.toStringAsFixed(2)} ${_currency}',
+                '$quantity × ${_formatAmount(price)} $currencyValue',
                 style: AppTextStyles.bodySmall.copyWith(
                   color: AppColors.textSecondary,
                   fontWeight: FontWeight.w600,
@@ -68,7 +61,7 @@ class OrderItemTile extends StatelessWidget {
         const SizedBox(width: 10),
 
         Text(
-          '${item.calculatedTotal.toStringAsFixed(2)} ${_currency}',
+          '${_formatAmount(total)} $currencyValue',
           textAlign: TextAlign.end,
           style: AppTextStyles.bodyMedium.copyWith(
             color: AppColors.navy,
@@ -79,28 +72,19 @@ class OrderItemTile extends StatelessWidget {
     );
   }
 
-  String get _currency => 'AED';
-
-  String _buildMeta() {
-    if (item.sku != null && item.sku!.isNotEmpty) {
-      return 'SKU: ${item.sku}';
-    }
-
-    return 'Product item';
+  String _formatAmount(num value) {
+    return value.toStringAsFixed(2);
   }
 }
 
 class _ProductImage extends StatelessWidget {
-  const _ProductImage({
-    this.imageUrl,
-  });
+  const _ProductImage({this.imageUrl});
 
   final String? imageUrl;
 
   @override
   Widget build(BuildContext context) {
-    final hasImage =
-        imageUrl != null && imageUrl!.trim().isNotEmpty;
+    final hasImage = imageUrl != null && imageUrl!.trim().isNotEmpty;
 
     return Container(
       width: 68,
@@ -108,9 +92,7 @@ class _ProductImage extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.backgroundSecondary,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppColors.border,
-        ),
+        border: Border.all(color: AppColors.border),
       ),
       clipBehavior: Clip.antiAlias,
       child: hasImage
@@ -119,6 +101,19 @@ class _ProductImage extends StatelessWidget {
               fit: BoxFit.cover,
               errorBuilder: (_, __, ___) {
                 return const _PlaceholderIcon();
+              },
+              loadingBuilder: (context, child, progress) {
+                if (progress == null) {
+                  return child;
+                }
+
+                return const Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                );
               },
             )
           : const _PlaceholderIcon(),
@@ -132,11 +127,7 @@ class _PlaceholderIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Center(
-      child: Icon(
-        Icons.image_outlined,
-        size: 25,
-        color: AppColors.iconMuted,
-      ),
+      child: Icon(Icons.image_outlined, size: 25, color: AppColors.iconMuted),
     );
   }
 }

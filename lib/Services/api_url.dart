@@ -92,7 +92,7 @@ class ApiUrls {
   static const String submitKyc = 'vendor/kyc/submit';
 
   // Chat
-  static const String chats = 'vendor/chats';
+  static const String venderChats = 'vendor/chats';
 
   static String chat(int id) => 'vendor/chat/$id';
 

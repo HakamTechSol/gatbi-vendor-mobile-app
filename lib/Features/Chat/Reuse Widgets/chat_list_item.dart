@@ -1,5 +1,5 @@
-// lib/features/chat/presentation/widgets/chat_list_item.dart
 import 'package:flutter/material.dart';
+
 import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
 
@@ -39,14 +39,14 @@ class ChatListItem extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
           decoration: BoxDecoration(
             color: isHighlighted
                 ? AppColors.primaryLight.withOpacity(0.5)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
+                : unreadCount > 0
+                ? AppColors.surfaceMuted
+                : AppColors.white,
             border: isHighlighted
                 ? Border.all(
                     color: AppColors.primary.withOpacity(0.3),
@@ -57,11 +57,16 @@ class ChatListItem extends StatelessWidget {
           child: Row(
             children: [
               _buildAvatar(),
+
               const SizedBox(width: 14),
+
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // ==================================================
+                    // CUSTOMER NAME + ONLINE
+                    // ==================================================
                     Row(
                       children: [
                         Expanded(
@@ -76,6 +81,7 @@ class ChatListItem extends StatelessWidget {
                                   ),
                           ),
                         ),
+
                         if (isOnline) ...[
                           const SizedBox(width: 6),
                           Container(
@@ -89,16 +95,39 @@ class ChatListItem extends StatelessWidget {
                         ],
                       ],
                     ),
+
                     const SizedBox(height: 2),
+
+                    // ==================================================
+                    // CUSTOMER EMAIL
+                    // ==================================================
                     Text(
-                      productName,
+                      customerEmail,
                       style: AppTextStyles.caption.copyWith(
                         color: AppColors.textTertiary,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
+
+                    const SizedBox(height: 3),
+
+                    // ==================================================
+                    // PRODUCT
+                    // ==================================================
+                    _buildHighlightedText(
+                      productName,
+                      AppTextStyles.caption.copyWith(
+                        color: AppColors.textTertiary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+
                     const SizedBox(height: 4),
+
+                    // ==================================================
+                    // LAST MESSAGE + TIME
+                    // ==================================================
                     Row(
                       children: [
                         Expanded(
@@ -115,20 +144,28 @@ class ChatListItem extends StatelessWidget {
                                   ),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          lastMessageTime,
-                          style: AppTextStyles.caption.copyWith(
-                            color: AppColors.textTertiary,
+
+                        if (lastMessageTime.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Text(
+                            lastMessageTime,
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.textTertiary,
+                            ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   ],
                 ),
               ),
+
+              // ======================================================
+              // UNREAD BADGE
+              // ======================================================
               if (unreadCount > 0) ...[
                 const SizedBox(width: 12),
+
                 Container(
                   padding: const EdgeInsets.all(6),
                   constraints: const BoxConstraints(
@@ -141,7 +178,7 @@ class ChatListItem extends StatelessWidget {
                   ),
                   child: Center(
                     child: Text(
-                      unreadCount > 9 ? '9+' : '$unreadCount',
+                      unreadCount > 99 ? '99+' : '$unreadCount',
                       style: AppTextStyles.statusBadge.copyWith(
                         color: AppColors.white,
                         fontSize: 10,
@@ -157,8 +194,12 @@ class ChatListItem extends StatelessWidget {
     );
   }
 
+  // ============================================================
+  // Highlight Search Result
+  // ============================================================
+
   Widget _buildHighlightedText(String text, TextStyle style) {
-    if (!isHighlighted || searchQuery.isEmpty) {
+    if (!isHighlighted || searchQuery.trim().isEmpty) {
       return Text(
         text,
         style: style,
@@ -168,7 +209,8 @@ class ChatListItem extends StatelessWidget {
     }
 
     final lowerText = text.toLowerCase();
-    final lowerQuery = searchQuery.toLowerCase();
+    final lowerQuery = searchQuery.toLowerCase().trim();
+
     final startIndex = lowerText.indexOf(lowerQuery);
 
     if (startIndex == -1) {
@@ -180,7 +222,7 @@ class ChatListItem extends StatelessWidget {
       );
     }
 
-    final endIndex = startIndex + searchQuery.length;
+    final endIndex = startIndex + lowerQuery.length;
 
     return RichText(
       maxLines: 1,
@@ -203,8 +245,12 @@ class ChatListItem extends StatelessWidget {
     );
   }
 
+  // ============================================================
+  // Avatar
+  // ============================================================
+
   Widget _buildAvatar() {
-    if (customerAvatar != null) {
+    if (customerAvatar != null && customerAvatar!.trim().isNotEmpty) {
       return CircleAvatar(
         radius: 26,
         backgroundImage: NetworkImage(customerAvatar!),
@@ -212,22 +258,42 @@ class ChatListItem extends StatelessWidget {
       );
     }
 
-    final initials = customerName
-        .split(' ')
-        .take(2)
-        .map((e) => e.isNotEmpty ? e[0].toUpperCase() : '')
-        .join('');
+    final initials = _getInitials(customerName);
 
     return CircleAvatar(
       radius: 26,
       backgroundColor: AppColors.primaryLight,
       child: Text(
-        initials.isNotEmpty ? initials : '?',
+        initials,
         style: AppTextStyles.titleMedium.copyWith(
           color: AppColors.primary,
           fontWeight: FontWeight.w700,
         ),
       ),
     );
+  }
+
+  String _getInitials(String name) {
+    final trimmedName = name.trim();
+
+    if (trimmedName.isEmpty) {
+      return '?';
+    }
+
+    final parts = trimmedName
+        .split(RegExp(r'\s+'))
+        .where((e) => e.isNotEmpty)
+        .take(2)
+        .toList();
+
+    if (parts.isEmpty) {
+      return '?';
+    }
+
+    final initials = parts
+        .map((part) => part.characters.first.toUpperCase())
+        .join();
+
+    return initials.isEmpty ? '?' : initials;
   }
 }

@@ -8,10 +8,12 @@ import 'order_item_tile.dart';
 class OrderItemsCard extends StatelessWidget {
   const OrderItemsCard({super.key, required this.order});
 
-  final OrderDetailModel order;
+  final VendorOrderDetailModel order;
 
   @override
   Widget build(BuildContext context) {
+    final itemCount = order.items.length;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -45,7 +47,10 @@ class OrderItemsCard extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              Text('${order.itemCount} items', style: AppTextStyles.orderMeta),
+              Text(
+                '$itemCount ${itemCount == 1 ? 'item' : 'items'}',
+                style: AppTextStyles.orderMeta,
+              ),
             ],
           ),
 
@@ -65,7 +70,10 @@ class OrderItemsCard extends StatelessWidget {
                 );
               },
               itemBuilder: (context, index) {
-                return OrderItemTile(item: order.items[index]);
+                return OrderItemTile(
+                  item: order.items[index],
+                  currency: order.currency,
+                );
               },
             ),
         ],
@@ -84,7 +92,7 @@ class _EmptyItems extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 28),
       child: Column(
         children: [
-          Icon(
+          const Icon(
             Icons.shopping_bag_outlined,
             size: 32,
             color: AppColors.iconMuted,

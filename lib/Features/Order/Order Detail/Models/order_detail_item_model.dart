@@ -1,96 +1,117 @@
-class OrderDetailItemModel {
-  const OrderDetailItemModel({
-    required this.id,
-    required this.productName,
-    required this.quantity,
-    required this.price,
-    this.sku,
-    this.imageUrl,
-    this.variantName,
-    this.variantId,
+class VendorOrderDetailItemModel {
+  const VendorOrderDetailItemModel({
+    this.id,
     this.productId,
+    this.name,
+    this.slug,
+    this.image,
+    this.price,
+    this.quantity,
     this.total,
   });
 
-  final String id;
-  final String productName;
-  final int quantity;
-  final double price;
+  // ============================================================
+  // Item Fields
+  // ============================================================
 
-  final String? sku;
-  final String? imageUrl;
-  final String? variantName;
-  final String? variantId;
-  final String? productId;
-  final double? total;
+  final int? id;
+  final int? productId;
 
-  double get calculatedTotal => total ?? (price * quantity);
+  final String? name;
+  final String? slug;
+  final String? image;
 
-  factory OrderDetailItemModel.fromJson(Map<String, dynamic> json) {
-    return OrderDetailItemModel(
-      id: json['id']?.toString() ?? '',
-      productName: json['product_name']?.toString() ?? '',
+  final num? price;
+  final int? quantity;
+  final num? total;
+
+  // ============================================================
+  // From JSON
+  // ============================================================
+
+  factory VendorOrderDetailItemModel.fromJson(Map<String, dynamic>? json) {
+    if (json == null) {
+      return const VendorOrderDetailItemModel();
+    }
+
+    return VendorOrderDetailItemModel(
+      id: _parseInt(json['id']),
+      productId: _parseInt(json['product_id']),
+      name: _parseString(json['name']),
+      slug: _parseString(json['slug']),
+      image: _parseString(json['image']),
+      price: _parseNum(json['price']),
       quantity: _parseInt(json['quantity']),
-      price: _parseDouble(json['price']),
-      sku: json['sku']?.toString(),
-      imageUrl: json['image_url']?.toString(),
-      variantName: json['variant_name']?.toString(),
-      variantId: json['variant_id']?.toString(),
-      productId: json['product_id']?.toString(),
-      total: json['total'] != null ? _parseDouble(json['total']) : null,
+      total: _parseNum(json['total']),
     );
   }
+
+  // ============================================================
+  // To JSON
+  // ============================================================
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'product_name': productName,
-      'quantity': quantity,
-      'price': price,
-      'sku': sku,
-      'image_url': imageUrl,
-      'variant_name': variantName,
-      'variant_id': variantId,
       'product_id': productId,
+      'name': name,
+      'slug': slug,
+      'image': image,
+      'price': price,
+      'quantity': quantity,
       'total': total,
     };
   }
 
-  OrderDetailItemModel copyWith({
-    String? id,
-    String? productName,
-    int? quantity,
-    double? price,
-    String? sku,
-    String? imageUrl,
-    String? variantName,
-    String? variantId,
-    String? productId,
-    double? total,
-  }) {
-    return OrderDetailItemModel(
-      id: id ?? this.id,
-      productName: productName ?? this.productName,
-      quantity: quantity ?? this.quantity,
-      price: price ?? this.price,
-      sku: sku ?? this.sku,
-      imageUrl: imageUrl ?? this.imageUrl,
-      variantName: variantName ?? this.variantName,
-      variantId: variantId ?? this.variantId,
-      productId: productId ?? this.productId,
-      total: total ?? this.total,
-    );
+  // ============================================================
+  // Helpers
+  // ============================================================
+
+  static String? _parseString(dynamic value) {
+    if (value == null) {
+      return null;
+    }
+
+    if (value is String) {
+      return value;
+    }
+
+    return value.toString();
   }
 
-  static int _parseInt(dynamic value) {
-    if (value is int) return value;
+  static int? _parseInt(dynamic value) {
+    if (value == null) {
+      return null;
+    }
 
-    return int.tryParse(value?.toString() ?? '') ?? 0;
+    if (value is int) {
+      return value;
+    }
+
+    if (value is num) {
+      return value.toInt();
+    }
+
+    if (value is String) {
+      return int.tryParse(value);
+    }
+
+    return null;
   }
 
-  static double _parseDouble(dynamic value) {
-    if (value is num) return value.toDouble();
+  static num? _parseNum(dynamic value) {
+    if (value == null) {
+      return null;
+    }
 
-    return double.tryParse(value?.toString() ?? '') ?? 0.0;
+    if (value is num) {
+      return value;
+    }
+
+    if (value is String) {
+      return num.tryParse(value);
+    }
+
+    return null;
   }
 }

@@ -31,7 +31,7 @@ class OrdersEmptyState extends StatelessWidget {
             Container(
               width: 72,
               height: 72,
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: AppColors.primaryLight,
                 shape: BoxShape.circle,
               ),
@@ -58,6 +58,7 @@ class OrdersEmptyState extends StatelessWidget {
 
             if (onClearFilters != null) ...[
               const SizedBox(height: 20),
+
               TextButton(
                 onPressed: onClearFilters,
                 style: TextButton.styleFrom(

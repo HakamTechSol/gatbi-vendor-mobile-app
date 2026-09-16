@@ -1,35 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
-import '../Data/dummy_orders.dart';
+
+import '../Controller/orders_controller.dart';
 import '../Models/order_model.dart';
 import '../Reuse Widgets/order_card.dart';
 import '../Reuse Widgets/orders_empty_state.dart';
+import '../Reuse Widgets/orders_error_state.dart';
 import '../Reuse Widgets/orders_header.dart';
 import '../Reuse Widgets/orders_loading.dart';
 import '../Reuse Widgets/orders_search_bar.dart';
 import '../Reuse Widgets/orders_status_tabs.dart';
 
-class OrdersScreen extends StatefulWidget {
+class OrdersScreen extends ConsumerStatefulWidget {
   const OrdersScreen({super.key, this.onOrderTap});
 
   /// Later this will navigate to OrderDetailScreen.
-  final ValueChanged<OrderModel>? onOrderTap;
+  final ValueChanged<VendorOrderModel>? onOrderTap;
 
   @override
-  State<OrdersScreen> createState() => _OrdersScreenState();
+  ConsumerState<OrdersScreen> createState() => _OrdersScreenState();
 }
 
-class _OrdersScreenState extends State<OrdersScreen> {
+class _OrdersScreenState extends ConsumerState<OrdersScreen> {
   final TextEditingController _searchController = TextEditingController();
 
-  OrderStatus? _selectedStatus;
-
-  bool _isLoading = true;
-  bool _isRefreshing = false;
-
-  List<OrderModel> _filteredOrders = [];
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -37,7 +35,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
     _searchController.addListener(_onSearchControllerChanged);
 
-    _loadOrders();
+    _scrollController.addListener(_onScroll);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(vendorOrdersControllerProvider.notifier).loadOrders();
+    });
   }
 
   @override
@@ -46,142 +48,116 @@ class _OrdersScreenState extends State<OrdersScreen> {
       ..removeListener(_onSearchControllerChanged)
       ..dispose();
 
+    _scrollController
+      ..removeListener(_onScroll)
+      ..dispose();
+
     super.dispose();
   }
 
   // ============================================================
-  // Data
-  // ============================================================
-
-  Future<void> _loadOrders() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    // Temporary delay to show the loading UI during testing.
-    // This will later be replaced by the repository/API call.
-    await Future.delayed(const Duration(milliseconds: 700));
-
-    if (!mounted) return;
-
-    setState(() {
-      _isLoading = false;
-      _applyFilters();
-    });
-  }
-
-  Future<void> _refreshOrders() async {
-    if (_isRefreshing) return;
-
-    setState(() {
-      _isRefreshing = true;
-    });
-
-    // Temporary refresh delay.
-    // Later this will call the repository refresh method.
-    await Future.delayed(const Duration(milliseconds: 700));
-
-    if (!mounted) return;
-
-    setState(() {
-      _isRefreshing = false;
-      _applyFilters();
-    });
-  }
-
-  // ============================================================
-  // Search
+  // SEARCH
   // ============================================================
 
   void _onSearchControllerChanged() {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
-    setState(() {
-      _applyFilters();
-    });
+    setState(() {});
   }
 
   void _onSearchChanged(String value) {
-    _applyFilters();
+    ref.read(vendorOrdersControllerProvider.notifier).searchOrders(value);
   }
 
-  void _clearSearch() {
+  Future<void> _clearSearch() async {
     _searchController.clear();
+
+    await ref.read(vendorOrdersControllerProvider.notifier).clearSearch();
   }
 
   // ============================================================
-  // Filter
+  // STATUS
   // ============================================================
 
-  void _onStatusChanged(OrderStatus? status) {
-    setState(() {
-      _selectedStatus = status;
-      _applyFilters();
-    });
+  Future<void> _onStatusChanged(String? status) async {
+    await ref
+        .read(vendorOrdersControllerProvider.notifier)
+        .filterByStatus(status);
   }
 
-  void _applyFilters() {
-    final query = _searchController.text.trim().toLowerCase();
+  // ============================================================
+  // REFRESH
+  // ============================================================
 
-    var result = List<OrderModel>.from(DummyOrders.orders);
+  Future<void> _refreshOrders() async {
+    await ref.read(vendorOrdersControllerProvider.notifier).refreshOrders();
+  }
 
-    // Status filter.
-    if (_selectedStatus != null) {
-      result = result
-          .where((order) => order.status == _selectedStatus)
-          .toList();
+  // ============================================================
+  // RETRY
+  // ============================================================
+
+  Future<void> _retry() async {
+    await ref.read(vendorOrdersControllerProvider.notifier).retry();
+  }
+
+  // ============================================================
+  // CLEAR FILTERS
+  // ============================================================
+
+  Future<void> _clearFilters() async {
+    _searchController.clear();
+
+    await ref.read(vendorOrdersControllerProvider.notifier).searchOrdersNow('');
+  }
+
+  // ============================================================
+  // PAGINATION
+  // ============================================================
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) {
+      return;
     }
 
-    // Search filter.
-    if (query.isNotEmpty) {
-      result = result.where((order) {
-        final orderNumber = order.orderNumber.toLowerCase();
+    final position = _scrollController.position;
 
-        final customerName = order.customer.name.toLowerCase();
-
-        final customerEmail = order.customer.email?.toLowerCase() ?? '';
-
-        final customerPhone = order.customer.phone?.toLowerCase() ?? '';
-
-        return orderNumber.contains(query) ||
-            customerName.contains(query) ||
-            customerEmail.contains(query) ||
-            customerPhone.contains(query);
-      }).toList();
+    // Start loading next page before reaching the
+    // absolute bottom.
+    if (position.pixels >= position.maxScrollExtent - 300) {
+      ref.read(vendorOrdersControllerProvider.notifier).loadMore();
     }
-
-    _filteredOrders = result;
-  }
-
-  void _clearFilters() {
-    setState(() {
-      _selectedStatus = null;
-      _searchController.clear();
-      _applyFilters();
-    });
   }
 
   // ============================================================
-  // UI
+  // BUILD
   // ============================================================
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(vendorOrdersControllerProvider);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
-            _buildTopSection(),
+            _buildTopSection(state),
 
-            Expanded(child: _buildContent()),
+            Expanded(child: _buildContent(state)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildTopSection() {
+  // ============================================================
+  // TOP SECTION
+  // ============================================================
+
+  Widget _buildTopSection(VendorOrdersState state) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: Column(
@@ -200,28 +176,31 @@ class _OrdersScreenState extends State<OrdersScreen> {
           const SizedBox(height: 14),
 
           OrdersStatusTabs(
-            selectedStatus: _selectedStatus,
+            selectedStatus: state.selectedStatus,
             onStatusChanged: _onStatusChanged,
           ),
 
           const SizedBox(height: 16),
 
-          _buildResultsHeader(),
+          _buildResultsHeader(state),
         ],
       ),
     );
   }
 
-  Widget _buildResultsHeader() {
-    final hasFilters =
-        _selectedStatus != null || _searchController.text.trim().isNotEmpty;
+  // ============================================================
+  // RESULTS HEADER
+  // ============================================================
+
+  Widget _buildResultsHeader(VendorOrdersState state) {
+    final hasFilters = state.hasActiveFilters;
+
+    final count = state.totalItems > 0 ? state.totalItems : state.orders.length;
 
     return Row(
       children: [
         Text(
-          hasFilters
-              ? '${_filteredOrders.length} orders found'
-              : '${DummyOrders.orders.length} orders',
+          hasFilters ? '$count orders found' : '$count orders',
           style: AppTextStyles.bodyMedium.copyWith(
             color: AppColors.navy,
             fontWeight: FontWeight.w600,
@@ -245,15 +224,53 @@ class _OrdersScreenState extends State<OrdersScreen> {
     );
   }
 
-  Widget _buildContent() {
-    if (_isLoading) {
+  // ============================================================
+  // CONTENT
+  // ============================================================
+
+  Widget _buildContent(VendorOrdersState state) {
+    // ----------------------------------------------------------
+    // INITIAL LOADING
+    // ----------------------------------------------------------
+
+    if (state.isLoading && state.orders.isEmpty) {
       return const SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(16, 4, 16, 24),
         child: OrdersLoading(itemCount: 5),
       );
     }
 
-    if (_filteredOrders.isEmpty) {
+    // ----------------------------------------------------------
+    // ERROR
+    // ----------------------------------------------------------
+
+    if (state.hasError && state.orders.isEmpty) {
+      return RefreshIndicator(
+        color: AppColors.primary,
+        onRefresh: _refreshOrders,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          children: [
+            SizedBox(
+              height: MediaQuery.sizeOf(context).height * 0.45,
+              child: OrdersErrorState(
+                message:
+                    state.errorMessage ??
+                    'Something went wrong. Please try again.',
+                onRetry: _retry,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // ----------------------------------------------------------
+    // EMPTY
+    // ----------------------------------------------------------
+
+    if (state.orders.isEmpty) {
       return RefreshIndicator(
         color: AppColors.primary,
         onRefresh: _refreshOrders,
@@ -264,7 +281,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
             SizedBox(
               height: MediaQuery.sizeOf(context).height * 0.45,
               child: OrdersEmptyState(
-                onClearFilters: _hasActiveFilters ? _clearFilters : null,
+                onClearFilters: state.hasActiveFilters ? _clearFilters : null,
               ),
             ),
           ],
@@ -272,29 +289,65 @@ class _OrdersScreenState extends State<OrdersScreen> {
       );
     }
 
+    // ----------------------------------------------------------
+    // ORDERS LIST
+    // ----------------------------------------------------------
+
     return RefreshIndicator(
       color: AppColors.primary,
       onRefresh: _refreshOrders,
       child: ListView.separated(
+        controller: _scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-        itemCount: _filteredOrders.length,
+        itemCount: state.orders.length + (state.isLoadingMore ? 1 : 0),
         separatorBuilder: (_, __) {
           return const SizedBox(height: 12);
         },
         itemBuilder: (context, index) {
-          final order = _filteredOrders[index];
+          // ----------------------------------------------------
+          // LOAD MORE
+          // ----------------------------------------------------
+
+          if (index >= state.orders.length) {
+            return const _LoadMoreIndicator();
+          }
+
+          final order = state.orders[index];
 
           return OrderCard(
             order: order,
-            onTap: () => widget.onOrderTap?.call(order),
+            onTap: () {
+              widget.onOrderTap?.call(order);
+            },
           );
         },
       ),
     );
   }
+}
 
-  bool get _hasActiveFilters {
-    return _selectedStatus != null || _searchController.text.trim().isNotEmpty;
+// ============================================================
+// LOAD MORE INDICATOR
+// ============================================================
+
+class _LoadMoreIndicator extends StatelessWidget {
+  const _LoadMoreIndicator();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 16),
+      child: Center(
+        child: SizedBox(
+          width: 22,
+          height: 22,
+          child: CircularProgressIndicator(
+            strokeWidth: 2.2,
+            color: AppColors.primary,
+          ),
+        ),
+      ),
+    );
   }
 }

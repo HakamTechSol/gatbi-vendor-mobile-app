@@ -2,12 +2,19 @@ import 'package:flutter/material.dart';
 
 import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
-import '../Models/order_payment_model.dart';
+import '../Models/order_detail_model.dart';
+import '../Models/order_payment_proof_model.dart';
 
 class PaymentInfoCard extends StatelessWidget {
-  const PaymentInfoCard({super.key, required this.payment, this.onViewProof});
+  const PaymentInfoCard({
+    super.key,
+    required this.order,
+    this.paymentProof,
+    this.onViewProof,
+  });
 
-  final OrderPaymentModel? payment;
+  final VendorOrderDetailModel order;
+  final VendorOrderPaymentProofModel? paymentProof;
   final VoidCallback? onViewProof;
 
   @override
@@ -26,139 +33,153 @@ class PaymentInfoCard extends StatelessWidget {
           ),
         ],
       ),
-      child: payment == null
-          ? _EmptyPayment()
-          : _PaymentContent(payment: payment!, onViewProof: onViewProof),
-    );
-  }
-}
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _Header(),
 
-class _PaymentContent extends StatelessWidget {
-  const _PaymentContent({required this.payment, this.onViewProof});
+          const SizedBox(height: 18),
 
-  final OrderPaymentModel payment;
-  final VoidCallback? onViewProof;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _Header(),
-
-        const SizedBox(height: 18),
-
-        Row(
-          children: [
-            Expanded(
-              child: _PaymentDetail(
-                label: 'Amount',
-                value:
-                    '${payment.currency} ${payment.amount.toStringAsFixed(2)}',
+          Row(
+            children: [
+              Expanded(
+                child: _PaymentDetail(
+                  label: 'Amount',
+                  value:
+                      '${order.currencySymbol ?? order.currency ?? 'AED'} '
+                      '${_formatAmount(order.total)}',
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _PaymentDetail(
-                label: 'Status',
-                value: payment.status.label,
-                valueColor: _statusColor(payment.status),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _PaymentDetail(
+                  label: 'Status',
+                  value: _statusLabel(order.paymentStatus),
+                  valueColor: _statusColor(order.paymentStatus),
+                ),
               ),
+            ],
+          ),
+
+          if (_hasValue(order.paymentMethod)) ...[
+            const SizedBox(height: 14),
+            _InfoRow(
+              icon: Icons.credit_card_outlined,
+              label: 'Payment Method',
+              value: _statusLabel(order.paymentMethod),
             ),
           ],
-        ),
 
-        if (payment.method != null && payment.method!.isNotEmpty) ...[
-          const SizedBox(height: 14),
-          _InfoRow(
-            icon: Icons.credit_card_outlined,
-            label: 'Payment Method',
-            value: payment.method!,
-          ),
-        ],
+          if (_hasValue(paymentProof?.transactionReference)) ...[
+            const SizedBox(height: 11),
+            _InfoRow(
+              icon: Icons.tag_outlined,
+              label: 'Transaction Reference',
+              value: paymentProof!.transactionReference!.trim(),
+            ),
+          ],
 
-        if (payment.transactionId != null &&
-            payment.transactionId!.isNotEmpty) ...[
-          const SizedBox(height: 11),
-          _InfoRow(
-            icon: Icons.tag_outlined,
-            label: 'Transaction ID',
-            value: payment.transactionId!,
-          ),
-        ],
+          if (_hasValue(paymentProof?.paymentDate)) ...[
+            const SizedBox(height: 11),
+            _InfoRow(
+              icon: Icons.schedule_outlined,
+              label: 'Payment Date',
+              value: paymentProof!.paymentDate!.trim(),
+            ),
+          ],
 
-        if (payment.paidAt != null) ...[
-          const SizedBox(height: 11),
-          _InfoRow(
-            icon: Icons.schedule_outlined,
-            label: 'Paid At',
-            value: _formatDate(payment.paidAt!),
-          ),
-        ],
+          if (_hasValue(paymentProof?.bankName)) ...[
+            const SizedBox(height: 11),
+            _InfoRow(
+              icon: Icons.account_balance_outlined,
+              label: 'Bank',
+              value: paymentProof!.bankName!.trim(),
+            ),
+          ],
 
-        if (payment.paymentProofUrl != null &&
-            payment.paymentProofUrl!.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: onViewProof,
-              icon: const Icon(Icons.receipt_long_outlined, size: 18),
-              label: const Text('View Payment Proof'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.primary,
-                side: BorderSide(color: AppColors.borderPrimary),
-                minimumSize: const Size(double.infinity, 44),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+          if (_hasValue(paymentProof?.accountHolderName)) ...[
+            const SizedBox(height: 11),
+            _InfoRow(
+              icon: Icons.person_outline_rounded,
+              label: 'Account Holder',
+              value: paymentProof!.accountHolderName!.trim(),
+            ),
+          ],
+
+          if (_hasValue(paymentProof?.verificationStatus)) ...[
+            const SizedBox(height: 11),
+            _InfoRow(
+              icon: Icons.verified_outlined,
+              label: 'Verification',
+              value: _statusLabel(paymentProof!.verificationStatus),
+            ),
+          ],
+
+          if (_hasValue(paymentProof?.notes)) ...[
+            const SizedBox(height: 14),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.backgroundSecondary,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                paymentProof!.notes!.trim(),
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: AppColors.textSecondary,
                 ),
               ),
             ),
-          ),
+          ],
         ],
-
-        if (payment.notes != null && payment.notes!.isNotEmpty) ...[
-          const SizedBox(height: 14),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.backgroundSecondary,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(
-              payment.notes!,
-              style: AppTextStyles.bodySmall.copyWith(
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ),
-        ],
-      ],
+      ),
     );
   }
 
-  Color _statusColor(OrderPaymentStatus status) {
-    switch (status) {
-      case OrderPaymentStatus.paid:
-        return AppColors.success;
-      case OrderPaymentStatus.failed:
-        return AppColors.error;
-      case OrderPaymentStatus.refunded:
-      case OrderPaymentStatus.partiallyRefunded:
-        return AppColors.warning;
-      case OrderPaymentStatus.pending:
-      case OrderPaymentStatus.unknown:
-        return AppColors.textSecondary;
-    }
+  bool _hasValue(String? value) {
+    return value != null && value.trim().isNotEmpty;
   }
 
-  String _formatDate(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}/'
-        '${date.month.toString().padLeft(2, '0')}/'
-        '${date.year} '
-        '${date.hour.toString().padLeft(2, '0')}:'
-        '${date.minute.toString().padLeft(2, '0')}';
+  String _formatAmount(num? amount) {
+    if (amount == null) {
+      return '-';
+    }
+
+    return amount.toStringAsFixed(2);
+  }
+
+  String _statusLabel(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'N/A';
+    }
+
+    return value
+        .trim()
+        .split('_')
+        .map(
+          (word) => word.isEmpty
+              ? word
+              : '${word[0].toUpperCase()}'
+                    '${word.substring(1)}',
+        )
+        .join(' ');
+  }
+
+  Color _statusColor(String? value) {
+    switch (value?.trim().toLowerCase()) {
+      case 'paid':
+        return AppColors.success;
+      case 'failed':
+        return AppColors.error;
+      case 'verification_required':
+      case 'pending':
+        return AppColors.warning;
+      case 'refunded':
+        return AppColors.warning;
+      default:
+        return AppColors.textSecondary;
+    }
   }
 }
 
@@ -258,27 +279,6 @@ class _InfoRow extends StatelessWidget {
                 ),
               ),
             ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _EmptyPayment extends StatelessWidget {
-  const _EmptyPayment();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const _Header(),
-        const SizedBox(height: 18),
-        Text(
-          'No payment information available',
-          style: AppTextStyles.bodySmall.copyWith(
-            color: AppColors.textSecondary,
           ),
         ),
       ],

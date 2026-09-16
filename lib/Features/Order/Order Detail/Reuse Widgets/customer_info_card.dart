@@ -7,10 +7,22 @@ import '../Models/order_detail_model.dart';
 class CustomerInfoCard extends StatelessWidget {
   const CustomerInfoCard({super.key, required this.order});
 
-  final OrderDetailModel order;
+  final VendorOrderDetailModel order;
 
   @override
   Widget build(BuildContext context) {
+    final customer = order.customer;
+
+    final firstName = customer?.firstName?.trim() ?? '';
+    final lastName = customer?.lastName?.trim() ?? '';
+
+    final customerName = [
+      firstName,
+      lastName,
+    ].where((value) => value.isNotEmpty).join(' ');
+
+    final displayName = customerName.isEmpty ? 'Customer' : customerName;
+
     return _InfoCard(
       icon: Icons.person_outline_rounded,
       title: 'Customer Information',
@@ -19,16 +31,13 @@ class CustomerInfoCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              _Avatar(
-                name: order.customer.name,
-                imageUrl: order.customer.avatarUrl,
-              ),
+              _Avatar(name: displayName),
 
               const SizedBox(width: 12),
 
               Expanded(
                 child: Text(
-                  order.customer.name,
+                  displayName,
                   style: AppTextStyles.productName.copyWith(
                     color: AppColors.navy,
                   ),
@@ -37,14 +46,12 @@ class CustomerInfoCard extends StatelessWidget {
             ],
           ),
 
-          if (_hasValue(order.customer.email)) ...[
+          if (_hasValue(customer?.email)) ...[
             const SizedBox(height: 16),
-            _InfoRow(icon: Icons.email_outlined, value: order.customer.email!),
-          ],
-
-          if (_hasValue(order.customer.phone)) ...[
-            const SizedBox(height: 11),
-            _InfoRow(icon: Icons.phone_outlined, value: order.customer.phone!),
+            _InfoRow(
+              icon: Icons.email_outlined,
+              value: customer!.email!.trim(),
+            ),
           ],
         ],
       ),
@@ -108,15 +115,12 @@ class _InfoCard extends StatelessWidget {
 }
 
 class _Avatar extends StatelessWidget {
-  const _Avatar({required this.name, this.imageUrl});
+  const _Avatar({required this.name});
 
   final String name;
-  final String? imageUrl;
 
   @override
   Widget build(BuildContext context) {
-    final hasImage = imageUrl != null && imageUrl!.trim().isNotEmpty;
-
     return Container(
       width: 48,
       height: 48,
@@ -125,16 +129,7 @@ class _Avatar extends StatelessWidget {
         shape: BoxShape.circle,
         border: Border.all(color: AppColors.borderPrimary),
       ),
-      clipBehavior: Clip.antiAlias,
-      child: hasImage
-          ? Image.network(
-              imageUrl!,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) {
-                return _Initials(name: name);
-              },
-            )
-          : _Initials(name: name),
+      child: _Initials(name: name),
     );
   }
 }

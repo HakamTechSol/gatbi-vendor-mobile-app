@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
-import '../Models/order_model.dart';
 
 class OrdersStatusTabs extends StatelessWidget {
   const OrdersStatusTabs({
@@ -11,16 +10,17 @@ class OrdersStatusTabs extends StatelessWidget {
     required this.onStatusChanged,
   });
 
-  final OrderStatus? selectedStatus;
-  final ValueChanged<OrderStatus?> onStatusChanged;
+  final String? selectedStatus;
+
+  final ValueChanged<String?> onStatusChanged;
 
   static const List<_OrderStatusTab> _tabs = [
     _OrderStatusTab(label: 'All', status: null),
-    _OrderStatusTab(label: 'Pending', status: OrderStatus.pending),
-    _OrderStatusTab(label: 'Processing', status: OrderStatus.processing),
-    _OrderStatusTab(label: 'Shipped', status: OrderStatus.shipped),
-    _OrderStatusTab(label: 'Delivered', status: OrderStatus.delivered),
-    _OrderStatusTab(label: 'Cancelled', status: OrderStatus.cancelled),
+    _OrderStatusTab(label: 'Pending', status: 'pending'),
+    _OrderStatusTab(label: 'Processing', status: 'processing'),
+    _OrderStatusTab(label: 'Shipped', status: 'shipped'),
+    _OrderStatusTab(label: 'Delivered', status: 'delivered'),
+    _OrderStatusTab(label: 'Cancelled', status: 'cancelled'),
   ];
 
   @override
@@ -31,7 +31,9 @@ class OrdersStatusTabs extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
         itemCount: _tabs.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        separatorBuilder: (_, __) {
+          return const SizedBox(width: 8);
+        },
         itemBuilder: (context, index) {
           final tab = _tabs[index];
 
@@ -40,7 +42,9 @@ class OrdersStatusTabs extends StatelessWidget {
           return _StatusTab(
             label: tab.label,
             isSelected: isSelected,
-            onTap: () => onStatusChanged(tab.status),
+            onTap: () {
+              onStatusChanged(tab.status);
+            },
           );
         },
       ),
@@ -52,7 +56,7 @@ class _OrderStatusTab {
   const _OrderStatusTab({required this.label, required this.status});
 
   final String label;
-  final OrderStatus? status;
+  final String? status;
 }
 
 class _StatusTab extends StatelessWidget {

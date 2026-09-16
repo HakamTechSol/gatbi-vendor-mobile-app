@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
+import '../Models/order_shipping_address_model.dart';
 
 class ShippingAddressCard extends StatelessWidget {
   const ShippingAddressCard({
@@ -10,7 +11,7 @@ class ShippingAddressCard extends StatelessWidget {
     this.title = 'Shipping Address',
   });
 
-  final Map<String, dynamic>? address;
+  final VendorOrderShippingAddressModel? address;
   final String title;
 
   @override
@@ -22,17 +23,22 @@ class ShippingAddressCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: AppColors.border,
+        ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.shadowStrong.withValues(alpha: 0.04),
+            color: AppColors.shadowStrong.withValues(
+              alpha: 0.04,
+            ),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
         children: [
           Row(
             children: [
@@ -63,7 +69,8 @@ class ShippingAddressCard extends StatelessWidget {
             )
           else
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
               children: [
                 const Icon(
                   Icons.home_outlined,
@@ -74,7 +81,8 @@ class ShippingAddressCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     lines.join('\n'),
-                    style: AppTextStyles.bodySmall.copyWith(
+                    style:
+                        AppTextStyles.bodySmall.copyWith(
                       color: AppColors.textPrimary,
                       height: 1.55,
                     ),
@@ -88,38 +96,42 @@ class ShippingAddressCard extends StatelessWidget {
   }
 
   List<String> _buildAddressLines() {
-    if (address == null || address!.isEmpty) {
+    final currentAddress = address;
+
+    if (currentAddress == null) {
       return [];
     }
 
-    final keys = [
-      'name',
-      'address',
-      'address_line_1',
-      'address_line_2',
-      'street',
-      'area',
-      'city',
-      'state',
-      'country',
-      'postal_code',
-      'zip_code',
-    ];
-
     final lines = <String>[];
 
-    for (final key in keys) {
-      final value = address![key];
-
-      if (value != null && value.toString().trim().isNotEmpty) {
-        final text = value.toString().trim();
-
-        if (!lines.contains(text)) {
-          lines.add(text);
-        }
-      }
-    }
+    _add(lines, currentAddress.fullName);
+    _add(lines, currentAddress.phone);
+    _add(lines, currentAddress.addressLine1);
+    _add(lines, currentAddress.addressLine2);
+    _add(lines, currentAddress.city);
+    _add(lines, currentAddress.state);
+    _add(lines, currentAddress.postalCode);
+    _add(lines, currentAddress.country);
 
     return lines;
+  }
+
+  void _add(
+    List<String> lines,
+    String? value,
+  ) {
+    if (value == null) {
+      return;
+    }
+
+    final text = value.trim();
+
+    if (text.isEmpty) {
+      return;
+    }
+
+    if (!lines.contains(text)) {
+      lines.add(text);
+    }
   }
 }

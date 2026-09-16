@@ -24,7 +24,7 @@ class OrdersSearchBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border, width: 1),
+        border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
             color: AppColors.shadowStrong.withValues(alpha: 0.05),
@@ -33,41 +33,46 @@ class OrdersSearchBar extends StatelessWidget {
           ),
         ],
       ),
-      child: TextField(
-        controller: controller,
-        onChanged: onChanged,
-        textInputAction: TextInputAction.search,
-        style: AppTextStyles.bodyMedium.copyWith(
-          color: AppColors.navy,
-          fontSize: 12.5,
-        ),
-        decoration: InputDecoration(
-          hintText: hintText,
-          hintStyle: AppTextStyles.bodyMedium.copyWith(
-            color: AppColors.textSecondary,
-            fontSize: 12,
-          ),
-          prefixIcon: const Icon(
-            Icons.search_rounded,
-            color: AppColors.textSecondary,
-            size: 21,
-          ),
-          suffixIcon: controller.text.isEmpty
-              ? null
-              : IconButton(
-                  onPressed: onClear,
-                  icon: const Icon(
-                    Icons.close_rounded,
-                    size: 18,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 14,
-            vertical: 13,
-          ),
-        ),
+      child: ValueListenableBuilder<TextEditingValue>(
+        valueListenable: controller,
+        builder: (context, value, child) {
+          return TextField(
+            controller: controller,
+            onChanged: onChanged,
+            textInputAction: TextInputAction.search,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: AppColors.navy,
+              fontSize: 12.5,
+            ),
+            decoration: InputDecoration(
+              hintText: hintText,
+              hintStyle: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+              ),
+              prefixIcon: const Icon(
+                Icons.search_rounded,
+                color: AppColors.textSecondary,
+                size: 21,
+              ),
+              suffixIcon: value.text.isEmpty
+                  ? null
+                  : IconButton(
+                      onPressed: onClear,
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        size: 18,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 13,
+              ),
+            ),
+          );
+        },
       ),
     );
   }

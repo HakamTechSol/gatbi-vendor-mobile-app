@@ -2,17 +2,26 @@ import 'package:flutter/material.dart';
 
 import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
+import '../Models/order_payment_proof_model.dart';
 
 class PaymentProofCard extends StatelessWidget {
-  const PaymentProofCard({super.key, this.paymentProofUrl, this.onView});
+  const PaymentProofCard({
+    super.key,
+    required this.paymentProof,
+    this.onView,
+  });
 
-  final String? paymentProofUrl;
+  final VendorOrderPaymentProofModel paymentProof;
   final VoidCallback? onView;
 
   @override
   Widget build(BuildContext context) {
+    final imageUrl =
+        paymentProof.proofImageUrl;
+
     final hasProof =
-        paymentProofUrl != null && paymentProofUrl!.trim().isNotEmpty;
+        imageUrl != null &&
+        imageUrl.trim().isNotEmpty;
 
     return Container(
       width: double.infinity,
@@ -20,26 +29,34 @@ class PaymentProofCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: AppColors.border,
+        ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.shadowStrong.withValues(alpha: 0.04),
+            color: AppColors.shadowStrong.withValues(
+              alpha: 0.04,
+            ),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
         children: [
           const _Header(),
 
           const SizedBox(height: 16),
 
           if (!hasProof)
-            _EmptyProof()
+            const _EmptyProof()
           else
-            _ProofContent(imageUrl: paymentProofUrl!, onView: onView),
+            _ProofContent(
+              imageUrl: imageUrl!,
+              onView: onView,
+            ),
         ],
       ),
     );
@@ -72,7 +89,10 @@ class _Header extends StatelessWidget {
 }
 
 class _ProofContent extends StatelessWidget {
-  const _ProofContent({required this.imageUrl, this.onView});
+  const _ProofContent({
+    required this.imageUrl,
+    this.onView,
+  });
 
   final String imageUrl;
   final VoidCallback? onView;
@@ -88,8 +108,11 @@ class _ProofContent extends StatelessWidget {
             height: 190,
             decoration: BoxDecoration(
               color: AppColors.inputBackground,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.border),
+              borderRadius:
+                  BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColors.border,
+              ),
             ),
             clipBehavior: Clip.antiAlias,
             child: Image.network(
@@ -97,6 +120,16 @@ class _ProofContent extends StatelessWidget {
               fit: BoxFit.cover,
               errorBuilder: (_, __, ___) {
                 return const _ImageError();
+              },
+              loadingBuilder:
+                  (context, child, progress) {
+                if (progress == null) {
+                  return child;
+                }
+
+                return const Center(
+                  child: CircularProgressIndicator(),
+                );
               },
             ),
           ),
@@ -108,14 +141,30 @@ class _ProofContent extends StatelessWidget {
           width: double.infinity,
           child: OutlinedButton.icon(
             onPressed: onView,
-            icon: const Icon(Icons.open_in_new_rounded, size: 17),
-            label: const Text('View Payment Proof'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.primary,
-              side: BorderSide(color: AppColors.borderPrimary),
-              minimumSize: const Size(double.infinity, 44),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+            icon: const Icon(
+              Icons.open_in_new_rounded,
+              size: 17,
+            ),
+            label: const Text(
+              'View Payment Proof',
+            ),
+            style:
+                OutlinedButton.styleFrom(
+              foregroundColor:
+                  AppColors.primary,
+              side: BorderSide(
+                color:
+                    AppColors.borderPrimary,
+              ),
+              minimumSize:
+                  const Size(
+                double.infinity,
+                44,
+              ),
+              shape:
+                  RoundedRectangleBorder(
+                borderRadius:
+                    BorderRadius.circular(10),
               ),
             ),
           ),
@@ -142,8 +191,10 @@ class _ImageError extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             'Unable to load payment proof',
-            style: AppTextStyles.bodySmall.copyWith(
-              color: AppColors.textSecondary,
+            style:
+                AppTextStyles.bodySmall.copyWith(
+              color:
+                  AppColors.textSecondary,
             ),
           ),
         ],
@@ -159,10 +210,15 @@ class _EmptyProof extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 26),
+      padding:
+          const EdgeInsets.symmetric(
+        vertical: 26,
+      ),
       decoration: BoxDecoration(
-        color: AppColors.backgroundSecondary,
-        borderRadius: BorderRadius.circular(12),
+        color:
+            AppColors.backgroundSecondary,
+        borderRadius:
+            BorderRadius.circular(12),
       ),
       child: Column(
         children: [
@@ -174,9 +230,12 @@ class _EmptyProof extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             'No payment proof uploaded',
-            style: AppTextStyles.bodySmall.copyWith(
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w600,
+            style:
+                AppTextStyles.bodySmall.copyWith(
+              color:
+                  AppColors.textSecondary,
+              fontWeight:
+                  FontWeight.w600,
             ),
           ),
         ],

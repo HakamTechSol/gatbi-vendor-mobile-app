@@ -1,5 +1,3 @@
-// lib/features/chat/presentation/widgets/chat_input_field.dart
-
 import 'package:flutter/material.dart';
 
 import '../../../../Theme/app_colors.dart';
@@ -26,16 +24,41 @@ class _ChatInputFieldState extends State<ChatInputField> {
   bool _hasText = false;
   bool _showEmojiPicker = false;
 
-  final FocusNode _focusNode = FocusNode();
+  late final FocusNode _focusNode;
 
   @override
   void initState() {
     super.initState();
 
+    _focusNode = FocusNode();
+
     _hasText = widget.controller.text.trim().isNotEmpty;
 
     widget.controller.addListener(_onTextChanged);
     _focusNode.addListener(_onFocusChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant ChatInputField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // If sending starts, close emoji picker and remove focus.
+    if (!oldWidget.isLoading && widget.isLoading) {
+      if (_showEmojiPicker && mounted) {
+        setState(() {
+          _showEmojiPicker = false;
+        });
+      }
+
+      _focusNode.unfocus();
+    }
+
+    // If sending finishes, focus can be returned to input.
+    if (oldWidget.isLoading && !widget.isLoading) {
+      if (mounted && widget.controller.text.trim().isNotEmpty) {
+        _focusNode.requestFocus();
+      }
+    }
   }
 
   @override
@@ -52,9 +75,11 @@ class _ChatInputFieldState extends State<ChatInputField> {
   // ============================================================
 
   void _onTextChanged() {
+    if (!mounted) return;
+
     final hasText = widget.controller.text.trim().isNotEmpty;
 
-    if (hasText != _hasText && mounted) {
+    if (hasText != _hasText) {
       setState(() {
         _hasText = hasText;
       });
@@ -66,6 +91,8 @@ class _ChatInputFieldState extends State<ChatInputField> {
   // ============================================================
 
   void _onFocusChanged() {
+    if (!mounted) return;
+
     if (_focusNode.hasFocus && _showEmojiPicker) {
       setState(() {
         _showEmojiPicker = false;
@@ -86,9 +113,9 @@ class _ChatInputFieldState extends State<ChatInputField> {
       });
 
       Future.delayed(const Duration(milliseconds: 100), () {
-        if (mounted) {
-          _focusNode.requestFocus();
-        }
+        if (!mounted || widget.isLoading) return;
+
+        _focusNode.requestFocus();
       });
     } else {
       _focusNode.unfocus();
@@ -104,15 +131,16 @@ class _ChatInputFieldState extends State<ChatInputField> {
   // ============================================================
 
   void _onEmojiSelected(String emoji) {
-    final text = widget.controller.text;
+    if (widget.isLoading) return;
 
+    final text = widget.controller.text;
     final selection = widget.controller.selection;
 
     int start = selection.start;
     int end = selection.end;
 
-    // Safety if cursor position is invalid
-    if (start < 0 || end < 0) {
+    // Safety for invalid selection positions.
+    if (start < 0 || end < 0 || start > text.length || end > text.length) {
       start = text.length;
       end = text.length;
     }
@@ -123,6 +151,11 @@ class _ChatInputFieldState extends State<ChatInputField> {
       text: newText,
       selection: TextSelection.collapsed(offset: start + emoji.length),
     );
+
+    // Keep keyboard active after selecting emoji.
+    if (!_focusNode.hasFocus && mounted) {
+      _focusNode.requestFocus();
+    }
   }
 
   // ============================================================
@@ -138,8 +171,8 @@ class _ChatInputFieldState extends State<ChatInputField> {
 
     widget.onSend(message);
 
-    // Close emoji picker after sending
-    if (_showEmojiPicker) {
+    // Close emoji picker after send.
+    if (_showEmojiPicker && mounted) {
       setState(() {
         _showEmojiPicker = false;
       });
@@ -152,6 +185,8 @@ class _ChatInputFieldState extends State<ChatInputField> {
 
   @override
   Widget build(BuildContext context) {
+    final canSend = _hasText && !widget.isLoading;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -216,9 +251,13 @@ class _ChatInputFieldState extends State<ChatInputField> {
                     child: TextField(
                       controller: widget.controller,
                       focusNode: _focusNode,
+
+                      // Disable input while sending.
                       enabled: !widget.isLoading,
+
                       minLines: 1,
                       maxLines: 4,
+
                       textInputAction: TextInputAction.send,
                       keyboardType: TextInputType.multiline,
 
@@ -256,7 +295,8 @@ class _ChatInputFieldState extends State<ChatInputField> {
                   // SEND BUTTON
                   // ==================================================
                   GestureDetector(
-                    onTap: _hasText && !widget.isLoading ? _sendMessage : null,
+                    onTap: canSend ? _sendMessage : null,
+                    behavior: HitTestBehavior.opaque,
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       width: 42,
@@ -264,23 +304,20 @@ class _ChatInputFieldState extends State<ChatInputField> {
                       margin: const EdgeInsets.only(right: 2),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: _hasText
+                        color: canSend
                             ? AppColors.primary
                             : AppColors.surfaceMuted,
                       ),
                       child: widget.isLoading
-                          ? SizedBox(
+                          ? const SizedBox(
                               width: 18,
                               height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AppColors.primary,
-                              ),
+                              child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : Icon(
                               Icons.send_rounded,
                               size: 20,
-                              color: _hasText
+                              color: canSend
                                   ? Colors.white
                                   : AppColors.textMuted,
                             ),

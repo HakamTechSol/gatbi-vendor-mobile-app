@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
-import '../../../../Core/Custom Widgets/custom_button.dart';
 import '../../../../Theme/app_colors.dart';
+import '../../../../Theme/app_text_styles.dart';
 
 class PaymentActionButtons extends StatelessWidget {
   const PaymentActionButtons({
     super.key,
-    this.onApprove,
-    this.onReject,
+    required this.onApprove,
+    required this.onReject,
     this.isLoading = false,
   });
 
@@ -20,31 +20,48 @@ class PaymentActionButtons extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: CustomButton(
-            text: 'Reject',
-            type: CustomButtonType.outlined,
-            icon: Icons.close_rounded,
-            height: 46,
-            borderRadius: 10,
-            borderColor: AppColors.errorBorder,
-            foregroundColor: AppColors.error,
+          child: OutlinedButton.icon(
             onPressed: isLoading ? null : onReject,
+            icon: const Icon(Icons.close_rounded, size: 18),
+            label: const Text('Reject'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.error,
+              side: BorderSide(color: AppColors.error.withValues(alpha: 0.35)),
+              minimumSize: const Size(double.infinity, 46),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              textStyle: AppTextStyles.buttonText,
+            ),
           ),
         ),
 
         const SizedBox(width: 10),
 
         Expanded(
-          child: CustomButton(
-            text: isLoading ? 'Processing...' : 'Approve',
-            type: CustomButtonType.primary,
-            icon: isLoading ? null : Icons.check_rounded,
-            height: 46,
-            borderRadius: 10,
-            backgroundColor: AppColors.success,
-            foregroundColor: AppColors.white,
-            isLoading: isLoading,
+          child: ElevatedButton.icon(
             onPressed: isLoading ? null : onApprove,
+            icon: isLoading
+                ? const SizedBox(
+                    width: 17,
+                    height: 17,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.white,
+                    ),
+                  )
+                : const Icon(Icons.check_rounded, size: 18),
+            label: Text(isLoading ? 'Processing...' : 'Accept'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.success,
+              foregroundColor: AppColors.white,
+              elevation: 0,
+              minimumSize: const Size(double.infinity, 46),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              textStyle: AppTextStyles.buttonText,
+            ),
           ),
         ),
       ],

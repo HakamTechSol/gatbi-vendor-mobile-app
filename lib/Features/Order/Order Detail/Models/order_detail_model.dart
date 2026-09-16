@@ -1,208 +1,215 @@
-import '../../Order List/Models/order_customer_model.dart';
-import '../../Order List/Models/order_model.dart';
+import 'order_detail_customer_model.dart';
 import 'order_detail_item_model.dart';
-import 'order_payment_model.dart';
-import 'order_timeline_model.dart';
+import 'order_shipping_address_model.dart';
+import 'order_status_history_model.dart';
+import 'order_tracking_model.dart';
 
-class OrderDetailModel {
-  const OrderDetailModel({
-    required this.id,
-    required this.orderNumber,
-    required this.status,
-    required this.totalAmount,
-    required this.createdAt,
-    required this.customer,
-    this.items = const [],
-    this.payment,
-    this.timeline = const [],
-    this.currency = 'AED',
+class VendorOrderDetailModel {
+  const VendorOrderDetailModel({
+    this.id,
+    this.orderNumber,
+    this.status,
+    this.paymentStatus,
+    this.paymentMethod,
+    this.currency,
+    this.currencySymbol,
+    this.total,
+    this.shipping,
+    this.tax,
     this.subtotal,
-    this.shippingAmount,
-    this.discountAmount,
-    this.taxAmount,
+    this.createdAt,
+    this.items = const [],
+    this.statusHistory = const [],
+    this.tracking = const [],
     this.shippingAddress,
-    this.billingAddress,
-    this.notes,
-    this.paymentProofUrl,
+    this.customer,
   });
 
-  final String id;
-  final String orderNumber;
-  final OrderStatus status;
-  final double totalAmount;
-  final DateTime createdAt;
+  // ============================================================
+  // Order Fields
+  // ============================================================
 
-  final OrderCustomerModel customer;
+  final int? id;
+  final String? orderNumber;
+  final String? status;
+  final String? paymentStatus;
+  final String? paymentMethod;
+  final String? currency;
+  final String? currencySymbol;
 
-  final List<OrderDetailItemModel> items;
+  final num? total;
+  final num? shipping;
+  final num? tax;
+  final num? subtotal;
 
-  final OrderPaymentModel? payment;
+  final String? createdAt;
 
-  final List<OrderTimelineModel> timeline;
+  // ============================================================
+  // Nested Data
+  // ============================================================
 
-  final String currency;
+  final List<VendorOrderDetailItemModel> items;
 
-  final double? subtotal;
-  final double? shippingAmount;
-  final double? discountAmount;
-  final double? taxAmount;
+  final List<VendorOrderStatusHistoryModel> statusHistory;
 
-  final Map<String, dynamic>? shippingAddress;
-  final Map<String, dynamic>? billingAddress;
+  final List<VendorOrderTrackingModel> tracking;
 
-  final String? notes;
-  final String? paymentProofUrl;
+  final VendorOrderShippingAddressModel? shippingAddress;
 
-  int get itemCount {
-    return items.fold(0, (sum, item) => sum + item.quantity);
-  }
+  final VendorOrderDetailCustomerModel? customer;
 
-  factory OrderDetailModel.fromJson(Map<String, dynamic> json) {
-    return OrderDetailModel(
-      id: json['id']?.toString() ?? '',
-      orderNumber:
-          json['order_number']?.toString() ??
-          json['orderNumber']?.toString() ??
-          '',
-      status: OrderStatusExtension.fromString(json['status']?.toString()),
-      totalAmount: _parseDouble(json['total_amount']),
-      createdAt:
-          DateTime.tryParse(json['created_at']?.toString() ?? '') ??
-          DateTime.now(),
-      customer: json['customer'] is Map<String, dynamic>
-          ? OrderCustomerModel.fromJson(
-              json['customer'] as Map<String, dynamic>,
+  // ============================================================
+  // From JSON
+  // ============================================================
+
+  factory VendorOrderDetailModel.fromJson(
+    Map<String, dynamic>? json,
+  ) {
+    if (json == null) {
+      return const VendorOrderDetailModel();
+    }
+
+    return VendorOrderDetailModel(
+      id: _parseInt(json['id']),
+      orderNumber: _parseString(json['order_number']),
+      status: _parseString(json['status']),
+      paymentStatus: _parseString(json['payment_status']),
+      paymentMethod: _parseString(json['payment_method']),
+      currency: _parseString(json['currency']),
+      currencySymbol: _parseString(json['currency_symbol']),
+      total: _parseNum(json['total']),
+      shipping: _parseNum(json['shipping']),
+      tax: _parseNum(json['tax']),
+      subtotal: _parseNum(json['subtotal']),
+      createdAt: _parseString(json['created_at']),
+
+      items: _parseList(
+        json['items'],
+        VendorOrderDetailItemModel.fromJson,
+      ),
+
+      statusHistory: _parseList(
+        json['status_history'],
+        VendorOrderStatusHistoryModel.fromJson,
+      ),
+
+      tracking: _parseList(
+        json['tracking'],
+        VendorOrderTrackingModel.fromJson,
+      ),
+
+      shippingAddress: json['shipping_address'] is Map
+          ? VendorOrderShippingAddressModel.fromJson(
+              Map<String, dynamic>.from(
+                json['shipping_address'] as Map,
+              ),
             )
-          : const OrderCustomerModel(id: '', name: ''),
-      items: _parseItems(json['items']),
-      payment: json['payment'] is Map<String, dynamic>
-          ? OrderPaymentModel.fromJson(json['payment'] as Map<String, dynamic>)
           : null,
-      timeline: _parseTimeline(json['timeline']),
-      currency: json['currency']?.toString() ?? 'AED',
-      subtotal: _parseNullableDouble(json['subtotal']),
-      shippingAmount: _parseNullableDouble(json['shipping_amount']),
-      discountAmount: _parseNullableDouble(json['discount_amount']),
-      taxAmount: _parseNullableDouble(json['tax_amount']),
-      shippingAddress: _parseMap(json['shipping_address']),
-      billingAddress: _parseMap(json['billing_address']),
-      notes: json['notes']?.toString(),
-      paymentProofUrl: json['payment_proof_url']?.toString(),
+
+      customer: json['customer'] is Map
+          ? VendorOrderDetailCustomerModel.fromJson(
+              Map<String, dynamic>.from(
+                json['customer'] as Map,
+              ),
+            )
+          : null,
     );
   }
+
+  // ============================================================
+  // To JSON
+  // ============================================================
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'order_number': orderNumber,
-      'status': status.value,
-      'total_amount': totalAmount,
-      'created_at': createdAt.toIso8601String(),
-      'customer': customer.toJson(),
-      'items': items.map((item) => item.toJson()).toList(),
-      'payment': payment?.toJson(),
-      'timeline': timeline.map((item) => item.toJson()).toList(),
+      'status': status,
+      'payment_status': paymentStatus,
+      'payment_method': paymentMethod,
       'currency': currency,
+      'currency_symbol': currencySymbol,
+      'total': total,
+      'shipping': shipping,
+      'tax': tax,
       'subtotal': subtotal,
-      'shipping_amount': shippingAmount,
-      'discount_amount': discountAmount,
-      'tax_amount': taxAmount,
-      'shipping_address': shippingAddress,
-      'billing_address': billingAddress,
-      'notes': notes,
-      'payment_proof_url': paymentProofUrl,
+      'created_at': createdAt,
+      'items': items.map((e) => e.toJson()).toList(),
+      'status_history':
+          statusHistory.map((e) => e.toJson()).toList(),
+      'tracking': tracking.map((e) => e.toJson()).toList(),
+      'shipping_address': shippingAddress?.toJson(),
+      'customer': customer?.toJson(),
     };
   }
 
-  OrderDetailModel copyWith({
-    String? id,
-    String? orderNumber,
-    OrderStatus? status,
-    double? totalAmount,
-    DateTime? createdAt,
-    OrderCustomerModel? customer,
-    List<OrderDetailItemModel>? items,
-    OrderPaymentModel? payment,
-    List<OrderTimelineModel>? timeline,
-    String? currency,
-    double? subtotal,
-    double? shippingAmount,
-    double? discountAmount,
-    double? taxAmount,
-    Map<String, dynamic>? shippingAddress,
-    Map<String, dynamic>? billingAddress,
-    String? notes,
-    String? paymentProofUrl,
-  }) {
-    return OrderDetailModel(
-      id: id ?? this.id,
-      orderNumber: orderNumber ?? this.orderNumber,
-      status: status ?? this.status,
-      totalAmount: totalAmount ?? this.totalAmount,
-      createdAt: createdAt ?? this.createdAt,
-      customer: customer ?? this.customer,
-      items: items ?? this.items,
-      payment: payment ?? this.payment,
-      timeline: timeline ?? this.timeline,
-      currency: currency ?? this.currency,
-      subtotal: subtotal ?? this.subtotal,
-      shippingAmount: shippingAmount ?? this.shippingAmount,
-      discountAmount: discountAmount ?? this.discountAmount,
-      taxAmount: taxAmount ?? this.taxAmount,
-      shippingAddress: shippingAddress ?? this.shippingAddress,
-      billingAddress: billingAddress ?? this.billingAddress,
-      notes: notes ?? this.notes,
-      paymentProofUrl: paymentProofUrl ?? this.paymentProofUrl,
-    );
-  }
+  // ============================================================
+  // Helpers
+  // ============================================================
 
-  static List<OrderDetailItemModel> _parseItems(dynamic value) {
-    if (value is! List) {
-      return const [];
+  static String? _parseString(dynamic value) {
+    if (value == null) {
+      return null;
     }
 
-    return value
-        .whereType<Map<String, dynamic>>()
-        .map(OrderDetailItemModel.fromJson)
-        .toList();
-  }
-
-  static List<OrderTimelineModel> _parseTimeline(dynamic value) {
-    if (value is! List) {
-      return const [];
-    }
-
-    return value
-        .whereType<Map<String, dynamic>>()
-        .map(OrderTimelineModel.fromJson)
-        .toList();
-  }
-
-  static Map<String, dynamic>? _parseMap(dynamic value) {
-    if (value is Map<String, dynamic>) {
+    if (value is String) {
       return value;
+    }
+
+    return value.toString();
+  }
+
+  static int? _parseInt(dynamic value) {
+    if (value == null) {
+      return null;
+    }
+
+    if (value is int) {
+      return value;
+    }
+
+    if (value is num) {
+      return value.toInt();
+    }
+
+    if (value is String) {
+      return int.tryParse(value);
     }
 
     return null;
   }
 
-  static double _parseDouble(dynamic value) {
-    if (value is num) {
-      return value.toDouble();
-    }
-
-    return double.tryParse(value?.toString() ?? '') ?? 0.0;
-  }
-
-  static double? _parseNullableDouble(dynamic value) {
+  static num? _parseNum(dynamic value) {
     if (value == null) {
       return null;
     }
 
     if (value is num) {
-      return value.toDouble();
+      return value;
     }
 
-    return double.tryParse(value.toString());
+    if (value is String) {
+      return num.tryParse(value);
+    }
+
+    return null;
+  }
+
+  static List<T> _parseList<T>(
+    dynamic value,
+    T Function(Map<String, dynamic>) fromJson,
+  ) {
+    if (value is! List) {
+      return const [];
+    }
+
+    return value
+        .whereType<Map>()
+        .map(
+          (item) => fromJson(
+            Map<String, dynamic>.from(item),
+          ),
+        )
+        .toList();
   }
 }

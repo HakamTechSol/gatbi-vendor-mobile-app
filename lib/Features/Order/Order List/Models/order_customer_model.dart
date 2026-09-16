@@ -1,51 +1,47 @@
-class OrderCustomerModel {
-  const OrderCustomerModel({
-    required this.id,
-    required this.name,
-    this.email,
-    this.phone,
-    this.avatarUrl,
-  });
+class VendorOrderCustomerModel {
+  const VendorOrderCustomerModel({this.name, this.email});
 
-  final String id;
-  final String name;
+  // ============================================================
+  // Fields
+  // ============================================================
+
+  final String? name;
   final String? email;
-  final String? phone;
-  final String? avatarUrl;
 
-  factory OrderCustomerModel.fromJson(Map<String, dynamic> json) {
-    return OrderCustomerModel(
-      id: json['id']?.toString() ?? '',
-      name: json['name']?.toString() ?? '',
-      email: json['email']?.toString(),
-      phone: json['phone']?.toString(),
-      avatarUrl: json['avatar_url']?.toString(),
+  // ============================================================
+  // From JSON
+  // ============================================================
+
+  factory VendorOrderCustomerModel.fromJson(Map<String, dynamic>? json) {
+    if (json == null) {
+      return const VendorOrderCustomerModel();
+    }
+
+    return VendorOrderCustomerModel(
+      name: _parseString(json['name']),
+      email: _parseString(json['email']),
     );
   }
+
+  // ============================================================
+  // To JSON
+  // ============================================================
 
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'email': email,
-      'phone': phone,
-      'avatar_url': avatarUrl,
-    };
+    return {'name': name, 'email': email};
   }
 
-  OrderCustomerModel copyWith({
-    String? id,
-    String? name,
-    String? email,
-    String? phone,
-    String? avatarUrl,
-  }) {
-    return OrderCustomerModel(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      email: email ?? this.email,
-      phone: phone ?? this.phone,
-      avatarUrl: avatarUrl ?? this.avatarUrl,
-    );
+  // ============================================================
+  // Safe String Parser
+  // ============================================================
+
+  static String? _parseString(dynamic value) {
+    if (value == null) return null;
+
+    if (value is String) {
+      return value;
+    }
+
+    return value.toString();
   }
 }

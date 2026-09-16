@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
-import '../../Order List/Models/order_model.dart';
 
 class OrderStatusDropdown extends StatelessWidget {
   const OrderStatusDropdown({
@@ -13,23 +12,29 @@ class OrderStatusDropdown extends StatelessWidget {
     this.label = 'Order Status',
   });
 
-  final OrderStatus value;
-  final ValueChanged<OrderStatus>? onChanged;
+  final String value;
+  final ValueChanged<String>? onChanged;
   final bool enabled;
   final String label;
 
-  static const List<OrderStatus> availableStatuses = [
-    OrderStatus.pending,
-    OrderStatus.processing,
-    OrderStatus.shipped,
-    OrderStatus.delivered,
-    OrderStatus.cancelled,
+  static const List<String> availableStatuses = [
+    'pending',
+    'processing',
+    'shipped',
+    'delivered',
+    'cancelled',
   ];
 
   @override
   Widget build(BuildContext context) {
+    final safeValue =
+        availableStatuses.contains(value)
+            ? value
+            : availableStatuses.first;
+
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment:
+          CrossAxisAlignment.start,
       children: [
         Text(
           label,
@@ -41,10 +46,10 @@ class OrderStatusDropdown extends StatelessWidget {
 
         const SizedBox(height: 7),
 
-        DropdownButtonFormField<OrderStatus>(
-          initialValue: value,
+        DropdownButtonFormField<String>(
+          initialValue: safeValue,
           onChanged: enabled
-              ? (OrderStatus? newValue) {
+              ? (String? newValue) {
                   if (newValue != null) {
                     onChanged?.call(newValue);
                   }
@@ -61,18 +66,25 @@ class OrderStatusDropdown extends StatelessWidget {
           ),
           decoration: InputDecoration(
             filled: true,
-            fillColor: enabled ? AppColors.white : AppColors.inputBackground,
-            contentPadding: const EdgeInsets.symmetric(
+            fillColor: enabled
+                ? AppColors.white
+                : AppColors.inputBackground,
+            contentPadding:
+                const EdgeInsets.symmetric(
               horizontal: 14,
               vertical: 13,
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.border),
+              borderSide: const BorderSide(
+                color: AppColors.border,
+              ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.border),
+              borderSide: const BorderSide(
+                color: AppColors.border,
+              ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
@@ -83,17 +95,35 @@ class OrderStatusDropdown extends StatelessWidget {
             ),
             disabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.border),
+              borderSide: const BorderSide(
+                color: AppColors.border,
+              ),
             ),
           ),
-          items: availableStatuses.map((status) {
-            return DropdownMenuItem<OrderStatus>(
-              value: status,
-              child: Text(status.label),
-            );
-          }).toList(),
+          items: availableStatuses.map(
+            (status) {
+              return DropdownMenuItem<String>(
+                value: status,
+                child: Text(
+                  _statusLabel(status),
+                ),
+              );
+            },
+          ).toList(),
         ),
       ],
     );
+  }
+
+  String _statusLabel(String status) {
+    return status
+        .split('_')
+        .map(
+          (word) => word.isEmpty
+              ? word
+              : '${word[0].toUpperCase()}'
+                  '${word.substring(1)}',
+        )
+        .join(' ');
   }
 }

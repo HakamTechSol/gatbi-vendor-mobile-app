@@ -7,15 +7,17 @@ import '../Models/order_detail_model.dart';
 class OrderSummaryCard extends StatelessWidget {
   const OrderSummaryCard({super.key, required this.order});
 
-  final OrderDetailModel order;
+  final VendorOrderDetailModel order;
 
   @override
   Widget build(BuildContext context) {
+    final currency = _currency;
+
     return _SummaryCardContainer(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _SectionHeader(
+          const _SectionHeader(
             icon: Icons.receipt_long_outlined,
             title: 'Order Summary',
           ),
@@ -35,7 +37,7 @@ class OrderSummaryCard extends StatelessWidget {
               Expanded(
                 child: _SummaryItem(
                   label: 'Items',
-                  value: '${order.itemCount}',
+                  value: '${order.items.length}',
                   icon: Icons.shopping_bag_outlined,
                 ),
               ),
@@ -47,35 +49,21 @@ class OrderSummaryCard extends StatelessWidget {
           _AmountRow(
             label: 'Subtotal',
             amount: order.subtotal,
-            currency: order.currency,
+            currency: currency,
           ),
 
-          if (order.discountAmount != null) ...[
-            const SizedBox(height: 9),
-            _AmountRow(
-              label: 'Discount',
-              amount: order.discountAmount,
-              currency: order.currency,
-              isDiscount: true,
-            ),
-          ],
-
-          if (order.shippingAmount != null) ...[
+          if (order.shipping != null) ...[
             const SizedBox(height: 9),
             _AmountRow(
               label: 'Shipping',
-              amount: order.shippingAmount,
-              currency: order.currency,
+              amount: order.shipping,
+              currency: currency,
             ),
           ],
 
-          if (order.taxAmount != null) ...[
+          if (order.tax != null) ...[
             const SizedBox(height: 9),
-            _AmountRow(
-              label: 'Tax',
-              amount: order.taxAmount,
-              currency: order.currency,
-            ),
+            _AmountRow(label: 'Tax', amount: order.tax, currency: currency),
           ],
 
           const Padding(
@@ -94,7 +82,8 @@ class OrderSummaryCard extends StatelessWidget {
               ),
               const Spacer(),
               Text(
-                '${order.currency} ${order.totalAmount.toStringAsFixed(2)}',
+                '${_currencySymbol ?? currency} '
+                '${_formatAmount(order.total)}',
                 style: AppTextStyles.orderAmount,
               ),
             ],
@@ -104,7 +93,45 @@ class OrderSummaryCard extends StatelessWidget {
     );
   }
 
-  String _formatDate(DateTime date) {
+  String get _currency {
+    final value = order.currency?.trim();
+
+    if (value == null || value.isEmpty) {
+      return 'AED';
+    }
+
+    return value;
+  }
+
+  String? get _currencySymbol {
+    final value = order.currencySymbol?.trim();
+
+    if (value == null || value.isEmpty) {
+      return null;
+    }
+
+    return value;
+  }
+
+  String _formatAmount(num? amount) {
+    if (amount == null) {
+      return '-';
+    }
+
+    return amount.toStringAsFixed(2);
+  }
+
+  String _formatDate(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'N/A';
+    }
+
+    final date = DateTime.tryParse(value.replaceFirst(' ', 'T'));
+
+    if (date == null) {
+      return value;
+    }
+
     return '${date.day.toString().padLeft(2, '0')}/'
         '${date.month.toString().padLeft(2, '0')}/'
         '${date.year}';
@@ -211,13 +238,11 @@ class _AmountRow extends StatelessWidget {
     required this.label,
     required this.amount,
     required this.currency,
-    this.isDiscount = false,
   });
 
   final String label;
-  final double? amount;
+  final num? amount;
   final String currency;
-  final bool isDiscount;
 
   @override
   Widget build(BuildContext context) {
@@ -232,7 +257,7 @@ class _AmountRow extends StatelessWidget {
         Text(
           value,
           style: AppTextStyles.bodySmall.copyWith(
-            color: isDiscount ? AppColors.success : AppColors.textPrimary,
+            color: AppColors.textPrimary,
             fontWeight: FontWeight.w600,
           ),
         ),

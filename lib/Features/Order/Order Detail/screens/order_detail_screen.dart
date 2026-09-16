@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../Services/api_exception.dart';
 import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
 
-import '../../Order List/Models/order_model.dart';
+import '../Controller/order_detail_controller.dart';
 import '../Models/order_detail_model.dart';
+import '../Models/order_payment_proof_model.dart';
 
 import '../Reuse Widgets/customer_info_card.dart';
 import '../Reuse Widgets/order_detail_header.dart';
@@ -17,42 +20,53 @@ import '../Reuse Widgets/payment_info_card.dart';
 import '../Reuse Widgets/payment_proof_card.dart';
 import '../Reuse Widgets/shipping_address_card.dart';
 
-class OrderDetailScreen extends StatefulWidget {
+class OrderDetailScreen extends ConsumerStatefulWidget {
   const OrderDetailScreen({
     super.key,
-    required this.order,
+    required this.orderId,
     this.onBack,
     this.onRefresh,
   });
 
-  final OrderDetailModel order;
+  final int orderId;
 
   final VoidCallback? onBack;
   final VoidCallback? onRefresh;
 
   @override
-  State<OrderDetailScreen> createState() => _OrderDetailScreenState();
+  ConsumerState<OrderDetailScreen> createState() => _OrderDetailScreenState();
 }
 
-class _OrderDetailScreenState extends State<OrderDetailScreen> {
-  late OrderStatus _selectedStatus;
+class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
+  VendorOrderDetailModel? _order;
+  VendorOrderPaymentProofModel? _paymentProof;
+
+  String _selectedStatus = 'pending';
 
   late final TextEditingController _trackingController;
+
   late final TextEditingController _carrierController;
+
   late final TextEditingController _noteController;
 
+  bool _isLoading = true;
+  bool _isRefreshing = false;
   bool _isUpdatingStatus = false;
   bool _isPaymentProcessing = false;
+
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
 
-    _selectedStatus = widget.order.status;
-
     _trackingController = TextEditingController();
+
     _carrierController = TextEditingController();
+
     _noteController = TextEditingController();
+
+    _loadOrderDetail();
   }
 
   @override
@@ -64,80 +78,211 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     super.dispose();
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ============================================================
+  // LOAD API
+  // ============================================================
+
+  Future<void> _loadOrderDetail({bool refresh = false}) async {
+    if (refresh) {
+      setState(() {
+        _isRefreshing = true;
+        _errorMessage = null;
+      });
+    } else {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+    }
+
+    try {
+      final controller = ref.read(vendorOrderDetailControllerProvider);
+
+      final result = await controller.getOrderDetail(orderId: widget.orderId);
+
+      if (!mounted) {
+        return;
+      }
+
+      if (!result.success || result.order == null) {
+        setState(() {
+          _isLoading = false;
+          _isRefreshing = false;
+          _errorMessage = 'Unable to load order details.';
+        });
+
+        return;
+      }
+
+      final order = result.order!;
+
+      setState(() {
+        _order = order;
+        _paymentProof = result.paymentProof;
+
+        _selectedStatus = _normalizeStatus(order.status);
+
+        _isLoading = false;
+        _isRefreshing = false;
+        _errorMessage = null;
+      });
+    } on ApiException catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isLoading = false;
+        _isRefreshing = false;
+        _errorMessage = error.message;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isLoading = false;
+        _isRefreshing = false;
+        _errorMessage = 'Something went wrong. Please try again.';
+      });
+    }
+  }
+
+  // ============================================================
   // STATUS UPDATE
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ============================================================
 
   Future<void> _handleStatusUpdate() async {
     FocusScope.of(context).unfocus();
+
+    if (_order == null) {
+      return;
+    }
 
     setState(() {
       _isUpdatingStatus = true;
     });
 
-    // UI-only simulation.
-    await Future.delayed(const Duration(milliseconds: 700));
+    /*
+     * IMPORTANT:
+     *
+     * Status update API abhi provide nahi hui.
+     *
+     * Jab API milegi:
+     *
+     * controller.updateOrderStatus(...)
+     *
+     * yahan call karenge.
+     */
 
-    if (!mounted) return;
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    if (!mounted) {
+      return;
+    }
 
     setState(() {
       _isUpdatingStatus = false;
     });
 
-    _showSnackBar('Order status updated to ${_selectedStatus.label}');
+    _showSnackBar('Status update API will be connected here.');
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // PAYMENT ACTIONS
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ============================================================
+  // PAYMENT APPROVE
+  // ============================================================
 
   Future<void> _handleApprovePayment() async {
+    final paymentProof = _paymentProof;
+
+    if (paymentProof == null) {
+      return;
+    }
+
     setState(() {
       _isPaymentProcessing = true;
     });
 
-    // UI-only simulation.
-    await Future.delayed(const Duration(milliseconds: 700));
+    /*
+     * IMPORTANT:
+     *
+     * Payment approve API abhi provide nahi hui.
+     *
+     * Future mein:
+     *
+     * controller.approvePayment(...)
+     *
+     * yahan call hoga.
+     */
 
-    if (!mounted) return;
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    if (!mounted) {
+      return;
+    }
 
     setState(() {
       _isPaymentProcessing = false;
     });
 
-    _showSnackBar('Payment approved successfully');
+    _showSnackBar('Payment approve API will be connected here.');
   }
+
+  // ============================================================
+  // PAYMENT REJECT
+  // ============================================================
 
   Future<void> _handleRejectPayment() async {
+    final paymentProof = _paymentProof;
+
+    if (paymentProof == null) {
+      return;
+    }
+
     setState(() {
       _isPaymentProcessing = true;
     });
 
-    // UI-only simulation.
-    await Future.delayed(const Duration(milliseconds: 700));
+    /*
+     * IMPORTANT:
+     *
+     * Payment reject API abhi provide nahi hui.
+     *
+     * Future mein:
+     *
+     * controller.rejectPayment(...)
+     *
+     * yahan call hoga.
+     */
 
-    if (!mounted) return;
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    if (!mounted) {
+      return;
+    }
 
     setState(() {
       _isPaymentProcessing = false;
     });
 
-    _showSnackBar('Payment rejected');
+    _showSnackBar('Payment reject API will be connected here.');
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // PAYMENT PROOF
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ============================================================
+  // PAYMENT PROOF VIEW
+  // ============================================================
 
   void _handleViewPaymentProof() {
-    if (widget.order.paymentProofUrl == null ||
-        widget.order.paymentProofUrl!.isEmpty) {
+    final url = _paymentProof?.proofImageUrl;
+
+    if (url == null || url.trim().isEmpty) {
       return;
     }
 
     showDialog<void>(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return Dialog(
           backgroundColor: AppColors.white,
           insetPadding: const EdgeInsets.all(20),
@@ -160,16 +305,19 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         ),
                       ),
                       IconButton(
-                        onPressed: () => Navigator.of(context).pop(),
+                        onPressed: () {
+                          Navigator.of(dialogContext).pop();
+                        },
                         icon: const Icon(Icons.close_rounded),
                       ),
                     ],
                   ),
                 ),
+
                 Flexible(
                   child: InteractiveViewer(
                     child: Image.network(
-                      widget.order.paymentProofUrl!,
+                      url,
                       fit: BoxFit.contain,
                       errorBuilder: (_, __, ___) {
                         return const SizedBox(
@@ -184,7 +332,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         );
                       },
                       loadingBuilder: (context, child, progress) {
-                        if (progress == null) return child;
+                        if (progress == null) {
+                          return child;
+                        }
 
                         return const SizedBox(
                           height: 300,
@@ -202,9 +352,27 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // SNACKBAR
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ============================================================
+  // HELPERS
+  // ============================================================
+
+  String _normalizeStatus(String? status) {
+    final value = status?.trim().toLowerCase() ?? '';
+
+    const available = [
+      'pending',
+      'processing',
+      'shipped',
+      'delivered',
+      'cancelled',
+    ];
+
+    if (available.contains(value)) {
+      return value;
+    }
+
+    return 'pending';
+  }
 
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context)
@@ -220,100 +388,170 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       );
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ============================================================
   // BUILD
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ============================================================
 
   @override
   Widget build(BuildContext context) {
-    final order = widget.order;
-
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
-            _buildHeader(order),
+            if (_order != null) _buildHeader(_order!),
 
-            Expanded(child: _buildContent(order)),
+            Expanded(child: _buildBody()),
           ],
         ),
       ),
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ============================================================
   // HEADER
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ============================================================
 
-  Widget _buildHeader(OrderDetailModel order) {
+  Widget _buildHeader(VendorOrderDetailModel order) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
       child: OrderDetailHeader(
         order: order,
         onBack: widget.onBack,
-        onRefresh: widget.onRefresh,
-        status: order.status,
+        onRefresh: () {
+          _loadOrderDetail(refresh: true);
+        },
       ),
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // CONTENT
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ============================================================
+  // BODY
+  // ============================================================
 
-  Widget _buildContent(OrderDetailModel order) {
+  Widget _buildBody() {
+    if (_isLoading && _order == null) {
+      return const _DetailLoading();
+    }
+
+    if (_errorMessage != null && _order == null) {
+      return _DetailError(
+        message: _errorMessage!,
+        onRetry: () {
+          _loadOrderDetail();
+        },
+      );
+    }
+
+    final order = _order;
+
+    if (order == null) {
+      return _DetailError(
+        message: 'Order details are not available.',
+        onRetry: () {
+          _loadOrderDetail();
+        },
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        await _loadOrderDetail(refresh: true);
+      },
+      child: _buildContent(order),
+    );
+  }
+
+  // ============================================================
+  // CONTENT
+  // ============================================================
+
+  Widget _buildContent(VendorOrderDetailModel order) {
+    final paymentProof = _paymentProof;
+
+    final hasPaymentProof = paymentProof != null;
+
+    final needsPaymentVerification =
+        paymentProof != null &&
+        paymentProof.verificationStatus?.trim().toLowerCase() == 'pending';
+
     return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
+      physics: const AlwaysScrollableScrollPhysics(
+        parent: BouncingScrollPhysics(),
+      ),
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 30),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Order summary
+          // ------------------------------------------------------
+          // Order Summary
+          // ------------------------------------------------------
           OrderSummaryCard(order: order),
 
           const SizedBox(height: 14),
 
-          // Customer information
+          // ------------------------------------------------------
+          // Customer
+          // ------------------------------------------------------
           CustomerInfoCard(order: order),
 
           const SizedBox(height: 14),
 
-          // Shipping address
+          // ------------------------------------------------------
+          // Shipping Address
+          // ------------------------------------------------------
           ShippingAddressCard(address: order.shippingAddress),
 
           const SizedBox(height: 14),
 
-          // Order items
+          // ------------------------------------------------------
+          // Order Items
+          // ------------------------------------------------------
           OrderItemsCard(order: order),
 
           const SizedBox(height: 14),
 
-          // Payment information
+          // ------------------------------------------------------
+          // Payment Information
+          // ------------------------------------------------------
           PaymentInfoCard(
-            payment: order.payment,
-            onViewProof: _handleViewPaymentProof,
+            order: order,
+            paymentProof: paymentProof,
+            onViewProof: hasPaymentProof ? _handleViewPaymentProof : null,
           ),
 
-          if (order.paymentProofUrl != null &&
-              order.paymentProofUrl!.isNotEmpty) ...[
+          // ------------------------------------------------------
+          // Payment Proof
+          //
+          // IMPORTANT:
+          // payment_proof == null
+          // => card completely hidden
+          // ------------------------------------------------------
+          if (hasPaymentProof) ...[
             const SizedBox(height: 14),
 
             PaymentProofCard(
-              paymentProofUrl: order.paymentProofUrl,
+              paymentProof: paymentProof,
               onView: _handleViewPaymentProof,
             ),
           ],
 
-          if (order.payment != null) ...[
+          // ------------------------------------------------------
+          // Payment Verification Actions
+          //
+          // Only pending verification
+          // ------------------------------------------------------
+          if (needsPaymentVerification) ...[
             const SizedBox(height: 14),
 
-            _buildPaymentActions(),
+            _buildPaymentVerificationCard(),
           ],
 
           const SizedBox(height: 14),
 
-          // Status update
+          // ------------------------------------------------------
+          // Status Update
+          // ------------------------------------------------------
           OrderStatusUpdateCard(
             status: _selectedStatus,
             onStatusChanged: (status) {
@@ -330,35 +568,81 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
           const SizedBox(height: 14),
 
+          // ------------------------------------------------------
           // Timeline
-          OrderTimelineCard(timeline: order.timeline),
+          // ------------------------------------------------------
+          OrderTimelineCard(timeline: order.statusHistory),
 
-          if (order.notes != null && order.notes!.trim().isNotEmpty) ...[
-            const SizedBox(height: 14),
-
-            _buildOrderNotes(order.notes!),
+          // ------------------------------------------------------
+          // Refresh Indicator
+          // ------------------------------------------------------
+          if (_isRefreshing) ...[
+            const SizedBox(height: 16),
+            const Center(child: CircularProgressIndicator()),
           ],
         ],
       ),
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // PAYMENT ACTIONS
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ============================================================
+  // PAYMENT VERIFICATION CARD
+  // ============================================================
 
-  Widget _buildPaymentActions() {
-    return _SectionCard(
+  Widget _buildPaymentVerificationCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.30)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.shadowStrong.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Payment Actions', style: AppTextStyles.titleMedium),
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.verified_outlined,
+                  size: 19,
+                  color: AppColors.warning,
+                ),
+              ),
 
-          const SizedBox(height: 5),
+              const SizedBox(width: 10),
 
-          Text(
-            'Review and confirm the customer payment.',
-            style: AppTextStyles.bodySmall,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Payment Verification',
+                      style: AppTextStyles.titleMedium,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Review the payment proof and choose an action.',
+                      style: AppTextStyles.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
 
           const SizedBox(height: 16),
@@ -372,80 +656,122 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       ),
     );
   }
+}
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // ORDER NOTES
-  // ═══════════════════════════════════════════════════════════════════════════
+// ═════════════════════════════════════════════════════════════════════════════
+// LOADING
+// ═════════════════════════════════════════════════════════════════════════════
 
-  Widget _buildOrderNotes(String notes) {
-    return _SectionCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: AppColors.primaryLight,
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                child: const Icon(
-                  Icons.notes_outlined,
-                  size: 18,
-                  color: AppColors.primary,
-                ),
-              ),
+class _DetailLoading extends StatelessWidget {
+  const _DetailLoading();
 
-              const SizedBox(width: 10),
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
+      children: [
+        _SkeletonBox(height: 120, radius: 16),
+        const SizedBox(height: 14),
+        _SkeletonBox(height: 125, radius: 16),
+        const SizedBox(height: 14),
+        _SkeletonBox(height: 150, radius: 16),
+        const SizedBox(height: 14),
+        _SkeletonBox(height: 230, radius: 16),
+        const SizedBox(height: 14),
+        _SkeletonBox(height: 180, radius: 16),
+      ],
+    );
+  }
+}
 
-              Text('Order Notes', style: AppTextStyles.titleMedium),
-            ],
-          ),
+class _SkeletonBox extends StatelessWidget {
+  const _SkeletonBox({required this.height, required this.radius});
 
-          const SizedBox(height: 12),
+  final double height;
+  final double radius;
 
-          Text(
-            notes,
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: AppColors.textSecondary,
-              height: 1.5,
-            ),
-          ),
-        ],
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      height: height,
+      decoration: BoxDecoration(
+        color: AppColors.backgroundSecondary,
+        borderRadius: BorderRadius.circular(radius),
       ),
     );
   }
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// SECTION CARD
+// ERROR
 // ═════════════════════════════════════════════════════════════════════════════
 
-class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.child});
+class _DetailError extends StatelessWidget {
+  const _DetailError({required this.message, required this.onRetry});
 
-  final Widget child;
+  final String message;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadowStrong.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: AppColors.error.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.error_outline_rounded,
+                size: 32,
+                color: AppColors.error,
+              ),
+            ),
+
+            const SizedBox(height: 14),
+
+            Text(
+              'Unable to load order',
+              style: AppTextStyles.titleMedium.copyWith(color: AppColors.navy),
+              textAlign: TextAlign.center,
+            ),
+
+            const SizedBox(height: 6),
+
+            Text(
+              message,
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.textSecondary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+
+            const SizedBox(height: 18),
+
+            ElevatedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Try Again'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-      child: child,
     );
   }
 }

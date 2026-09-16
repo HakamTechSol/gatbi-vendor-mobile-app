@@ -2,31 +2,78 @@ import 'package:flutter/material.dart';
 
 import '../../../../Theme/app_colors.dart';
 
-class OrdersLoading extends StatelessWidget {
-  const OrdersLoading({
-    super.key,
-    this.itemCount = 5,
-  });
+class OrdersLoading extends StatefulWidget {
+  const OrdersLoading({super.key, this.itemCount = 5});
 
   final int itemCount;
 
   @override
+  State<OrdersLoading> createState() => _OrdersLoadingState();
+}
+
+class _OrdersLoadingState extends State<OrdersLoading>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1300),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return ListView.separated(
-      padding: const EdgeInsets.only(
-        top: 4,
-        bottom: 24,
-      ),
-      physics: const NeverScrollableScrollPhysics(),
-      shrinkWrap: true,
-      itemCount: itemCount,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (_, __) {
-        return const _OrderCardSkeleton();
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return ShaderMask(
+          shaderCallback: (bounds) {
+            final position = _controller.value * 2 - 1;
+
+            return LinearGradient(
+              begin: Alignment(position - 1, 0),
+              end: Alignment(position + 1, 0),
+              colors: const [
+                AppColors.shimmerBase,
+                AppColors.shimmerHighlight,
+                AppColors.shimmerBase,
+              ],
+              stops: const [0.0, 0.5, 1.0],
+            ).createShader(bounds);
+          },
+          blendMode: BlendMode.srcATop,
+          child: child,
+        );
       },
+      child: ListView.separated(
+        padding: const EdgeInsets.only(top: 4, bottom: 24),
+        physics: const NeverScrollableScrollPhysics(),
+        shrinkWrap: true,
+        itemCount: widget.itemCount,
+        separatorBuilder: (_, __) {
+          return const SizedBox(height: 12);
+        },
+        itemBuilder: (_, __) {
+          return const _OrderCardSkeleton();
+        },
+      ),
     );
   }
 }
+
+// ============================================================
+// CARD SKELETON
+// ============================================================
 
 class _OrderCardSkeleton extends StatelessWidget {
   const _OrderCardSkeleton();
@@ -38,120 +85,91 @@ class _OrderCardSkeleton extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.border,
-        ),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ----------------------------------------------------
+          // Header
+          // ----------------------------------------------------
           Row(
-            children: [
-              const Expanded(
-                child: _SkeletonBox(
-                  width: 120,
-                  height: 15,
+            children: const [
+              Expanded(child: _SkeletonBox(width: 150, height: 15)),
+              SizedBox(width: 16),
+              _SkeletonBox(width: 78, height: 26, radius: 8),
+            ],
+          ),
+
+          const SizedBox(height: 8),
+
+          const _SkeletonBox(width: 145, height: 11),
+
+          const SizedBox(height: 16),
+
+          // ----------------------------------------------------
+          // Customer
+          // ----------------------------------------------------
+          Row(
+            children: const [
+              _SkeletonBox(width: 38, height: 38, radius: 10),
+              SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _SkeletonBox(width: 130, height: 13),
+                    SizedBox(height: 6),
+                    _SkeletonBox(width: 180, height: 10),
+                  ],
                 ),
               ),
-              const SizedBox(width: 16),
-              const _SkeletonBox(
-                width: 78,
-                height: 26,
-              ),
             ],
-          ),
-
-          const SizedBox(height: 10),
-
-          const _SkeletonBox(
-            width: 150,
-            height: 11,
           ),
 
           const SizedBox(height: 16),
 
+          const Divider(height: 1, thickness: 1, color: AppColors.divider),
+
+          const SizedBox(height: 16),
+
+          // ----------------------------------------------------
+          // Product
+          // ----------------------------------------------------
           Row(
-            children: [
-              const _SkeletonBox(
-                width: 38,
-                height: 38,
-                radius: 10,
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  _SkeletonBox(
-                    width: 130,
-                    height: 13,
-                  ),
-                  SizedBox(height: 6),
-                  _SkeletonBox(
-                    width: 180,
-                    height: 10,
-                  ),
-                ],
+            children: const [
+              _SkeletonBox(width: 56, height: 56, radius: 10),
+              SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _SkeletonBox(width: 180, height: 13),
+                    SizedBox(height: 7),
+                    _SkeletonBox(width: 80, height: 10),
+                  ],
+                ),
               ),
             ],
           ),
 
           const SizedBox(height: 16),
 
-          const Divider(
-            height: 1,
-            color: AppColors.divider,
-          ),
-
-          const SizedBox(height: 16),
-
-          Row(
-            children: [
-              const _SkeletonBox(
-                width: 46,
-                height: 46,
-                radius: 10,
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  _SkeletonBox(
-                    width: 150,
-                    height: 13,
-                  ),
-                  SizedBox(height: 6),
-                  _SkeletonBox(
-                    width: 100,
-                    height: 10,
-                  ),
-                ],
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
+          // ----------------------------------------------------
+          // Footer
+          // ----------------------------------------------------
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: const [
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _SkeletonBox(
-                    width: 40,
-                    height: 10,
-                  ),
+                  _SkeletonBox(width: 70, height: 10),
                   SizedBox(height: 6),
-                  _SkeletonBox(
-                    width: 90,
-                    height: 15,
-                  ),
+                  _SkeletonBox(width: 95, height: 15),
                 ],
               ),
-              _SkeletonBox(
-                width: 60,
-                height: 11,
-              ),
+              _SkeletonBox(width: 65, height: 11),
             ],
           ),
         ],
@@ -159,6 +177,10 @@ class _OrderCardSkeleton extends StatelessWidget {
     );
   }
 }
+
+// ============================================================
+// SKELETON BOX
+// ============================================================
 
 class _SkeletonBox extends StatelessWidget {
   const _SkeletonBox({

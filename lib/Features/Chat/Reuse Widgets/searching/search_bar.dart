@@ -1,4 +1,3 @@
-// lib/features/chat/presentation/widgets/search_bar.dart
 
 import 'package:flutter/material.dart';
 
@@ -29,9 +28,6 @@ class _ChatSearchBarState extends State<ChatSearchBar>
 
   final FocusNode _focusNode = FocusNode();
 
-  // ignore: unused_field
-  bool _isFocused = false;
-
   @override
   void initState() {
     super.initState();
@@ -55,15 +51,12 @@ class _ChatSearchBarState extends State<ChatSearchBar>
       CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
     );
 
-    // ==========================================================
-    // FOCUS LISTENER
-    // ==========================================================
-
-    _focusNode.addListener(_onFocusChanged);
-
     _animationController.forward();
 
-    // Automatically focus search field
+    // ==========================================================
+    // AUTO FOCUS
+    // ==========================================================
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
 
@@ -72,19 +65,7 @@ class _ChatSearchBarState extends State<ChatSearchBar>
   }
 
   // ============================================================
-  // FOCUS CHANGE
-  // ============================================================
-
-  void _onFocusChanged() {
-    if (!mounted) return;
-
-    setState(() {
-      _isFocused = _focusNode.hasFocus;
-    });
-  }
-
-  // ============================================================
-  // CLOSE SEARCH
+  // CLOSE
   // ============================================================
 
   void _closeSearch() {
@@ -98,7 +79,7 @@ class _ChatSearchBarState extends State<ChatSearchBar>
   }
 
   // ============================================================
-  // CLEAR SEARCH
+  // CLEAR
   // ============================================================
 
   void _clearSearch() {
@@ -110,26 +91,12 @@ class _ChatSearchBarState extends State<ChatSearchBar>
   }
 
   // ============================================================
-  // SEARCH
-  // ============================================================
-
-  void _performSearch() {
-    final query = widget.controller.text.trim();
-
-    if (query.isEmpty) return;
-
-    widget.onSearch(query);
-  }
-
-  // ============================================================
   // DISPOSE
   // ============================================================
 
   @override
   void dispose() {
-    _focusNode.removeListener(_onFocusChanged);
     _focusNode.dispose();
-
     _animationController.dispose();
 
     super.dispose();
@@ -165,19 +132,57 @@ class _ChatSearchBarState extends State<ChatSearchBar>
       ),
       child: Row(
         children: [
-          // ======================================================
-          // BACK BUTTON
-          // ======================================================
           _BackButton(onTap: _closeSearch),
 
-          // ======================================================
-          // TEXT FIELD
-          // ======================================================
-          Expanded(child: _buildTextField()),
+          Expanded(
+            child: TextField(
+              controller: widget.controller,
+              focusNode: _focusNode,
+              autofocus: false,
+              maxLines: 1,
+              textInputAction: TextInputAction.search,
+              keyboardType: TextInputType.text,
+              textCapitalization: TextCapitalization.sentences,
 
-          // ======================================================
-          // CLEAR / CLOSE BUTTON
-          // ======================================================
+              // ====================================================
+              // LIVE SEARCH
+              // ====================================================
+              onChanged: widget.onSearch,
+
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.textPrimary,
+                fontSize: 17,
+                fontWeight: FontWeight.w400,
+              ),
+
+              cursorColor: AppColors.primary,
+              cursorWidth: 1.5,
+
+              decoration: InputDecoration(
+                hintText: 'Search messages...',
+                hintStyle: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.textMuted,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w400,
+                ),
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                disabledBorder: InputBorder.none,
+                isDense: true,
+                contentPadding: const EdgeInsets.only(
+                  left: 4,
+                  right: 4,
+                  top: 10,
+                  bottom: 10,
+                ),
+              ),
+            ),
+          ),
+
+          // ========================================================
+          // CLEAR / CLOSE
+          // ========================================================
           ValueListenableBuilder<TextEditingValue>(
             valueListenable: widget.controller,
             builder: (context, value, child) {
@@ -189,67 +194,6 @@ class _ChatSearchBarState extends State<ChatSearchBar>
 
           const SizedBox(width: 6),
         ],
-      ),
-    );
-  }
-
-  // ============================================================
-  // TEXT FIELD
-  // ============================================================
-
-  Widget _buildTextField() {
-    return TextField(
-      controller: widget.controller,
-      focusNode: _focusNode,
-
-      autofocus: false,
-
-      maxLines: 1,
-
-      textInputAction: TextInputAction.search,
-
-      keyboardType: TextInputType.text,
-
-      textCapitalization: TextCapitalization.sentences,
-
-      onChanged: widget.onSearch,
-
-      onSubmitted: (_) {
-        _performSearch();
-      },
-
-      style: AppTextStyles.bodyMedium.copyWith(
-        color: AppColors.textPrimary,
-        fontSize: 17,
-        fontWeight: FontWeight.w400,
-      ),
-
-      cursorColor: AppColors.primary,
-
-      cursorWidth: 1.5,
-
-      decoration: InputDecoration(
-        hintText: 'Search',
-
-        hintStyle: AppTextStyles.bodyMedium.copyWith(
-          color: AppColors.textMuted,
-          fontSize: 17,
-          fontWeight: FontWeight.w400,
-        ),
-
-        border: InputBorder.none,
-        enabledBorder: InputBorder.none,
-        focusedBorder: InputBorder.none,
-        disabledBorder: InputBorder.none,
-
-        isDense: true,
-
-        contentPadding: const EdgeInsets.only(
-          left: 4,
-          right: 4,
-          top: 10,
-          bottom: 10,
-        ),
       ),
     );
   }

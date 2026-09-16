@@ -23,6 +23,13 @@ class _BottomMainScreenState extends State<BottomMainScreen> {
   /// Dashboard ko fresh state ke saath rebuild karne ke liye.
   int _dashboardVersion = 0;
 
+  /// Chat screen ka state reference.
+  ///
+  /// IndexedStack ki wajah se ChatListScreen normally dispose nahi hoti.
+  /// Is key ke through hum directly ChatListScreen.refresh() call karenge.
+  final GlobalKey<ChatListScreenState> _chatScreenKey =
+      GlobalKey<ChatListScreenState>();
+
   @override
   void initState() {
     super.initState();
@@ -35,8 +42,16 @@ class _BottomMainScreenState extends State<BottomMainScreen> {
   // ═══════════════════════════════════════════════════════════════════════════
 
   void _onTabChanged(BottomTab tab) {
+    debugPrint('════════════════════════════════════════════════════════════');
+    debugPrint('BOTTOM TAB CHANGED');
+    debugPrint('Previous Tab: ${_currentTab.name}');
+    debugPrint('New Tab: ${tab.name}');
+    debugPrint('════════════════════════════════════════════════════════════');
+
     // Agar already isi tab par hain aur dobara tap kiya gaya hai.
     if (_currentTab == tab) {
+      debugPrint('Same tab tapped again → refreshing ${tab.name}...');
+
       _refreshCurrentTab(tab);
 
       if (tab == BottomTab.dashboard) {
@@ -55,6 +70,7 @@ class _BottomMainScreenState extends State<BottomMainScreen> {
       }
     });
 
+    // Tab change ke baad selected screen ka data refresh.
     _refreshCurrentTab(tab);
   }
 
@@ -68,6 +84,10 @@ class _BottomMainScreenState extends State<BottomMainScreen> {
       _dashboardVersion++;
     });
   }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // REFRESH
+  // ═══════════════════════════════════════════════════════════════════════════
 
   void _refreshCurrentTab(BottomTab tab) {
     switch (tab) {
@@ -89,10 +109,6 @@ class _BottomMainScreenState extends State<BottomMainScreen> {
     }
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // REFRESH
-  // ═══════════════════════════════════════════════════════════════════════════
-
   void _refreshDashboard() {
     debugPrint('Refresh Dashboard API');
   }
@@ -102,7 +118,16 @@ class _BottomMainScreenState extends State<BottomMainScreen> {
   }
 
   void _refreshChat() {
-    debugPrint('Refresh Chat API');
+
+    final chatState = _chatScreenKey.currentState;
+
+    if (chatState == null) {
+      debugPrint('CHAT REFRESH: ChatListScreen state is not mounted yet.');
+      return;
+    }
+
+
+    chatState.refresh();
   }
 
   void _refreshMore() {
@@ -159,7 +184,9 @@ class _BottomMainScreenState extends State<BottomMainScreen> {
 
           const MyProductScreen(),
 
-          const ChatListScreen(),
+          /// Important:
+          /// const ko remove kiya gaya hai because GlobalKey use kar rahe hain.
+          ChatListScreen(key: _chatScreenKey),
 
           MoreScreen(
             onBulkProducts: _openBulkProducts,
