@@ -36,10 +36,7 @@ class VendorOrderDetailRepository {
       debugPrint('');
     }
 
-    final response =
-        await _dioClient.get<Map<String, dynamic>>(
-      endpoint,
-    );
+    final response = await _dioClient.get<Map<String, dynamic>>(endpoint);
 
     final data = response.data;
 
@@ -50,8 +47,7 @@ class VendorOrderDetailRepository {
       );
     }
 
-    final result =
-        VendorOrderDetailResponseModel.fromJson(data);
+    final result = VendorOrderDetailResponseModel.fromJson(data);
 
     if (kDebugMode) {
       _logResult(result);
@@ -64,9 +60,7 @@ class VendorOrderDetailRepository {
   // Debug Logging
   // ============================================================
 
-  void _logResult(
-    VendorOrderDetailResponseModel result,
-  ) {
+  void _logResult(VendorOrderDetailResponseModel result) {
     final order = result.order;
     final paymentProof = result.paymentProof;
 
@@ -86,44 +80,35 @@ class VendorOrderDetailRepository {
       debugPrint('ORDER: NULL');
     } else {
       debugPrint('ID: ${order.id ?? 'N/A'}');
-      debugPrint(
-        'ORDER NUMBER: ${order.orderNumber ?? 'N/A'}',
-      );
-      debugPrint(
-        'STATUS: ${order.status ?? 'N/A'}',
-      );
-      debugPrint(
-        'PAYMENT STATUS: ${order.paymentStatus ?? 'N/A'}',
-      );
-      debugPrint(
-        'PAYMENT METHOD: ${order.paymentMethod ?? 'N/A'}',
-      );
-      debugPrint(
-        'CURRENCY: ${order.currency ?? 'N/A'}',
-      );
-      debugPrint(
-        'CURRENCY SYMBOL: ${order.currencySymbol ?? 'N/A'}',
-      );
-      debugPrint(
-        'SUBTOTAL: ${order.subtotal ?? 'N/A'}',
-      );
-      debugPrint(
-        'SHIPPING: ${order.shipping ?? 'N/A'}',
-      );
-      debugPrint(
-        'TAX: ${order.tax ?? 'N/A'}',
-      );
-      debugPrint(
-        'TOTAL: ${order.total ?? 'N/A'}',
-      );
-      debugPrint(
-        'CREATED AT: ${order.createdAt ?? 'N/A'}',
-      );
+
+      debugPrint('ORDER NUMBER: ${order.orderNumber ?? 'N/A'}');
+
+      debugPrint('STATUS: ${order.status ?? 'N/A'}');
+
+      debugPrint('PAYMENT STATUS: ${order.paymentStatus ?? 'N/A'}');
+
+      debugPrint('PAYMENT METHOD: ${order.paymentMethod ?? 'N/A'}');
+
+      debugPrint('CURRENCY: ${order.currency ?? 'N/A'}');
+
+      debugPrint('CURRENCY SYMBOL: ${order.currencySymbol ?? 'N/A'}');
+
+      debugPrint('SUBTOTAL: ${order.subtotal ?? 'N/A'}');
+
+      debugPrint('SHIPPING: ${order.shipping ?? 'N/A'}');
+
+      debugPrint('TAX: ${order.tax ?? 'N/A'}');
+
+      debugPrint('TOTAL: ${order.total ?? 'N/A'}');
+
+      debugPrint('CREATED AT: ${order.createdAt ?? 'N/A'}');
+
+      // --------------------------------------------------------
+      // Items
+      // --------------------------------------------------------
 
       debugPrint('');
-      debugPrint(
-        'ITEMS COUNT: ${order.items.length}',
-      );
+      debugPrint('ITEMS COUNT: ${order.items.length}');
 
       if (order.items.isNotEmpty) {
         for (final item in order.items) {
@@ -140,6 +125,10 @@ class VendorOrderDetailRepository {
       } else {
         debugPrint('ITEMS: EMPTY');
       }
+
+      // --------------------------------------------------------
+      // Status History
+      // --------------------------------------------------------
 
       debugPrint('');
       debugPrint(
@@ -164,19 +153,56 @@ class VendorOrderDetailRepository {
         debugPrint('STATUS HISTORY: EMPTY');
       }
 
-      debugPrint('');
-      debugPrint(
-        'TRACKING COUNT: ${order.tracking.length}',
-      );
+      // --------------------------------------------------------
+      // Tracking
+      // --------------------------------------------------------
 
-      if (order.tracking.isNotEmpty) {
-        for (final tracking in order.tracking) {
-          debugPrint(
-            'TRACKING: ${tracking.data}',
-          );
-        }
+      debugPrint('');
+      debugPrint('---------- TRACKING ----------');
+
+      final tracking = order.tracking;
+
+      if (tracking == null) {
+        debugPrint('TRACKING: NULL');
       } else {
-        debugPrint('TRACKING: EMPTY');
+        debugPrint('ID: ${tracking.id ?? 'N/A'}');
+
+        debugPrint('ORDER ID: ${tracking.orderId ?? 'N/A'}');
+
+        debugPrint(
+          'TRACKING NUMBER: '
+          '${tracking.trackingNumber ?? 'N/A'}',
+        );
+
+        debugPrint(
+          'CARRIER: '
+          '${tracking.carrier ?? 'N/A'}',
+        );
+
+        debugPrint(
+          'TRACKING URL: '
+          '${tracking.trackingUrl ?? 'N/A'}',
+        );
+
+        debugPrint(
+          'ESTIMATED DELIVERY: '
+          '${tracking.estimatedDelivery ?? 'N/A'}',
+        );
+
+        debugPrint(
+          'LAST LOCATION: '
+          '${tracking.lastLocation ?? 'N/A'}',
+        );
+
+        debugPrint(
+          'LAST UPDATE: '
+          '${tracking.lastUpdate ?? 'N/A'}',
+        );
+
+        debugPrint(
+          'VALID TRACKING: '
+          '${tracking.hasValidTracking}',
+        );
       }
 
       // --------------------------------------------------------
@@ -191,47 +217,37 @@ class VendorOrderDetailRepository {
       if (address == null) {
         debugPrint('SHIPPING ADDRESS: NULL');
       } else {
-        debugPrint(
-          'ID: ${address.id ?? 'N/A'}',
-        );
-        debugPrint(
-          'USER ID: ${address.userId ?? 'N/A'}',
-        );
-        debugPrint(
-          'FULL NAME: ${address.fullName ?? 'N/A'}',
-        );
-        debugPrint(
-          'PHONE: ${address.phone ?? 'N/A'}',
-        );
+        debugPrint('ID: ${address.id ?? 'N/A'}');
+
+        debugPrint('USER ID: ${address.userId ?? 'N/A'}');
+
+        debugPrint('FULL NAME: ${address.fullName ?? 'N/A'}');
+
+        debugPrint('PHONE: ${address.phone ?? 'N/A'}');
+
         debugPrint(
           'ADDRESS LINE 1: '
           '${address.addressLine1 ?? 'N/A'}',
         );
+
         debugPrint(
           'ADDRESS LINE 2: '
           '${address.addressLine2 ?? 'N/A'}',
         );
-        debugPrint(
-          'CITY: ${address.city ?? 'N/A'}',
-        );
-        debugPrint(
-          'STATE: ${address.state ?? 'N/A'}',
-        );
-        debugPrint(
-          'POSTAL CODE: ${address.postalCode ?? 'N/A'}',
-        );
-        debugPrint(
-          'COUNTRY: ${address.country ?? 'N/A'}',
-        );
-        debugPrint(
-          'IS DEFAULT: ${address.isDefault ?? 'N/A'}',
-        );
-        debugPrint(
-          'CREATED AT: ${address.createdAt ?? 'N/A'}',
-        );
-        debugPrint(
-          'UPDATED AT: ${address.updatedAt ?? 'N/A'}',
-        );
+
+        debugPrint('CITY: ${address.city ?? 'N/A'}');
+
+        debugPrint('STATE: ${address.state ?? 'N/A'}');
+
+        debugPrint('POSTAL CODE: ${address.postalCode ?? 'N/A'}');
+
+        debugPrint('COUNTRY: ${address.country ?? 'N/A'}');
+
+        debugPrint('IS DEFAULT: ${address.isDefault ?? 'N/A'}');
+
+        debugPrint('CREATED AT: ${address.createdAt ?? 'N/A'}');
+
+        debugPrint('UPDATED AT: ${address.updatedAt ?? 'N/A'}');
       }
 
       // --------------------------------------------------------
@@ -246,15 +262,11 @@ class VendorOrderDetailRepository {
       if (customer == null) {
         debugPrint('CUSTOMER: NULL');
       } else {
-        debugPrint(
-          'FIRST NAME: ${customer.firstName ?? 'N/A'}',
-        );
-        debugPrint(
-          'LAST NAME: ${customer.lastName ?? 'N/A'}',
-        );
-        debugPrint(
-          'EMAIL: ${customer.email ?? 'N/A'}',
-        );
+        debugPrint('FIRST NAME: ${customer.firstName ?? 'N/A'}');
+
+        debugPrint('LAST NAME: ${customer.lastName ?? 'N/A'}');
+
+        debugPrint('EMAIL: ${customer.email ?? 'N/A'}');
       }
     }
 
@@ -268,50 +280,54 @@ class VendorOrderDetailRepository {
     if (paymentProof == null) {
       debugPrint('PAYMENT PROOF: NULL');
     } else {
-      debugPrint(
-        'ID: ${paymentProof.id ?? 'N/A'}',
-      );
-      debugPrint(
-        'ORDER ID: ${paymentProof.orderId ?? 'N/A'}',
-      );
+      debugPrint('ID: ${paymentProof.id ?? 'N/A'}');
+
+      debugPrint('ORDER ID: ${paymentProof.orderId ?? 'N/A'}');
+
       debugPrint(
         'PAYMENT METHOD: '
         '${paymentProof.paymentMethod ?? 'N/A'}',
       );
+
       debugPrint(
         'TRANSACTION REFERENCE: '
         '${paymentProof.transactionReference ?? 'N/A'}',
       );
-      debugPrint(
-        'AMOUNT: ${paymentProof.amount ?? 'N/A'}',
-      );
+
+      debugPrint('AMOUNT: ${paymentProof.amount ?? 'N/A'}');
+
       debugPrint(
         'PAYMENT DATE: '
         '${paymentProof.paymentDate ?? 'N/A'}',
       );
+
       debugPrint(
         'BANK NAME: '
         '${paymentProof.bankName ?? 'N/A'}',
       );
+
       debugPrint(
         'ACCOUNT HOLDER: '
         '${paymentProof.accountHolderName ?? 'N/A'}',
       );
+
       debugPrint(
         'VERIFICATION STATUS: '
         '${paymentProof.verificationStatus ?? 'N/A'}',
       );
+
       debugPrint(
         'REJECTION REASON: '
         '${paymentProof.rejectionReason ?? 'N/A'}',
       );
-      debugPrint(
-        'NOTES: ${paymentProof.notes ?? 'N/A'}',
-      );
+
+      debugPrint('NOTES: ${paymentProof.notes ?? 'N/A'}');
+
       debugPrint(
         'PROOF IMAGE URL: '
         '${paymentProof.proofImageUrl ?? 'N/A'}',
       );
+
       debugPrint(
         'CREATED AT: '
         '${paymentProof.createdAt ?? 'N/A'}',

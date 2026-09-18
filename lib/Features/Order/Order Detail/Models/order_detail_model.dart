@@ -20,7 +20,7 @@ class VendorOrderDetailModel {
     this.createdAt,
     this.items = const [],
     this.statusHistory = const [],
-    this.tracking = const [],
+    this.tracking,
     this.shippingAddress,
     this.customer,
   });
@@ -52,7 +52,7 @@ class VendorOrderDetailModel {
 
   final List<VendorOrderStatusHistoryModel> statusHistory;
 
-  final List<VendorOrderTrackingModel> tracking;
+  final VendorOrderTrackingModel? tracking;
 
   final VendorOrderShippingAddressModel? shippingAddress;
 
@@ -93,10 +93,13 @@ class VendorOrderDetailModel {
         VendorOrderStatusHistoryModel.fromJson,
       ),
 
-      tracking: _parseList(
-        json['tracking'],
-        VendorOrderTrackingModel.fromJson,
-      ),
+     tracking: json['tracking'] is Map
+    ? VendorOrderTrackingModel.fromJson(
+        Map<String, dynamic>.from(
+          json['tracking'] as Map,
+        ),
+      )
+    : null,
 
       shippingAddress: json['shipping_address'] is Map
           ? VendorOrderShippingAddressModel.fromJson(
@@ -137,7 +140,7 @@ class VendorOrderDetailModel {
       'items': items.map((e) => e.toJson()).toList(),
       'status_history':
           statusHistory.map((e) => e.toJson()).toList(),
-      'tracking': tracking.map((e) => e.toJson()).toList(),
+      'tracking': tracking?.toJson(),
       'shipping_address': shippingAddress?.toJson(),
       'customer': customer?.toJson(),
     };

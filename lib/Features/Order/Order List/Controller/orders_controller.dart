@@ -128,6 +128,15 @@ class VendorOrdersController extends StateNotifier<VendorOrdersState> {
   // ============================================================
 
   Future<void> loadOrders() async {
+    _searchDebounce?.cancel();
+
+    // Fresh entry par purani list clear karo
+    state = state.copyWith(
+      orders: const [],
+      clearError: true,
+      clearPagination: true,
+    );
+
     await _fetchOrders(page: 1, replace: true);
   }
 
@@ -353,9 +362,15 @@ class VendorOrdersController extends StateNotifier<VendorOrdersState> {
   Future<void> refreshOrders() async {
     _searchDebounce?.cancel();
 
-    await _fetchOrders(page: 1, replace: true, isRefresh: true);
-  }
+    // Existing orders remove karo taake full shimmer show ho
+    state = state.copyWith(
+      orders: const [],
+      clearError: true,
+      clearPagination: true,
+    );
 
+    await _fetchOrders(page: 1, replace: true);
+  }
   // ============================================================
   // RETRY
   // ============================================================

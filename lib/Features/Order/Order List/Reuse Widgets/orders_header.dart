@@ -20,13 +20,12 @@ class OrdersHeader extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-          _HeaderIconButton(
-            icon: Icons.arrow_back_rounded,
-            onTap: onBack ?? () => Navigator.of(context).maybePop(),
-          ),
+        _HeaderIconButton(
+          icon: Icons.arrow_back_rounded,
+          onTap: onBack ?? () => Navigator.of(context).maybePop(),
+        ),
 
-          const SizedBox(width: 12),
-        
+        const SizedBox(width: 12),
 
         Expanded(
           child: Column(
@@ -43,9 +42,6 @@ class OrdersHeader extends StatelessWidget {
             ],
           ),
         ),
-
-        if (onRefresh != null)
-          _HeaderIconButton(icon: Icons.refresh_rounded, onTap: onRefresh),
       ],
     );
   }

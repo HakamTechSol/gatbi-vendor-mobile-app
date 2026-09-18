@@ -54,7 +54,7 @@ class PaymentProofCard extends StatelessWidget {
             const _EmptyProof()
           else
             _ProofContent(
-              imageUrl: imageUrl!,
+              imageUrl: imageUrl,
               onView: onView,
             ),
         ],

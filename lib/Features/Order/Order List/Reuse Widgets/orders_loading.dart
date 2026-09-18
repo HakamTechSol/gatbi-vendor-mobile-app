@@ -1,197 +1,169 @@
+// lib/features/orders/presentation/screens/Reuse Widgets/orders_loading.dart
+
 import 'package:flutter/material.dart';
+import 'package:shimmer/shimmer.dart';
 
 import '../../../../Theme/app_colors.dart';
 
-class OrdersLoading extends StatefulWidget {
+class OrdersLoading extends StatelessWidget {
   const OrdersLoading({super.key, this.itemCount = 5});
 
   final int itemCount;
 
   @override
-  State<OrdersLoading> createState() => _OrdersLoadingState();
-}
-
-class _OrdersLoadingState extends State<OrdersLoading>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1300),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return ShaderMask(
-          shaderCallback: (bounds) {
-            final position = _controller.value * 2 - 1;
+    final count = itemCount <= 0 ? 5 : itemCount;
 
-            return LinearGradient(
-              begin: Alignment(position - 1, 0),
-              end: Alignment(position + 1, 0),
-              colors: const [
-                AppColors.shimmerBase,
-                AppColors.shimmerHighlight,
-                AppColors.shimmerBase,
-              ],
-              stops: const [0.0, 0.5, 1.0],
-            ).createShader(bounds);
-          },
-          blendMode: BlendMode.srcATop,
-          child: child,
-        );
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      itemCount: count + 1,
+      separatorBuilder: (_, index) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        return const _OrderCardShimmerItem();
       },
-      child: ListView.separated(
-        padding: const EdgeInsets.only(top: 4, bottom: 24),
-        physics: const NeverScrollableScrollPhysics(),
-        shrinkWrap: true,
-        itemCount: widget.itemCount,
-        separatorBuilder: (_, __) {
-          return const SizedBox(height: 12);
-        },
-        itemBuilder: (_, __) {
-          return const _OrderCardSkeleton();
-        },
-      ),
     );
   }
 }
 
-// ============================================================
-// CARD SKELETON
-// ============================================================
-
-class _OrderCardSkeleton extends StatelessWidget {
-  const _OrderCardSkeleton();
+// ═════════════════════════════════════════════════════════════════════════════
+// ATTRACTIVE ORDER CARD SHIMMER ITEM
+// ═════════════════════════════════════════════════════════════════════════════
+class _OrderCardShimmerItem extends StatelessWidget {
+  const _OrderCardShimmerItem();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: AppColors.shimmerCard, // Solid White Card Background
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ----------------------------------------------------
-          // Header
-          // ----------------------------------------------------
-          Row(
-            children: const [
-              Expanded(child: _SkeletonBox(width: 150, height: 15)),
-              SizedBox(width: 16),
-              _SkeletonBox(width: 78, height: 26, radius: 8),
-            ],
-          ),
-
-          const SizedBox(height: 8),
-
-          const _SkeletonBox(width: 145, height: 11),
-
-          const SizedBox(height: 16),
-
-          // ----------------------------------------------------
-          // Customer
-          // ----------------------------------------------------
-          Row(
-            children: const [
-              _SkeletonBox(width: 38, height: 38, radius: 10),
-              SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _SkeletonBox(width: 130, height: 13),
-                    SizedBox(height: 6),
-                    _SkeletonBox(width: 180, height: 10),
-                  ],
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          const Divider(height: 1, thickness: 1, color: AppColors.divider),
-
-          const SizedBox(height: 16),
-
-          // ----------------------------------------------------
-          // Product
-          // ----------------------------------------------------
-          Row(
-            children: const [
-              _SkeletonBox(width: 56, height: 56, radius: 10),
-              SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _SkeletonBox(width: 180, height: 13),
-                    SizedBox(height: 7),
-                    _SkeletonBox(width: 80, height: 10),
-                  ],
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          // ----------------------------------------------------
-          // Footer
-          // ----------------------------------------------------
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _SkeletonBox(width: 70, height: 10),
-                  SizedBox(height: 6),
-                  _SkeletonBox(width: 95, height: 15),
-                ],
-              ),
-              _SkeletonBox(width: 65, height: 11),
-            ],
+        border: Border.all(color: const Color(0xFFEAEAEA), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
+      ),
+      child: Shimmer.fromColors(
+        baseColor: AppColors.shimmerBase,
+        highlightColor: AppColors.shimmerHighlight,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 1. ORDER ID, DATE & STATUS CHIP
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _ShimmerBox(width: 160, height: 14, borderRadius: 4),
+                    SizedBox(height: 6),
+                    _ShimmerBox(width: 110, height: 10, borderRadius: 4),
+                  ],
+                ),
+                _ShimmerBox(width: 74, height: 24, borderRadius: 12),
+              ],
+            ),
+
+            const SizedBox(height: 14),
+
+            // 2. CUSTOMER DETAILS
+            Row(
+              children: [
+                const _ShimmerBox(width: 36, height: 36, borderRadius: 10),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    _ShimmerBox(width: 120, height: 12, borderRadius: 4),
+                    SizedBox(height: 6),
+                    _ShimmerBox(width: 150, height: 10, borderRadius: 4),
+                  ],
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 14),
+
+            // Divider Line Placeholder
+            const _ShimmerBox(
+              width: double.infinity,
+              height: 1,
+              borderRadius: 0,
+            ),
+
+            const SizedBox(height: 14),
+
+            // 3. PRODUCT DETAILS
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _ShimmerBox(width: 56, height: 56, borderRadius: 10),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      _ShimmerBox(
+                        width: double.infinity,
+                        height: 12,
+                        borderRadius: 4,
+                      ),
+                      SizedBox(height: 6),
+                      _ShimmerBox(width: 140, height: 12, borderRadius: 4),
+                      SizedBox(height: 8),
+                      _ShimmerBox(width: 40, height: 10, borderRadius: 4),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // 4. FOOTER
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: const [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _ShimmerBox(width: 70, height: 10, borderRadius: 4),
+                    SizedBox(height: 6),
+                    _ShimmerBox(width: 90, height: 16, borderRadius: 4),
+                  ],
+                ),
+                _ShimmerBox(width: 50, height: 12, borderRadius: 4),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-// ============================================================
-// SKELETON BOX
-// ============================================================
-
-class _SkeletonBox extends StatelessWidget {
-  const _SkeletonBox({
+// ═════════════════════════════════════════════════════════════════════════════
+// REUSABLE SHIMMER BOX
+// ═════════════════════════════════════════════════════════════════════════════
+class _ShimmerBox extends StatelessWidget {
+  const _ShimmerBox({
     required this.width,
     required this.height,
-    this.radius = 6,
+    required this.borderRadius,
   });
 
   final double width;
   final double height;
-  final double radius;
+  final double borderRadius;
 
   @override
   Widget build(BuildContext context) {
@@ -199,8 +171,9 @@ class _SkeletonBox extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: AppColors.shimmerBase,
-        borderRadius: BorderRadius.circular(radius),
+        color: Colors
+            .white, // Shimmer widget automatically fills this color with baseColor & highlightColor
+        borderRadius: BorderRadius.circular(borderRadius),
       ),
     );
   }

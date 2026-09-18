@@ -23,10 +23,6 @@ class _BottomMainScreenState extends State<BottomMainScreen> {
   /// Dashboard ko fresh state ke saath rebuild karne ke liye.
   int _dashboardVersion = 0;
 
-  /// Chat screen ka state reference.
-  ///
-  /// IndexedStack ki wajah se ChatListScreen normally dispose nahi hoti.
-  /// Is key ke through hum directly ChatListScreen.refresh() call karenge.
   final GlobalKey<ChatListScreenState> _chatScreenKey =
       GlobalKey<ChatListScreenState>();
 
@@ -118,14 +114,12 @@ class _BottomMainScreenState extends State<BottomMainScreen> {
   }
 
   void _refreshChat() {
-
     final chatState = _chatScreenKey.currentState;
 
     if (chatState == null) {
       debugPrint('CHAT REFRESH: ChatListScreen state is not mounted yet.');
       return;
     }
-
 
     chatState.refresh();
   }

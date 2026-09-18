@@ -27,14 +27,24 @@ class OrderStatusDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final safeValue =
-        availableStatuses.contains(value)
-            ? value
-            : availableStatuses.first;
+    // ============================================================
+    // VALUE ALREADY COMES FROM PARENT
+    //
+    // OrderDetailScreen already calculates the NEXT status.
+    //
+    // Example:
+    // API status = shipped
+    // Parent value = delivered
+    //
+    // So yahan dobara next status calculate nahi karna.
+    // ============================================================
+
+    final safeValue = availableStatuses.contains(value)
+        ? value
+        : availableStatuses.first;
 
     return Column(
-      crossAxisAlignment:
-          CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
@@ -66,25 +76,18 @@ class OrderStatusDropdown extends StatelessWidget {
           ),
           decoration: InputDecoration(
             filled: true,
-            fillColor: enabled
-                ? AppColors.white
-                : AppColors.inputBackground,
-            contentPadding:
-                const EdgeInsets.symmetric(
+            fillColor: enabled ? AppColors.white : AppColors.inputBackground,
+            contentPadding: const EdgeInsets.symmetric(
               horizontal: 14,
               vertical: 13,
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(
-                color: AppColors.border,
-              ),
+              borderSide: const BorderSide(color: AppColors.border),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(
-                color: AppColors.border,
-              ),
+              borderSide: const BorderSide(color: AppColors.border),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
@@ -95,25 +98,23 @@ class OrderStatusDropdown extends StatelessWidget {
             ),
             disabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(
-                color: AppColors.border,
-              ),
+              borderSide: const BorderSide(color: AppColors.border),
             ),
           ),
-          items: availableStatuses.map(
-            (status) {
-              return DropdownMenuItem<String>(
-                value: status,
-                child: Text(
-                  _statusLabel(status),
-                ),
-              );
-            },
-          ).toList(),
+          items: availableStatuses.map((status) {
+            return DropdownMenuItem<String>(
+              value: status,
+              child: Text(_statusLabel(status)),
+            );
+          }).toList(),
         ),
       ],
     );
   }
+
+  // ============================================================
+  // STATUS LABEL
+  // ============================================================
 
   String _statusLabel(String status) {
     return status
@@ -122,7 +123,7 @@ class OrderStatusDropdown extends StatelessWidget {
           (word) => word.isEmpty
               ? word
               : '${word[0].toUpperCase()}'
-                  '${word.substring(1)}',
+                    '${word.substring(1)}',
         )
         .join(' ');
   }

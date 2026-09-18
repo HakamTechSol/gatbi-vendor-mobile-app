@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../Routes/route_observer.dart';
 import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
 
@@ -21,13 +22,15 @@ class OrdersScreen extends ConsumerStatefulWidget {
   final ValueChanged<VendorOrderModel>? onOrderTap;
 
   @override
-  ConsumerState<OrdersScreen> createState() => _OrdersScreenState();
+  OrdersScreenState createState() => OrdersScreenState();
 }
 
-class _OrdersScreenState extends ConsumerState<OrdersScreen> {
+class OrdersScreenState extends ConsumerState<OrdersScreen> with RouteAware {
   final TextEditingController _searchController = TextEditingController();
 
   final ScrollController _scrollController = ScrollController();
+
+  bool _routeSubscribed = false;
 
   @override
   void initState() {
@@ -38,12 +41,36 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
     _scrollController.addListener(_onScroll);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+
       ref.read(vendorOrdersControllerProvider.notifier).loadOrders();
     });
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (_routeSubscribed) {
+      return;
+    }
+
+    final route = ModalRoute.of(context);
+
+    if (route is PageRoute) {
+      routeObserver.subscribe(this, route);
+      _routeSubscribed = true;
+    }
+  }
+
+  @override
   void dispose() {
+    if (_routeSubscribed) {
+      routeObserver.unsubscribe(this);
+    }
+
     _searchController
       ..removeListener(_onSearchControllerChanged)
       ..dispose();
@@ -53,6 +80,22 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
       ..dispose();
 
     super.dispose();
+  }
+
+  @override
+  void didPopNext() {
+    super.didPopNext();
+
+    if (!mounted) {
+      return;
+    }
+
+    debugPrint('════════════════════════════════════════════════════════════');
+    debugPrint('RETURNED TO ORDERS SCREEN');
+    debugPrint('REFRESHING ORDERS API...');
+    debugPrint('════════════════════════════════════════════════════════════');
+
+    ref.read(vendorOrdersControllerProvider.notifier).refreshOrders();
   }
 
   // ============================================================
@@ -235,7 +278,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
 
     if (state.isLoading && state.orders.isEmpty) {
       return const SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(16, 4, 16, 24),
+        padding: EdgeInsets.fromLTRB(6, 4, 6, 24),
         child: OrdersLoading(itemCount: 5),
       );
     }

@@ -54,13 +54,6 @@ class OrderDetailHeader extends StatelessWidget {
           status: order.status,
         ),
 
-        if (onRefresh != null) ...[
-          const SizedBox(width: 6),
-          _HeaderIconButton(
-            icon: Icons.refresh_rounded,
-            onTap: onRefresh,
-          ),
-        ],
       ],
     );
   }

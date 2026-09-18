@@ -687,7 +687,6 @@ final GoRouter appRouter = GoRouter(
         return OrdersScreen(
           onOrderTap: (order) {
             final orderId = order.id;
-
             if (orderId == null || orderId <= 0) {
               return;
             }

@@ -29,7 +29,11 @@ class OrderStatusUpdateCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final showTrackingFields = status == 'shipped' || status == 'delivered';
+    // ============================================================
+    // Tracking + Carrier sirf SHIPPED ke liye show honge
+    // ============================================================
+
+    final showTrackingFields = status.trim().toLowerCase() == 'shipped';
 
     return Container(
       width: double.infinity,
@@ -69,6 +73,9 @@ class OrderStatusUpdateCard extends StatelessWidget {
 
           const SizedBox(height: 18),
 
+          // ============================================================
+          // Status Dropdown
+          // ============================================================
           OrderStatusDropdown(
             value: status,
             onChanged: onStatusChanged,
@@ -77,6 +84,20 @@ class OrderStatusUpdateCard extends StatelessWidget {
 
           const SizedBox(height: 14),
 
+          // ============================================================
+          // Status Fields
+          //
+          // SHIPPED:
+          //   Tracking Number
+          //   Carrier
+          //   Note
+          //
+          // DELIVERED:
+          //   Note only
+          //
+          // Other statuses:
+          //   Note only
+          // ============================================================
           OrderStatusFields(
             trackingController: trackingController,
             carrierController: carrierController,
@@ -87,6 +108,9 @@ class OrderStatusUpdateCard extends StatelessWidget {
 
           const SizedBox(height: 16),
 
+          // ============================================================
+          // Update Button
+          // ============================================================
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
