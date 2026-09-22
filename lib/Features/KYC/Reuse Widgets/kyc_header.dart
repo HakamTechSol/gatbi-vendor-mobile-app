@@ -7,14 +7,14 @@ import 'kyc_status_badge.dart';
 class KycHeader extends StatelessWidget {
   const KycHeader({
     super.key,
-    required this.status,
+    this.status,
     this.onBack,
     this.title = 'KYC Verification',
     this.subtitle = 'Submit your legal documents for compliance review',
   });
 
   /// KYC verification status.
-  final KycStatus status;
+  final KycStatus? status;
 
   /// Called when the user taps the back button.
   ///
@@ -84,7 +84,7 @@ class KycHeader extends StatelessWidget {
         // ============================================================
         Align(
           alignment: Alignment.centerLeft,
-          child: KycStatusBadge(status: status),
+          child: KycStatusBadge(status: status!),
         ),
       ],
     );

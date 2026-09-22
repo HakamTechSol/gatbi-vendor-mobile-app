@@ -1,13 +1,14 @@
 import 'package:flutter/services.dart';
 
 class KycValidators {
-  KycValidators._();
-
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ============================================================
   // REQUIRED
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ============================================================
 
-  static String? requiredField(String? value, {required String fieldName}) {
+  static String? requiredField(
+    String? value, {
+    String fieldName = 'This field',
+  }) {
     final text = value?.trim() ?? '';
 
     if (text.isEmpty) {
@@ -17,311 +18,355 @@ class KycValidators {
     return null;
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // STORE
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ============================================================
+  // STORE NAME
+  // ============================================================
 
   static String? storeName(String? value) {
-    final required = requiredField(value, fieldName: 'Store name');
+    final text = value?.trim() ?? '';
 
-    if (required != null) return required;
-
-    final text = value!.trim();
+    if (text.isEmpty) {
+      return 'Store name is required.';
+    }
 
     if (text.length < 2) {
       return 'Store name must be at least 2 characters.';
     }
 
     if (text.length > 100) {
-      return 'Store name cannot exceed 100 characters.';
+      return 'Store name must not exceed 100 characters.';
     }
 
     return null;
   }
 
+  // ============================================================
+  // STORE EMAIL
+  // ============================================================
+
   static String? storeEmail(String? value) {
-    return email(value, fieldName: 'Store email', required: true);
+    final text = value?.trim() ?? '';
+
+    if (text.isEmpty) {
+      return 'Store email is required.';
+    }
+
+    return email(text);
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // OWNER
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ============================================================
+  // OWNER NAME
+  // ============================================================
 
   static String? ownerName(String? value) {
-    final required = requiredField(value, fieldName: 'Owner full name');
+    final text = value?.trim() ?? '';
 
-    if (required != null) return required;
-
-    final text = value!.trim();
+    if (text.isEmpty) {
+      return 'Owner full name is required.';
+    }
 
     if (text.length < 2) {
       return 'Owner name must be at least 2 characters.';
     }
 
     if (text.length > 100) {
-      return 'Owner name cannot exceed 100 characters.';
-    }
-
-    final nameRegex = RegExp(r"^[A-Za-zÀ-ÿ\s.'-]+$");
-
-    if (!nameRegex.hasMatch(text)) {
-      return 'Owner name contains invalid characters.';
+      return 'Owner name must not exceed 100 characters.';
     }
 
     return null;
   }
 
-  static String? ownerEmail(String? value) {
-    return email(value, fieldName: 'Owner email', required: false);
-  }
+  // ============================================================
+  // OWNER EMAIL
+  // ============================================================
 
-  static String? email(
-    String? value, {
-    required String fieldName,
-    bool required = false,
-  }) {
+  static String? ownerEmail(String? value) {
     final text = value?.trim() ?? '';
 
     if (text.isEmpty) {
-      return required ? '$fieldName is required.' : null;
+      return null;
+    }
+
+    return email(text);
+  }
+
+  // ============================================================
+  // EMAIL
+  // ============================================================
+
+  static String? email(String? value) {
+    final text = value?.trim() ?? '';
+
+    if (text.isEmpty) {
+      return 'Email is required.';
     }
 
     final emailRegex = RegExp(
       r'^[A-Za-z0-9.!#$%&*+/=?^_`{|}~-]+@'
-      r'[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}'
-      r'[A-Za-z0-9])?(?:\.[A-Za-z0-9]'
-      r'(?:[A-Za-z0-9-]{0,61}'
-      r'[A-Za-z0-9])?)+$',
+      r'[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?'
+      r'(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$',
     );
 
     if (!emailRegex.hasMatch(text)) {
-      return 'Enter a valid email address.';
+      return 'Please enter a valid email address.';
     }
 
     return null;
   }
+
+  // ============================================================
+  // DESIGNATION
+  // ============================================================
 
   static String? designation(String? value) {
     final text = value?.trim() ?? '';
 
-    if (text.isEmpty) return null;
-
-    if (text.length < 2) {
-      return 'Designation must be at least 2 characters.';
+    if (text.isEmpty) {
+      return null;
     }
 
     if (text.length > 100) {
-      return 'Designation cannot exceed 100 characters.';
+      return 'Designation must not exceed 100 characters.';
     }
 
     return null;
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ============================================================
   // PHONE
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ============================================================
+  //
+  // IMPORTANT:
+  //
+  // KYC phone field mein full number hota hai:
+  //
+  // +971501234567
+  //
+  // Lekin validation ke liye screen dial code remove karke
+  // local number pass karegi:
+  //
+  // 501234567
+  //
+  // Is validator mein:
+  //
+  // - Phone Rules API nahi hai
+  // - Country-wise min/max nahi hai
+  // - Sirf required
+  // - Digits only
+  // - Leading zero allowed nahi
+  //
+  // ============================================================
 
-  static String? phone(String? value, {required String countryCode}) {
+  static String? phone(String? value) {
+    final text = value?.trim() ?? '';
+
+    // ------------------------------------------------------------
+    // REQUIRED
+    // ------------------------------------------------------------
+
+    if (text.isEmpty) {
+      return 'Owner phone number is required.';
+    }
+
+    // ------------------------------------------------------------
+    // DIGITS ONLY
+    // ------------------------------------------------------------
+
+    if (!RegExp(r'^\d+$').hasMatch(text)) {
+      return 'Phone number must contain digits only.';
+    }
+
+    // ------------------------------------------------------------
+    // NO LEADING ZERO
+    // ------------------------------------------------------------
+
+    if (text.startsWith('0')) {
+      return 'Enter the phone number without the leading 0.';
+    }
+
+    return null;
+  }
+
+  // ============================================================
+  // TRADE LICENSE
+  // ============================================================
+
+  static String? tradeLicense(String? value) {
     final text = value?.trim() ?? '';
 
     if (text.isEmpty) {
-      return 'Owner phone is required.';
+      return 'Trade license number is required.';
     }
-
-    if (!RegExp(r'^\d+$').hasMatch(text)) {
-      return 'Phone number can contain digits only.';
-    }
-
-    final expectedLength = _phoneLength(countryCode);
-
-    if (expectedLength != null && text.length != expectedLength) {
-      return 'Enter a valid $countryCode phone number '
-          '($expectedLength digits).';
-    }
-
-    if (text.startsWith('0')) {
-      return 'Enter the number without the leading 0.';
-    }
-
-    return null;
-  }
-
-  static int? _phoneLength(String countryCode) {
-    switch (countryCode) {
-      case '+971':
-        return 9;
-
-      case '+92':
-        return 10;
-
-      case '+91':
-        return 10;
-
-      case '+966':
-        return 9;
-
-      default:
-        return null;
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // TRADE LICENSE
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  static String? tradeLicense(String? value) {
-    final required = requiredField(value, fieldName: 'Trade license number');
-
-    if (required != null) return required;
-
-    final text = value!.trim();
 
     if (text.length < 3) {
       return 'Trade license number is too short.';
     }
 
-    if (text.length > 50) {
-      return 'Trade license number cannot exceed 50 characters.';
+    if (text.length > 100) {
+      return 'Trade license number must not exceed 100 characters.';
     }
 
     return null;
   }
+
+  // ============================================================
+  // TRADE LICENSE EXPIRY
+  // ============================================================
 
   static String? tradeLicenseExpiry(String? value) {
-    final required = requiredField(
-      value,
-      fieldName: 'Trade license expiry date',
-    );
+    final text = value?.trim() ?? '';
 
-    if (required != null) return required;
+    if (text.isEmpty) {
+      return 'Trade license expiry date is required.';
+    }
 
-    final text = value!.trim();
+    final match = RegExp(r'^(\d{4})/(\d{2})/(\d{2})$').firstMatch(text);
 
-    try {
-      final parts = text.split('/');
+    if (match == null) {
+      return 'Use date format YYYY/MM/DD.';
+    }
 
-      if (parts.length != 3) {
-        return 'Enter a valid expiry date.';
-      }
+    // YYYY/MM/DD
+    final year = int.tryParse(match.group(1)!);
+    final month = int.tryParse(match.group(2)!);
+    final day = int.tryParse(match.group(3)!);
 
-      final month = int.parse(parts[0]);
-      final day = int.parse(parts[1]);
-      final year = int.parse(parts[2]);
+    if (year == null || month == null || day == null) {
+      return 'Please enter a valid expiry date.';
+    }
 
-      final date = DateTime(year, month, day);
+    if (year < 2000) {
+      return 'Please enter a valid expiry year.';
+    }
 
-      if (date.month != month || date.day != day || date.year != year) {
-        return 'Enter a valid expiry date.';
-      }
+    if (month < 1 || month > 12) {
+      return 'Please enter a valid expiry month.';
+    }
 
-      final now = DateTime.now();
+    if (day < 1 || day > 31) {
+      return 'Please enter a valid expiry day.';
+    }
 
-      final today = DateTime(now.year, now.month, now.day);
+    final date = DateTime(year, month, day);
 
-      if (!date.isAfter(today)) {
-        return 'Trade license must not be expired.';
-      }
-    } catch (_) {
-      return 'Enter a valid expiry date.';
+    // Prevent DateTime from accepting invalid dates
+    // such as 2027/02/30.
+    if (date.year != year || date.month != month || date.day != day) {
+      return 'Please enter a valid expiry date.';
+    }
+
+    final now = DateTime.now();
+
+    final today = DateTime(now.year, now.month, now.day);
+
+    if (!date.isAfter(today)) {
+      return 'Trade license expiry date must be a future date.';
     }
 
     return null;
   }
-
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ============================================================
   // TRN
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ============================================================
 
   static String? trn(String? value) {
     final text = value?.trim() ?? '';
 
-    if (text.isEmpty) return null;
+    if (text.isEmpty) {
+      return null;
+    }
 
     if (!RegExp(r'^\d+$').hasMatch(text)) {
-      return 'TRN can contain digits only.';
+      return 'TRN must contain digits only.';
     }
 
     if (text.length != 15) {
-      return 'TRN must contain 15 digits.';
+      return 'TRN must be exactly 15 digits.';
     }
 
     return null;
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ============================================================
   // WEBSITE
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ============================================================
 
   static String? website(String? value) {
     final text = value?.trim() ?? '';
 
-    if (text.isEmpty) return null;
+    if (text.isEmpty) {
+      return null;
+    }
 
-    final normalized = text.startsWith('http://') || text.startsWith('https://')
-        ? text
-        : 'https://$text';
-
-    final uri = Uri.tryParse(normalized);
+    final uri = Uri.tryParse(
+      text.startsWith('http://') || text.startsWith('https://')
+          ? text
+          : 'https://$text',
+    );
 
     if (uri == null || uri.host.isEmpty || !uri.host.contains('.')) {
-      return 'Enter a valid website URL.';
+      return 'Please enter a valid website URL.';
     }
 
     return null;
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // ADDRESS
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ============================================================
+  // BUSINESS ADDRESS
+  // ============================================================
 
   static String? businessAddress(String? value) {
-    final required = requiredField(
-      value,
-      fieldName: 'Registered business address',
-    );
+    final text = value?.trim() ?? '';
 
-    if (required != null) return required;
-
-    final text = value!.trim();
+    if (text.isEmpty) {
+      return 'Business address is required.';
+    }
 
     if (text.length < 10) {
       return 'Please enter a complete business address.';
     }
 
     if (text.length > 500) {
-      return 'Business address cannot exceed 500 characters.';
+      return 'Business address must not exceed 500 characters.';
     }
 
     return null;
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ============================================================
   // NOTES
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ============================================================
 
   static String? notes(String? value) {
     final text = value?.trim() ?? '';
 
-    if (text.isEmpty) return null;
+    if (text.isEmpty) {
+      return null;
+    }
 
     if (text.length > 1000) {
-      return 'Notes cannot exceed 1000 characters.';
+      return 'Notes must not exceed 1000 characters.';
     }
 
     return null;
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // INPUT FORMATTERS
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ============================================================
+  // PHONE FORMATTERS
+  // ============================================================
 
-  static final phoneFormatters = <TextInputFormatter>[
-    FilteringTextInputFormatter.digitsOnly,
-    LengthLimitingTextInputFormatter(15),
-  ];
+  static List<TextInputFormatter> get phoneFormatters {
+    return [FilteringTextInputFormatter.digitsOnly];
+  }
 
-  static final trnFormatters = <TextInputFormatter>[
-    FilteringTextInputFormatter.digitsOnly,
-    LengthLimitingTextInputFormatter(15),
-  ];
+  // ============================================================
+  // TRN FORMATTERS
+  // ============================================================
+
+  static List<TextInputFormatter> get trnFormatters {
+    return [
+      FilteringTextInputFormatter.digitsOnly,
+      LengthLimitingTextInputFormatter(15),
+    ];
+  }
 }

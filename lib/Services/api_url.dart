@@ -89,7 +89,7 @@ class ApiUrls {
   // KYC
   static const String kyc = 'vendor/kyc';
 
-  static const String submitKyc = 'vendor/kyc/submit';
+  static const String kycSubmit = 'vendor/kyc/submit';
 
   // Chat
   static const String venderChats = 'vendor/chats';
@@ -123,6 +123,8 @@ class ApiUrls {
 
   // Settings
   static const String settings = 'settings';
+
+  static const String getProfile = 'vendor/settings';
 
   static const String updateProfile = 'vendor/settings/profile';
 

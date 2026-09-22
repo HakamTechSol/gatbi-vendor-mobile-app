@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
-import '../Models/kyc_document_file.dart';
+import '../Services/kyc_document_file.dart';
 
 class KycDocumentUploadCard extends StatelessWidget {
   const KycDocumentUploadCard({
