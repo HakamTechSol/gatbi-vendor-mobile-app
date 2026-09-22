@@ -3,6 +3,9 @@ class ApiUrls {
 
   static const String baseUrl = 'https://gatbi.ae/api/mobile/';
 
+  /// Public files / uploaded documents
+  static const String fileBaseUrl = 'https://gatbi.ae';
+
   // Auth
   static const String register = 'vendor/auth/register';
   static const String verifyOtp = 'vendor/auth/verify-otp';

@@ -3,21 +3,26 @@ import 'package:flutter/material.dart';
 import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
 
-import '../../Models/ticket_model.dart';
-
+import '../Models/ticket_list_item_model.dart';
 import 'ticket_category_badge.dart';
 import 'ticket_number_badge.dart';
 import 'ticket_priority_badge.dart';
 import 'ticket_status_badge.dart';
 
 class TicketCard extends StatelessWidget {
-  const TicketCard({super.key, required this.ticket, this.onTap});
+  const TicketCard({
+    super.key,
+    required this.ticket,
+    this.onTap,
+  });
 
-  final TicketModel ticket;
+  final TicketListItemModel ticket;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    final accentColor = _accentColor();
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -49,7 +54,10 @@ class TicketCard extends StatelessWidget {
             ),
             child: Stack(
               children: [
-                // Left accent line
+                // =============================================================
+                // LEFT STATUS ACCENT
+                // =============================================================
+
                 Positioned(
                   left: 0,
                   top: 0,
@@ -57,7 +65,7 @@ class TicketCard extends StatelessWidget {
                   child: Container(
                     width: 4,
                     decoration: BoxDecoration(
-                      color: _accentColor(),
+                      color: accentColor,
                       borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(18),
                         bottomLeft: Radius.circular(18),
@@ -67,13 +75,18 @@ class TicketCard extends StatelessWidget {
                 ),
 
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 16, 16, 15),
+                  padding: const EdgeInsets.fromLTRB(
+                    18,
+                    16,
+                    16,
+                    15,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildHeader(),
 
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 15),
 
                       _buildSubject(),
 
@@ -99,30 +112,47 @@ class TicketCard extends StatelessWidget {
     );
   }
 
-  // ─────────────────────────────────────────────
+  // ===========================================================================
   // HEADER
-  // ─────────────────────────────────────────────
+  // ===========================================================================
 
   Widget _buildHeader() {
+    final ticketNumber =
+        _safeText(ticket.ticketNumber, fallback: 'Ticket');
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        TicketNumberBadge(ticketNumber: ticket.ticketNumber),
+        Expanded(
+          child: TicketNumberBadge(
+            ticketNumber: ticketNumber,
+          ),
+        ),
 
-        const Spacer(),
+        const SizedBox(width: 10),
 
-        TicketStatusBadge(status: ticket.status),
+        TicketStatusBadge(
+          status: _safeText(
+            ticket.status,
+            fallback: 'Unknown',
+          ),
+        ),
       ],
     );
   }
 
-  // ─────────────────────────────────────────────
+  // ===========================================================================
   // SUBJECT
-  // ─────────────────────────────────────────────
+  // ===========================================================================
 
   Widget _buildSubject() {
+    final subject = _safeText(
+      ticket.subject,
+      fallback: 'Untitled Ticket',
+    );
+
     return Text(
-      ticket.subject.isEmpty ? 'Untitled Ticket' : ticket.subject,
+      subject,
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
       style: AppTextStyles.titleMedium.copyWith(
@@ -134,53 +164,88 @@ class TicketCard extends StatelessWidget {
     );
   }
 
-  // ─────────────────────────────────────────────
+  // ===========================================================================
   // BADGES
-  // ─────────────────────────────────────────────
+  // ===========================================================================
 
   Widget _buildBadges() {
+    final category = _safeText(
+      ticket.category,
+      fallback: 'General',
+    );
+
+    final priority = _safeText(
+      ticket.priority,
+      fallback: 'Normal',
+    );
+
     return Row(
       children: [
-        Flexible(child: TicketCategoryBadge(category: ticket.category)),
+        Flexible(
+          child: TicketCategoryBadge(
+            category: category,
+          ),
+        ),
 
         const SizedBox(width: 8),
 
-        TicketPriorityBadge(priority: ticket.priority),
+        TicketPriorityBadge(
+          priority: priority,
+        ),
       ],
     );
   }
 
-  // ─────────────────────────────────────────────
+  // ===========================================================================
   // DIVIDER
-  // ─────────────────────────────────────────────
+  // ===========================================================================
 
   Widget _buildDivider() {
-    return Container(height: 1, color: AppColors.border.withOpacity(0.65));
+    return Container(
+      height: 1,
+      color: AppColors.border.withOpacity(0.65),
+    );
   }
 
-  // ─────────────────────────────────────────────
+  // ===========================================================================
   // BOTTOM ROW
-  // ─────────────────────────────────────────────
+  // ===========================================================================
 
   Widget _buildBottomRow() {
+    final createdDate = _formatDate(
+      ticket.createdAt,
+    );
+
+    final updatedDate = _formatDate(
+      ticket.updatedAt,
+    );
+
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Date
+        // ---------------------------------------------------------------------
+        // DATE ICON
+        // ---------------------------------------------------------------------
+
         Container(
-          width: 28,
-          height: 28,
+          width: 30,
+          height: 30,
           decoration: BoxDecoration(
             color: AppColors.surfaceMuted.withOpacity(0.55),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(9),
           ),
           child: Icon(
             Icons.calendar_today_outlined,
-            size: 13,
+            size: 14,
             color: AppColors.textSecondary,
           ),
         ),
 
         const SizedBox(width: 9),
+
+        // ---------------------------------------------------------------------
+        // DATE INFORMATION
+        // ---------------------------------------------------------------------
 
         Expanded(
           child: Column(
@@ -194,9 +259,13 @@ class TicketCard extends StatelessWidget {
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              const SizedBox(height: 1),
+
+              const SizedBox(height: 2),
+
               Text(
-                _formatDate(ticket.createdAt),
+                createdDate,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.caption.copyWith(
                   color: AppColors.textSecondary,
                   fontWeight: FontWeight.w600,
@@ -206,68 +275,197 @@ class TicketCard extends StatelessWidget {
           ),
         ),
 
-        // View ticket
-        Container(
-          height: 32,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceMuted.withOpacity(0.45),
-            borderRadius: BorderRadius.circular(10),
+        // ---------------------------------------------------------------------
+        // UPDATED INFORMATION
+        // ---------------------------------------------------------------------
+
+        if (updatedDate != 'N/A') ...[
+          const SizedBox(width: 10),
+
+          Container(
+            width: 1,
+            height: 28,
+            color: AppColors.border.withOpacity(0.7),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'View',
-                style: AppTextStyles.caption.copyWith(
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w600,
+
+          const SizedBox(width: 10),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Updated',
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.textTertiary,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 5),
-              Icon(
-                Icons.arrow_forward_rounded,
-                size: 15,
-                color: AppColors.textSecondary,
-              ),
-            ],
+
+                const SizedBox(height: 2),
+
+                Text(
+                  updatedDate,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
+
+        const SizedBox(width: 10),
+
+        // ---------------------------------------------------------------------
+        // VIEW BUTTON
+        // ---------------------------------------------------------------------
+
+        _buildViewButton(),
       ],
     );
   }
 
-  // ─────────────────────────────────────────────
-  // ACCENT COLOR
-  // ─────────────────────────────────────────────
+  // ===========================================================================
+  // VIEW BUTTON
+  // ===========================================================================
 
-  Color _accentColor() {
-    final status = ticket.status.toString().toLowerCase();
+  Widget _buildViewButton() {
+    return Container(
+      height: 34,
+      padding: const EdgeInsets.symmetric(
+        horizontal: 10,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMuted.withOpacity(0.45),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: AppColors.border.withOpacity(0.55),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'View',
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
 
-    if (status.contains('open')) {
-      return AppColors.primary;
-    }
+          const SizedBox(width: 5),
 
-    if (status.contains('pending')) {
-      return const Color(0xFFF59E0B);
-    }
-
-    if (status.contains('closed') || status.contains('resolved')) {
-      return const Color(0xFF10B981);
-    }
-
-    return AppColors.primary;
+          Icon(
+            Icons.arrow_forward_rounded,
+            size: 15,
+            color: AppColors.textSecondary,
+          ),
+        ],
+      ),
+    );
   }
 
-  // ─────────────────────────────────────────────
+  // ===========================================================================
+  // ACCENT COLOR
+  // ===========================================================================
+
+  Color _accentColor() {
+    final status =
+        _safeText(
+          ticket.status,
+          fallback: '',
+        ).toLowerCase().trim();
+
+    switch (status) {
+      case 'open':
+        return AppColors.primary;
+
+      case 'pending':
+        return const Color(0xFFF59E0B);
+
+      case 'closed':
+        return const Color(0xFF10B981);
+
+      case 'resolved':
+        return const Color(0xFF10B981);
+
+      case 'cancelled':
+      case 'canceled':
+        return const Color(0xFFEF4444);
+
+      default:
+        return AppColors.primary;
+    }
+  }
+
+  // ===========================================================================
+  // SAFE STRING
+  // ===========================================================================
+
+  String _safeText(
+    String? value, {
+    required String fallback,
+  }) {
+    final text = value?.trim() ?? '';
+
+    if (text.isEmpty) {
+      return fallback;
+    }
+
+    return text;
+  }
+
+  // ===========================================================================
   // DATE FORMAT
-  // ─────────────────────────────────────────────
+  // ===========================================================================
 
-  String _formatDate(DateTime date) {
-    final day = date.day.toString().padLeft(2, '0');
-    final month = date.month.toString().padLeft(2, '0');
-    final year = date.year.toString();
+  String _formatDate(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'N/A';
+    }
 
-    return '$day/$month/$year';
+    final rawValue = value.trim();
+
+    DateTime? parsedDate = DateTime.tryParse(
+      rawValue,
+    );
+
+    // API format:
+    // 2026-09-22 14:31:44
+    //
+    // Dart's DateTime.tryParse normally handles this format,
+    // but the fallback below also handles the space explicitly.
+
+    if (parsedDate == null) {
+      parsedDate = DateTime.tryParse(
+        rawValue.replaceFirst(' ', 'T'),
+      );
+    }
+
+    if (parsedDate == null) {
+      return rawValue;
+    }
+
+    final day =
+        parsedDate.day.toString().padLeft(2, '0');
+
+    final month =
+        parsedDate.month.toString().padLeft(2, '0');
+
+    final year =
+        parsedDate.year.toString();
+
+    final hour =
+        parsedDate.hour.toString().padLeft(2, '0');
+
+    final minute =
+        parsedDate.minute.toString().padLeft(2, '0');
+
+    return '$day/$month/$year • $hour:$minute';
   }
 }

@@ -29,10 +29,10 @@ import '../Features/Product Detail/Screens/product_detail_screen.dart';
 import '../Features/Splash/splash_screen.dart';
 import '../Features/Support/screen/create_support_ticket_screen.dart';
 import '../Features/Support/screen/support_screen.dart';
+import '../Features/Ticket/Create Ticket/Models/create_ticket_model.dart';
 import '../Features/Ticket/Create Ticket/create_ticket_screen.dart';
 import '../Features/Ticket/Detail ticket/ticket_detail_screen.dart';
 import '../Features/Ticket/List Ticket/ticket_list_screen.dart';
-import '../Features/Ticket/Models/create_ticket_model.dart';
 import '../Features/Ticket/Models/ticket_model.dart';
 import '../Features/analytics/Screens/analytics_screen.dart';
 import 'route_observer.dart';
@@ -483,13 +483,24 @@ final GoRouter appRouter = GoRouter(
             context.pop();
           },
 
-          onSubmit: (CreateTicketModel ticket) {
-            // API will be connected later.
-            debugPrint('Create Ticket');
-            debugPrint('Subject: ${ticket.subject}');
-            debugPrint('Category: ${ticket.category}');
-            debugPrint('Priority: ${ticket.priority}');
-            debugPrint('Message: ${ticket.message}');
+          onSubmit: (CreateTicketModel result) {
+            final ticket = result.ticket;
+
+            debugPrint('');
+            debugPrint('========== CREATE TICKET ==========');
+            debugPrint('SUCCESS: ${result.success}');
+            debugPrint('MESSAGE: ${result.message ?? 'N/A'}');
+            debugPrint('');
+            debugPrint('---------- TICKET ----------');
+            debugPrint('ID: ${ticket?.id ?? 'N/A'}');
+            debugPrint('Ticket Number: ${ticket?.ticketNumber ?? 'N/A'}');
+            debugPrint('Subject: ${ticket?.subject ?? 'N/A'}');
+            debugPrint('Category: ${ticket?.category ?? 'N/A'}');
+            debugPrint('Priority: ${ticket?.priority ?? 'N/A'}');
+            debugPrint('Status: ${ticket?.status ?? 'N/A'}');
+            debugPrint('Created At: ${ticket?.createdAt ?? 'N/A'}');
+            debugPrint('===================================');
+            debugPrint('');
           },
         );
       },

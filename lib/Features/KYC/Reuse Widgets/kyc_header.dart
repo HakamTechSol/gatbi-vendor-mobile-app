@@ -77,15 +77,6 @@ class KycHeader extends StatelessWidget {
           ],
         ),
 
-        const SizedBox(height: 14),
-
-        // ============================================================
-        // KYC STATUS
-        // ============================================================
-        Align(
-          alignment: Alignment.centerLeft,
-          child: KycStatusBadge(status: status!),
-        ),
       ],
     );
   }

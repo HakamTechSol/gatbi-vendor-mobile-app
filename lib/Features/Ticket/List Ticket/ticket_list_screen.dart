@@ -1,102 +1,242 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../Services/api_exception.dart';
 import '../../../Theme/app_colors.dart';
 import '../../../Theme/app_text_styles.dart';
 
-import '../Data/dummy_ticket_data.dart';
-import '../Models/ticket_model.dart';
-
+import 'Controller/ticket_list_controller.dart';
+import 'Models/ticket_list_item_model.dart';
 import 'Reuse Widgets/ticket_card.dart';
 import 'Reuse Widgets/ticket_empty_state.dart';
 import 'Reuse Widgets/ticket_error_state.dart';
-import 'Reuse Widgets/ticket_filter.dart';
 import 'Reuse Widgets/ticket_list_header.dart';
 import 'Reuse Widgets/ticket_loading.dart';
 import 'Reuse Widgets/ticket_search_bar.dart';
 
-class TicketListScreen extends StatefulWidget {
+class TicketListScreen extends ConsumerStatefulWidget {
   const TicketListScreen({super.key, this.onCreateTicket, this.onTicketTap});
 
   /// Called when the user taps "Create Ticket".
   final VoidCallback? onCreateTicket;
 
   /// Called when the user taps a ticket card.
-  final ValueChanged<TicketModel>? onTicketTap;
+  final ValueChanged<TicketListItemModel>? onTicketTap;
 
   @override
-  State<TicketListScreen> createState() => _TicketListScreenState();
+  ConsumerState<TicketListScreen> createState() => _TicketListScreenState();
 }
 
-class _TicketListScreenState extends State<TicketListScreen> {
-  late final TextEditingController _searchController;
+class _TicketListScreenState extends ConsumerState<TicketListScreen> {
+  // ===========================================================================
+  // CONTROLLERS
+  // ===========================================================================
 
-  String _selectedStatus = 'All';
+  late final TextEditingController _searchController;
+  late final ScrollController _scrollController;
+
+  // ===========================================================================
+  // STATE
+  // ===========================================================================
+
   String _searchQuery = '';
 
   bool _isLoading = false;
+  bool _isLoadingMore = false;
   bool _hasError = false;
 
-  List<TicketModel> _tickets = [];
+  List<TicketListItemModel> _tickets = [];
+
+  int _currentPage = 0;
+  int _totalPages = 1;
+  int _totalItems = 0;
+
+  // ===========================================================================
+  // INIT
+  // ===========================================================================
 
   @override
   void initState() {
     super.initState();
 
     _searchController = TextEditingController();
+    _scrollController = ScrollController();
 
-    _loadTickets();
+    _scrollController.addListener(_onScroll);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      _loadInitialTickets();
+    });
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+
     super.dispose();
   }
 
-  // ---------------------------------------------------------------------------
-  // DATA
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
+  // INITIAL LOAD
+  // ===========================================================================
 
-  void _loadTickets() {
+  Future<void> _loadInitialTickets() async {
+    if (_isLoading) return;
+
     setState(() {
-      _tickets = DummyTicketData.all;
+      _isLoading = true;
+      _hasError = false;
     });
-  }
 
-  List<TicketModel> get _filteredTickets {
-    Iterable<TicketModel> result = _tickets;
+    try {
+      final controller = ref.read(ticketListControllerProvider);
 
-    // Status filter
-    if (_selectedStatus.toLowerCase() != 'all') {
-      result = result.where(
-        (ticket) =>
-            ticket.status.toLowerCase() == _selectedStatus.toLowerCase(),
-      );
-    }
+      await controller.loadTickets(limit: 20);
 
-    // Search filter
-    final query = _searchQuery.trim().toLowerCase();
+      if (!mounted) return;
 
-    if (query.isNotEmpty) {
-      result = result.where((ticket) {
-        return ticket.ticketNumber.toLowerCase().contains(query) ||
-            ticket.subject.toLowerCase().contains(query) ||
-            ticket.category.toLowerCase().contains(query) ||
-            ticket.priority.toLowerCase().contains(query) ||
-            ticket.status.toLowerCase().contains(query);
+      setState(() {
+        _tickets = List<TicketListItemModel>.from(controller.tickets);
+
+        _currentPage = controller.currentPage;
+        _totalPages = controller.totalPages;
+        _totalItems = controller.totalItems;
+
+        _hasError = false;
+      });
+
+      debugPrint('');
+      debugPrint('========== TICKET SCREEN ==========');
+      debugPrint('INITIAL LOAD SUCCESS');
+      debugPrint('CURRENT PAGE: $_currentPage');
+      debugPrint('TOTAL PAGES: $_totalPages');
+      debugPrint('TOTAL ITEMS: $_totalItems');
+      debugPrint('LOADED TICKETS: ${_tickets.length}');
+      debugPrint('HAS MORE: ${controller.hasMore}');
+      debugPrint('===================================');
+      debugPrint('');
+    } on ApiException catch (error) {
+      if (!mounted) return;
+
+      setState(() {
+        _hasError = true;
+        _tickets = [];
+      });
+
+      _showErrorMessage(error.message);
+    } catch (error) {
+      if (!mounted) return;
+
+      setState(() {
+        _hasError = true;
+        _tickets = [];
+      });
+
+      _showErrorMessage('Something went wrong. Please try again.');
+    } finally {
+      if (!mounted) return;
+
+      setState(() {
+        _isLoading = false;
       });
     }
-
-    return result.toList();
   }
 
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
+  // PAGINATION
+  // ===========================================================================
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+
+    final position = _scrollController.position;
+
+    // Start loading next page before the user reaches
+    // the absolute bottom.
+    const double loadMoreThreshold = 250;
+
+    if (position.pixels >= position.maxScrollExtent - loadMoreThreshold) {
+      _loadNextPage();
+    }
+  }
+
+  Future<void> _loadNextPage() async {
+    if (_isLoading || _isLoadingMore) {
+      return;
+    }
+
+    final controller = ref.read(ticketListControllerProvider);
+
+    if (!controller.hasMore) {
+      debugPrint('[TicketListScreen] No more pages available.');
+      return;
+    }
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    try {
+      final nextPage = controller.currentPage + 1;
+
+      debugPrint('');
+      debugPrint('========== LOAD NEXT TICKET PAGE ==========');
+      debugPrint('CURRENT PAGE: ${controller.currentPage}');
+      debugPrint('REQUESTING PAGE: $nextPage');
+      debugPrint('LIMIT: ${controller.limit}');
+      debugPrint('============================================');
+      debugPrint('');
+
+      await controller.loadNextPage();
+
+
+      if (!mounted) return;
+
+      setState(() {
+        _tickets = List<TicketListItemModel>.from(controller.tickets);
+
+        _currentPage = controller.currentPage;
+        _totalPages = controller.totalPages;
+        _totalItems = controller.totalItems;
+      });
+
+      debugPrint('');
+      debugPrint('========== NEXT PAGE LOADED ==========');
+      debugPrint('CURRENT PAGE: $_currentPage');
+      debugPrint('TOTAL PAGES: $_totalPages');
+      debugPrint('TOTAL ITEMS: $_totalItems');
+      debugPrint('LOADED TICKETS: ${_tickets.length}');
+      debugPrint('HAS MORE: ${controller.hasMore}');
+      debugPrint('======================================');
+      debugPrint('');
+    } on ApiException catch (error) {
+      if (!mounted) return;
+
+      _showErrorMessage(error.message);
+    } catch (error) {
+      if (!mounted) return;
+
+      _showErrorMessage('Unable to load more tickets. Please try again.');
+    } finally {
+      if (!mounted) return;
+
+      setState(() {
+        _isLoadingMore = false;
+      });
+    }
+  }
+
+  // ===========================================================================
   // SEARCH
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
 
   void _onSearchChanged(String value) {
     setState(() {
-      _searchQuery = value;
+      _searchQuery = value.trim();
     });
   }
 
@@ -108,61 +248,133 @@ class _TicketListScreenState extends State<TicketListScreen> {
     });
   }
 
-  // ---------------------------------------------------------------------------
-  // FILTER
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
+  // FILTERED TICKETS
+  // ===========================================================================
 
-  void _onStatusChanged(String status) {
-    setState(() {
-      _selectedStatus = status;
-    });
+  List<TicketListItemModel> get _filteredTickets {
+    final query = _searchQuery.trim().toLowerCase();
+
+    if (query.isEmpty) {
+      return List<TicketListItemModel>.from(_tickets);
+    }
+
+    return _tickets.where((ticket) {
+      final ticketNumber = ticket.ticketNumber?.toLowerCase() ?? '';
+
+      final subject = ticket.subject?.toLowerCase() ?? '';
+
+      final category = ticket.category?.toLowerCase() ?? '';
+
+      final priority = ticket.priority?.toLowerCase() ?? '';
+
+      final status = ticket.status?.toLowerCase() ?? '';
+
+      return ticketNumber.contains(query) ||
+          subject.contains(query) ||
+          category.contains(query) ||
+          priority.contains(query) ||
+          status.contains(query);
+    }).toList();
   }
 
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
   // REFRESH
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
 
   Future<void> _onRefresh() async {
-    // This is intentionally local for now.
-    //
-    // Later:
-    // Repository -> Controller/Riverpod -> API
-    //
-    // The UI structure will not need to change.
+    if (_isLoading) {
+      return;
+    }
 
-    await Future<void>.delayed(const Duration(milliseconds: 500));
+    debugPrint('');
+    debugPrint('========== TICKET REFRESH ==========');
+    debugPrint('Refreshing ticket list from page 1...');
+    debugPrint('====================================');
+    debugPrint('');
 
-    if (!mounted) return;
+    try {
+      final controller = ref.read(ticketListControllerProvider);
 
-    setState(() {
-      _tickets = DummyTicketData.all;
-      _hasError = false;
-    });
-  }
+      final result = await controller.refresh(limit: 20);
 
-  // ---------------------------------------------------------------------------
-  // ERROR
-  // ---------------------------------------------------------------------------
-
-  void _retry() {
-    setState(() {
-      _hasError = false;
-      _isLoading = true;
-    });
-
-    Future<void>.delayed(const Duration(milliseconds: 700), () {
       if (!mounted) return;
 
       setState(() {
-        _isLoading = false;
-        _tickets = DummyTicketData.all;
+        _tickets = List<TicketListItemModel>.from(controller.tickets);
+
+        _currentPage = controller.currentPage;
+        _totalPages = controller.totalPages;
+        _totalItems = controller.totalItems;
+
+        _hasError = false;
       });
-    });
+
+      debugPrint('');
+      debugPrint('========== TICKET REFRESH RESULT ==========');
+      debugPrint('SUCCESS: ${result?.success ?? false}');
+      debugPrint('CURRENT PAGE: $_currentPage');
+      debugPrint('TOTAL PAGES: $_totalPages');
+      debugPrint('TOTAL ITEMS: $_totalItems');
+      debugPrint('LOADED TICKETS: ${_tickets.length}');
+      debugPrint('HAS MORE: ${controller.hasMore}');
+      debugPrint('===========================================');
+      debugPrint('');
+    } on ApiException catch (error) {
+      if (!mounted) return;
+
+      _showErrorMessage(error.message);
+    } catch (error) {
+      if (!mounted) return;
+
+      _showErrorMessage('Unable to refresh tickets. Please try again.');
+    }
   }
 
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
+  // RETRY
+  // ===========================================================================
+
+  Future<void> _retry() async {
+    await _loadInitialTickets();
+  }
+
+  // ===========================================================================
+  // ERROR MESSAGE
+  // ===========================================================================
+
+  void _showErrorMessage(String message) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.error,
+          margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline_rounded, color: Colors.white),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  message,
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+  }
+
+  // ===========================================================================
   // BUILD
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
 
   @override
   Widget build(BuildContext context) {
@@ -174,28 +386,51 @@ class _TicketListScreenState extends State<TicketListScreen> {
           backgroundColor: AppColors.surface,
           onRefresh: _onRefresh,
           child: CustomScrollView(
+            controller: _scrollController,
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             physics: const AlwaysScrollableScrollPhysics(
               parent: BouncingScrollPhysics(),
             ),
             slivers: [
+              // -----------------------------------------------------------------
+              // HEADER / SEARCH
+              // -----------------------------------------------------------------
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
                     _buildHeader(),
+
                     const SizedBox(height: 20),
+
                     _buildSearch(),
-                    const SizedBox(height: 14),
-                    _buildFilters(),
+
                     const SizedBox(height: 22),
+
                     _buildSectionHeader(),
+
                     const SizedBox(height: 12),
                   ]),
                 ),
               ),
 
+              // -----------------------------------------------------------------
+              // CONTENT
+              // -----------------------------------------------------------------
               _buildTicketContent(),
 
+              // -----------------------------------------------------------------
+              // PAGINATION LOADER
+              // -----------------------------------------------------------------
+              if (_isLoadingMore)
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+                  sliver: SliverToBoxAdapter(child: _buildPaginationLoader()),
+                ),
+
+              // -----------------------------------------------------------------
+              // BOTTOM SPACE
+              // -----------------------------------------------------------------
               const SliverPadding(padding: EdgeInsets.only(bottom: 24)),
             ],
           ),
@@ -204,17 +439,17 @@ class _TicketListScreenState extends State<TicketListScreen> {
     );
   }
 
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
   // HEADER
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
 
   Widget _buildHeader() {
     return TicketListHeader(onCreateTicket: widget.onCreateTicket);
   }
 
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
   // SEARCH
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
 
   Widget _buildSearch() {
     return TicketSearchBar(
@@ -224,23 +459,14 @@ class _TicketListScreenState extends State<TicketListScreen> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // FILTER
-  // ---------------------------------------------------------------------------
-
-  Widget _buildFilters() {
-    return TicketFilter(
-      selectedStatus: _selectedStatus,
-      onStatusChanged: _onStatusChanged,
-    );
-  }
-
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
   // SECTION HEADER
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
 
   Widget _buildSectionHeader() {
-    final count = _filteredTickets.length;
+    final tickets = _filteredTickets;
+
+    final bool isSearching = _searchQuery.trim().isNotEmpty;
 
     return Row(
       children: [
@@ -250,7 +476,9 @@ class _TicketListScreenState extends State<TicketListScreen> {
             color: AppColors.textPrimary,
           ),
         ),
+
         const SizedBox(width: 8),
+
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
@@ -258,16 +486,18 @@ class _TicketListScreenState extends State<TicketListScreen> {
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
-            '$count',
+            isSearching ? '${tickets.length}' : '$_totalItems',
             style: AppTextStyles.statusBadge.copyWith(color: AppColors.primary),
           ),
         ),
+
         const Spacer(),
-        if (_selectedStatus != 'All' || _searchQuery.isNotEmpty)
+
+        if (isSearching)
           GestureDetector(
-            onTap: _resetFilters,
+            onTap: _clearSearch,
             child: Text(
-              'Clear filters',
+              'Clear search',
               style: AppTextStyles.caption.copyWith(
                 color: AppColors.primary,
                 fontWeight: FontWeight.w700,
@@ -278,17 +508,25 @@ class _TicketListScreenState extends State<TicketListScreen> {
     );
   }
 
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
   // TICKET CONTENT
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
 
   Widget _buildTicketContent() {
+    // -------------------------------------------------------------------------
+    // INITIAL LOADING
+    // -------------------------------------------------------------------------
+
     if (_isLoading) {
       return SliverPadding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         sliver: SliverToBoxAdapter(child: TicketLoading()),
       );
     }
+
+    // -------------------------------------------------------------------------
+    // ERROR
+    // -------------------------------------------------------------------------
 
     if (_hasError) {
       return SliverFillRemaining(
@@ -302,24 +540,32 @@ class _TicketListScreenState extends State<TicketListScreen> {
 
     final tickets = _filteredTickets;
 
+    // -------------------------------------------------------------------------
+    // EMPTY
+    // -------------------------------------------------------------------------
+
     if (tickets.isEmpty) {
+      final bool isSearching = _searchQuery.trim().isNotEmpty;
+
       return SliverFillRemaining(
         hasScrollBody: false,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: TicketEmptyState(
-            title: _searchQuery.isNotEmpty || _selectedStatus != 'All'
-                ? 'No Matching Tickets'
-                : 'No Tickets Yet',
-            message: _searchQuery.isNotEmpty || _selectedStatus != 'All'
-                ? 'Try changing your search or filter to find the ticket you are looking for.'
+            title: isSearching ? 'No Matching Tickets' : 'No Tickets Yet',
+            message: isSearching
+                ? 'Try changing your search to find the ticket you are looking for.'
                 : 'You haven’t created any support tickets yet. Create a ticket and our support team will help you.',
-            buttonText: 'Create Ticket',
-            onButtonPressed: widget.onCreateTicket,
+            buttonText: isSearching ? 'Clear Search' : 'Create Ticket',
+            onButtonPressed: isSearching ? _clearSearch : widget.onCreateTicket,
           ),
         ),
       );
     }
+
+    // -------------------------------------------------------------------------
+    // TICKET LIST
+    // -------------------------------------------------------------------------
 
     return SliverPadding(
       padding: const EdgeInsets.only(left: 16, right: 16),
@@ -339,16 +585,21 @@ class _TicketListScreenState extends State<TicketListScreen> {
       ),
     );
   }
-  // ---------------------------------------------------------------------------
-  // FILTER RESET
-  // ---------------------------------------------------------------------------
 
-  void _resetFilters() {
-    _searchController.clear();
+  // ===========================================================================
+  // PAGINATION LOADER
+  // ===========================================================================
 
-    setState(() {
-      _searchQuery = '';
-      _selectedStatus = 'All';
-    });
+  Widget _buildPaginationLoader() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      child: const Center(
+        child: SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(strokeWidth: 2.5),
+        ),
+      ),
+    );
   }
 }

@@ -11,23 +11,38 @@ import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
 
 import '../../../Services/api_exception.dart';
+
+import '../../../Services/dio.dart';
+import '../../../Services/file_download_service.dart';
 import '../../Account Setting/Get Profile/Controller/get_profile_controller.dart';
 import '../../Account Setting/Get Profile/Models/get_profile_model.dart';
-import '../../Authentication/Registration/Phone Rule/phone_code_dropdown.dart';
 
+import '../../Authentication/Registration/Phone Rule/phone_code_dropdown.dart';
 import '../../Authentication/Registration/Phone Rule/phone_rules_controller.dart';
 import '../../Authentication/Registration/Phone Rule/phone_rules_model.dart';
+
+import '../Controller/kyc_document_controller.dart';
 import '../Controller/kyc_submit_controller.dart';
-import '../Models/kyc_submit_model.dart';
-import '../Reuse Widgets/kyc_status_badge.dart';
-import '../Reuse Widgets/kyc_submission_status_card.dart';
+import '../Controller/vendor_kyc_controller.dart';
+import '../Models/vendor_kyc_detail_model.dart';
+import '../Models/vendor_kyc_document_model.dart';
+import '../Reuse Widgets/kyc_shimmar.dart';
 import '../Services/kyc_document_file.dart';
 
+// Reuse Widgets
+import '../Reuse Widgets/kyc_details_card.dart';
+import '../Reuse Widgets/kyc_document_preview_dialog.dart';
 import '../Reuse Widgets/kyc_document_upload_card.dart';
+import '../Reuse Widgets/kyc_documents_section.dart';
+import '../Reuse Widgets/kyc_form_field.dart';
+import '../Reuse Widgets/kyc_form_field_with_example.dart';
 import '../Reuse Widgets/kyc_guidelines_card.dart';
 import '../Reuse Widgets/kyc_header.dart';
 import '../Reuse Widgets/kyc_help_card.dart';
+import '../Reuse Widgets/kyc_responsive_fields.dart';
 import '../Reuse Widgets/kyc_section_card.dart';
+import '../Reuse Widgets/kyc_status_badge.dart';
+import '../Reuse Widgets/kyc_status_card.dart';
 import '../Reuse Widgets/kyc_timeline_card.dart';
 import '../Reuse Widgets/kyc_validators.dart';
 
@@ -47,53 +62,57 @@ class _KycScreenState extends ConsumerState<KycScreen> {
 
   final _storeNameController = TextEditingController();
   final _storeEmailController = TextEditingController();
-
   final _ownerNameController = TextEditingController();
   final _ownerEmailController = TextEditingController();
   final _ownerPhoneController = TextEditingController();
-
   final _designationController = TextEditingController();
-
   final _tradeLicenseController = TextEditingController();
   final _tradeLicenseExpiryController = TextEditingController();
-
   final _trnController = TextEditingController();
   final _websiteController = TextEditingController();
-
   final _businessAddressController = TextEditingController();
   final _notesController = TextEditingController();
 
   // ============================================================
-  // VENDOR SETTINGS
+  // SETTINGS
   // ============================================================
 
   late Future<VendorSettingsModel> _settingsFuture;
-
   bool _isSettingsLoading = true;
   String? _settingsError;
 
   // ============================================================
-  // COUNTRY
-  // ============================================================
-
-  String? _selectedCountryIsoCode = 'AE';
-
-  String _selectedCountryDialCode = '+971';
-
-  // ============================================================
-  // PHONE RULES
+  // PHONE
   // ============================================================
 
   late final Future<PhoneRulesModel> _phoneRulesFuture;
-
   PhoneRuleItemModel? _selectedPhoneRule;
-
   bool _isPhoneRuleLoading = false;
-
   int _phoneRuleRequestId = 0;
+  String? _selectedCountryIsoCode = 'AE';
+  String _selectedCountryDialCode = '+971';
 
   // ============================================================
-  // DOCUMENTS
+  // KYC STATE (GET)
+  // ============================================================
+
+  bool _isKycLoading = true;
+  bool _kycExists = false;
+
+  bool _isDownloading = false;
+
+  String? _kycStatus;
+  String? _kycMessage;
+  String? _kycRejectionReason;
+
+  int? _kycSubmissionCount;
+
+  VendorKycDetailModel? _kycDetail;
+
+  List<VendorKycDocumentModel> _kycDocuments = [];
+
+  // ============================================================
+  // DOCUMENTS (Form)
   // ============================================================
 
   KycDocumentFile? _tradeLicenseFile;
@@ -107,26 +126,36 @@ class _KycScreenState extends ConsumerState<KycScreen> {
   String? _additionalError;
 
   // ============================================================
-  // UI STATE
+  // UI
   // ============================================================
 
   int _currentStep = 0;
-
   bool _isSubmitting = false;
-
-  KycSubmitModel? _kycSubmitResult;
-
-  bool _isKycSubmitted = false;
-
   bool _isPickingDocument = false;
 
   final ImagePicker _imagePicker = ImagePicker();
-
   static const int _maxFileSizeBytes = 8 * 1024 * 1024;
+
+  bool get _isRejectedStatus {
+    switch (_kycStatus?.trim().toLowerCase()) {
+      case 'rejected':
+      case 'declined':
+      case 'denied':
+        return true;
+
+      default:
+        return false;
+    }
+  }
+
+  void _setDownloading(bool value) {
+    if (!mounted) return;
+  }
 
   // ============================================================
   // INIT
   // ============================================================
+
   @override
   void initState() {
     super.initState();
@@ -134,46 +163,265 @@ class _KycScreenState extends ConsumerState<KycScreen> {
     _settingsFuture = ref
         .read(vendorSettingsControllerProvider)
         .getVendorSettings();
-
     _phoneRulesFuture = ref.read(phoneRulesControllerProvider).getPhoneRules();
 
     _loadVendorSettings();
-
     _setPhoneDialCode(_selectedCountryDialCode);
-
     _loadInitialPhoneRule();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadKyc();
+    });
   }
+
   // ============================================================
-  // LOAD INITIAL PHONE RULE
+  // LOAD KYC (GET)
+  // ============================================================
+
+  Future<bool> _loadKyc({bool showError = true}) async {
+    if (mounted) {
+      setState(() {
+        _isKycLoading = true;
+      });
+    }
+
+    try {
+      final result = await ref.read(vendorKycControllerProvider).getVendorKyc();
+
+      if (!mounted) return false;
+
+      final kyc = result.kyc;
+
+      final rawStatus = kyc?.status?.trim().toLowerCase();
+
+      // ----------------------------------------------------------
+      // IMPORTANT
+      //
+      // Rejected KYC should show the form again.
+      //
+      // Only these statuses are considered "already submitted"
+      // and therefore should hide the form.
+      // ----------------------------------------------------------
+
+      final hasActiveKyc = _isActiveKycStatus(rawStatus);
+
+      setState(() {
+        _isKycLoading = false;
+
+        _kycExists = hasActiveKyc;
+
+        _kycStatus = kyc?.status?.trim();
+
+        // statusLabel is already available in your GET model.
+        _kycMessage = kyc?.statusLabel?.trim();
+
+        _kycRejectionReason = kyc?.rejectionReason?.trim();
+
+        _kycSubmissionCount = kyc?.submissionCount;
+
+        _kycDetail = kyc?.detail;
+
+        _kycDocuments = List<VendorKycDocumentModel>.from(
+          kyc?.documents ?? const <VendorKycDocumentModel>[],
+        );
+      });
+
+      // ----------------------------------------------------------
+      // If KYC is rejected, load existing information into form
+      // so vendor does not have to enter everything again.
+      // ----------------------------------------------------------
+
+      if (rawStatus == 'rejected' ||
+          rawStatus == 'declined' ||
+          rawStatus == 'denied') {
+        _fillKycDetailIntoForm(kyc?.detail);
+      }
+
+      return true;
+    } catch (error) {
+      if (!mounted) return false;
+
+      setState(() {
+        _isKycLoading = false;
+      });
+
+      if (showError) {
+        _showMessage(_getKycGetErrorMessage(error), isError: true);
+      }
+
+      return false;
+    }
+  }
+
+  // ============================================================
+  // KYC STATUS HELPERS
+  // ============================================================
+
+  bool _isActiveKycStatus(String? status) {
+    switch (status) {
+      case 'pending':
+      case 'under_review':
+      case 'underreview':
+      case 'review':
+      case 'in_review':
+      case 'approved':
+      case 'verified':
+      case 'accepted':
+        return true;
+
+      case null:
+      case '':
+      case 'not_submitted':
+      case 'not-submitted':
+      case 'not submitted':
+      case 'rejected':
+      case 'declined':
+      case 'denied':
+      default:
+        return false;
+    }
+  }
+
+  // ============================================================
+  // FILL EXISTING KYC DATA INTO FORM
+  // ============================================================
+
+  void _fillKycDetailIntoForm(VendorKycDetailModel? detail) {
+    if (detail == null) return;
+
+    _ownerNameController.text = detail.ownerName?.trim() ?? '';
+
+    _ownerEmailController.text = detail.ownerEmail?.trim() ?? '';
+
+    _designationController.text =
+        detail.authorizedPersonDesignation?.trim() ?? '';
+
+    _tradeLicenseController.text = detail.tradeLicenseNumber?.trim() ?? '';
+
+    _trnController.text = detail.taxRegistrationNumber?.trim() ?? '';
+
+    _websiteController.text = detail.website?.trim() ?? '';
+
+    _businessAddressController.text = detail.businessAddress?.trim() ?? '';
+
+    _notesController.text = detail.notes?.trim() ?? '';
+
+    final expiry = detail.tradeLicenseExpiry?.trim();
+
+    if (expiry != null && expiry.isNotEmpty) {
+      _tradeLicenseExpiryController.text = _formatApiDateForUi(expiry);
+    }
+
+    _setOwnerPhoneFromApi(detail.ownerPhone);
+  }
+
+  String _formatApiDateForUi(String value) {
+    final normalized = value.trim();
+
+    if (normalized.isEmpty) {
+      return '';
+    }
+
+    final parsed = DateTime.tryParse(normalized);
+
+    if (parsed == null) {
+      return normalized.replaceAll('-', '/');
+    }
+
+    return '${parsed.year}/'
+        '${parsed.month.toString().padLeft(2, '0')}/'
+        '${parsed.day.toString().padLeft(2, '0')}';
+  }
+
+  void _setOwnerPhoneFromApi(String? value) {
+    final phone = value?.trim();
+
+    if (phone == null || phone.isEmpty) {
+      return;
+    }
+
+    final countryRules = _phoneRulesFuture;
+
+    countryRules.then((rules) {
+      if (!mounted) return;
+
+      PhoneRuleItemModel? matchedRule;
+
+      for (final rule in rules.phoneRules) {
+        final dialCode = rule.countryCode?.trim();
+
+        if (dialCode == null || dialCode.isEmpty) {
+          continue;
+        }
+
+        final normalizedDialCode = dialCode.startsWith('+')
+            ? dialCode
+            : '+$dialCode';
+
+        if (phone.startsWith(normalizedDialCode)) {
+          matchedRule = rule;
+
+          setState(() {
+            _selectedCountryIsoCode = rule.countryCode?.trim().toUpperCase();
+
+            _selectedCountryDialCode = normalizedDialCode;
+
+            _selectedPhoneRule = rule;
+          });
+
+          _ownerPhoneController.text =
+              '$normalizedDialCode '
+              '${phone.substring(normalizedDialCode.length).trim()}';
+
+          return;
+        }
+      }
+
+      // If API phone country could not be matched,
+      // keep the full phone value.
+      if (matchedRule == null) {
+        _ownerPhoneController.text = phone;
+      }
+    });
+  }
+
+  String _getKycGetErrorMessage(Object error) {
+    if (error is ApiException) {
+      final message = error.message.trim();
+
+      if (message.isNotEmpty) {
+        return message;
+      }
+    }
+
+    return 'Unable to load KYC information. Please try again.';
+  }
+
+  // ============================================================
+  // PHONE RULES
   // ============================================================
 
   Future<void> _loadInitialPhoneRule() async {
     final countryCode = _selectedCountryIsoCode?.trim();
-
-    if (countryCode == null || countryCode.isEmpty) {
-      return;
-    }
+    if (countryCode == null || countryCode.isEmpty) return;
 
     final requestId = ++_phoneRuleRequestId;
 
-    setState(() {
-      _selectedPhoneRule = null;
-      _isPhoneRuleLoading = true;
-    });
+    if (mounted) {
+      setState(() {
+        _selectedPhoneRule = null;
+        _isPhoneRuleLoading = true;
+      });
+    }
 
     try {
       final phoneRules = await _phoneRulesFuture;
-
-      if (!mounted || requestId != _phoneRuleRequestId) {
-        return;
-      }
+      if (!mounted || requestId != _phoneRuleRequestId) return;
 
       PhoneRuleItemModel? matchedRule;
-
       for (final rule in phoneRules.phoneRules) {
-        final ruleCountryCode = rule.countryCode?.trim().toUpperCase();
-
-        if (ruleCountryCode == countryCode.toUpperCase()) {
+        if (rule.countryCode?.trim().toUpperCase() ==
+            countryCode.toUpperCase()) {
           matchedRule = rule;
           break;
         }
@@ -184,10 +432,7 @@ class _KycScreenState extends ConsumerState<KycScreen> {
         _isPhoneRuleLoading = false;
       });
     } catch (_) {
-      if (!mounted || requestId != _phoneRuleRequestId) {
-        return;
-      }
-
+      if (!mounted || requestId != _phoneRuleRequestId) return;
       setState(() {
         _selectedPhoneRule = null;
         _isPhoneRuleLoading = false;
@@ -195,14 +440,8 @@ class _KycScreenState extends ConsumerState<KycScreen> {
     }
   }
 
-  // ============================================================
-  // UPDATE PHONE RULE FOR COUNTRY
-  // ============================================================
-
   Future<void> _updatePhoneRuleForCountry(String? countryCode) async {
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
     final requestId = ++_phoneRuleRequestId;
 
@@ -211,11 +450,10 @@ class _KycScreenState extends ConsumerState<KycScreen> {
         _selectedPhoneRule = null;
         _isPhoneRuleLoading = false;
       });
-
       return;
     }
 
-    final normalizedCountryCode = countryCode.trim().toUpperCase();
+    final normalized = countryCode.trim().toUpperCase();
 
     setState(() {
       _selectedPhoneRule = null;
@@ -224,17 +462,11 @@ class _KycScreenState extends ConsumerState<KycScreen> {
 
     try {
       final phoneRules = await _phoneRulesFuture;
-
-      if (!mounted || requestId != _phoneRuleRequestId) {
-        return;
-      }
+      if (!mounted || requestId != _phoneRuleRequestId) return;
 
       PhoneRuleItemModel? matchedRule;
-
       for (final rule in phoneRules.phoneRules) {
-        final ruleCountryCode = rule.countryCode?.trim().toUpperCase();
-
-        if (ruleCountryCode == normalizedCountryCode) {
+        if (rule.countryCode?.trim().toUpperCase() == normalized) {
           matchedRule = rule;
           break;
         }
@@ -246,17 +478,11 @@ class _KycScreenState extends ConsumerState<KycScreen> {
       });
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) {
-          return;
-        }
-
+        if (!mounted) return;
         _formKey.currentState?.validate();
       });
     } catch (_) {
-      if (!mounted || requestId != _phoneRuleRequestId) {
-        return;
-      }
-
+      if (!mounted || requestId != _phoneRuleRequestId) return;
       setState(() {
         _selectedPhoneRule = null;
         _isPhoneRuleLoading = false;
@@ -265,7 +491,7 @@ class _KycScreenState extends ConsumerState<KycScreen> {
   }
 
   // ============================================================
-  // LOAD VENDOR SETTINGS
+  // SETTINGS
   // ============================================================
 
   Future<void> _loadVendorSettings() async {
@@ -278,17 +504,11 @@ class _KycScreenState extends ConsumerState<KycScreen> {
 
     try {
       final settings = await _settingsFuture;
-
       if (!mounted) return;
-
       _fillSettingsData(settings);
-
-      setState(() {
-        _isSettingsLoading = false;
-      });
-    } catch (error) {
+      setState(() => _isSettingsLoading = false);
+    } catch (_) {
       if (!mounted) return;
-
       setState(() {
         _isSettingsLoading = false;
         _settingsError = 'Unable to load vendor settings. Please try again.';
@@ -296,93 +516,26 @@ class _KycScreenState extends ConsumerState<KycScreen> {
     }
   }
 
-  // ============================================================
-  // RETRY SETTINGS
-  // ============================================================
-
   Future<void> _retryVendorSettings() async {
     if (!mounted) return;
-
     setState(() {
       _settingsFuture = ref
           .read(vendorSettingsControllerProvider)
           .getVendorSettings();
     });
-
     await _loadVendorSettings();
   }
 
-  // ============================================================
-  // FILL SETTINGS DATA
-  // ============================================================
-  //
-  // Store Name / Store Email:
-  // Auto-filled + read-only.
-  //
-  // Owner Name / Email / Phone:
-  // NOT auto-filled.
-  // User enters them manually.
-  // ============================================================
-
   void _fillSettingsData(VendorSettingsModel settings) {
     final merchant = settings.merchant;
-
-    // ============================================================
-    // STORE
-    // ============================================================
-
     _storeNameController.text = merchant?.name?.trim() ?? '';
     _storeEmailController.text = merchant?.email?.trim() ?? '';
-
-    // ============================================================
-    // OWNER FIELDS
-    //
-    // Intentionally empty.
-    // ============================================================
-
     _ownerNameController.clear();
     _ownerEmailController.clear();
-
-    // ============================================================
-    // DEFAULT COUNTRY
-    // ============================================================
-
     _selectedCountryIsoCode = 'AE';
     _selectedCountryDialCode = '+971';
-
-    // ------------------------------------------------------------
-    // Set +971 inside phone field
-    // ------------------------------------------------------------
-
     _setPhoneDialCode(_selectedCountryDialCode);
     _updatePhoneRuleForCountry(_selectedCountryIsoCode);
-  }
-
-  // ============================================================
-  // DISPOSE
-  // ============================================================
-
-  @override
-  void dispose() {
-    _storeNameController.dispose();
-    _storeEmailController.dispose();
-
-    _ownerNameController.dispose();
-    _ownerEmailController.dispose();
-    _ownerPhoneController.dispose();
-
-    _designationController.dispose();
-
-    _tradeLicenseController.dispose();
-    _tradeLicenseExpiryController.dispose();
-
-    _trnController.dispose();
-    _websiteController.dispose();
-
-    _businessAddressController.dispose();
-    _notesController.dispose();
-
-    super.dispose();
   }
 
   // ============================================================
@@ -395,175 +548,223 @@ class _KycScreenState extends ConsumerState<KycScreen> {
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: _isSettingsLoading
-            ? _buildSettingsLoading()
+            ? KycShimmerScreen()
             : _settingsError != null
             ? _buildSettingsError()
-            : LayoutBuilder(
-                builder: (context, constraints) {
-                  final horizontalPadding = constraints.maxWidth >= 600
-                      ? 24.0
-                      : 16.0;
-
-                  return SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    padding: EdgeInsets.fromLTRB(
-                      horizontalPadding,
-                      18,
-                      horizontalPadding,
-                      32,
-                    ),
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 900),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            KycHeader(
-                              status: _isKycSubmitted
-                                  ? KycStatus.pending
-                                  : KycStatus.pending,
-                            ),
-
-                            const SizedBox(height: 20),
-
-                            if (_isKycSubmitted)
-                              _buildKycSubmittedState()
-                            else ...[
-                              _buildStepIndicator(),
-
-                              const SizedBox(height: 20),
-
-                              AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 250),
-                                switchInCurve: Curves.easeOut,
-                                switchOutCurve: Curves.easeIn,
-                                child: _currentStep == 0
-                                    ? _buildInformationStep()
-                                    : _buildDocumentsStep(),
-                              ),
-
-                              if (_currentStep == 1) ...[
-                                const SizedBox(height: 16),
-                                const KycTimelineCard(),
-                                const SizedBox(height: 16),
-                                const KycHelpCard(),
-                              ],
-                            ],
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
+            : _buildContent(),
       ),
     );
   }
 
-  // ============================================================
-  // KYC SUBMITTED STATE
-  // ============================================================
+  Widget _buildContent() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final horizontalPadding = constraints.maxWidth >= 600 ? 24.0 : 16.0;
 
-  Widget _buildKycSubmittedState() {
-    final result = _kycSubmitResult;
-
-    return KycSubmissionStatusCard(
-      status: result?.kycStatus,
-      message: result?.message,
-    );
-  }
-
-  // ============================================================
-  // SETTINGS LOADING
-  // ============================================================
-
-  Widget _buildSettingsLoading() {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(
-            width: 28,
-            height: 28,
-            child: CircularProgressIndicator(strokeWidth: 2.5),
+        return SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: EdgeInsets.fromLTRB(
+            horizontalPadding,
+            18,
+            horizontalPadding,
+            32,
           ),
-          const SizedBox(height: 14),
-          Text(
-            'Loading vendor information...',
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: AppColors.textSecondary,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 900),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  KycHeader(status: _headerStatus),
+
+                  const SizedBox(height: 20),
+
+                  _buildKycBody(),
+
+                  const SizedBox(height: 18),
+
+                  // ------------------------------------------------
+                  // ALWAYS VISIBLE
+                  // ------------------------------------------------
+                  const KycTimelineCard(),
+
+                  const SizedBox(height: 16),
+
+                  const KycHelpCard(),
+                ],
+              ),
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   // ============================================================
-  // SETTINGS ERROR
+  // KYC BODY
   // ============================================================
 
-  Widget _buildSettingsError() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Container(
-          width: double.infinity,
-          constraints: const BoxConstraints(maxWidth: 450),
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.border),
+  Widget _buildKycBody() {
+    // ----------------------------------------------------------
+    // GET API LOADING
+    // ----------------------------------------------------------
+
+    if (_isKycLoading) {
+      return _buildKycLoading();
+    }
+
+    // ----------------------------------------------------------
+    // APPROVED
+    //
+    // Approved KYC mein:
+    // - Submitted Information HIDE
+    // - Submitted Documents HIDE
+    // - Sirf Status Card show
+    // ----------------------------------------------------------
+
+    if (_isApprovedStatus) {
+      return KycStatusCard(
+        status: _kycStatus,
+        rejectionReason: _kycRejectionReason,
+        submissionCount: _kycSubmissionCount,
+        message: _kycMessage,
+        onRefresh: _refreshKycStatus,
+      );
+    }
+
+    // ----------------------------------------------------------
+    // ACTIVE KYC
+    //
+    // pending / under_review etc.
+    //
+    // In statuses mein:
+    // - Status Card
+    // - Submitted Information
+    // - Submitted Documents
+    // show honge.
+    // ----------------------------------------------------------
+
+    if (_kycExists) {
+      return _buildExistingKycState();
+    }
+
+    // ----------------------------------------------------------
+    // NO KYC / REJECTED
+    //
+    // Form visible
+    // ----------------------------------------------------------
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_isRejectedStatus) ...[
+          KycStatusCard(
+            status: _kycStatus,
+            rejectionReason: _kycRejectionReason,
+            submissionCount: _kycSubmissionCount,
+            message: _kycMessage,
+            onRefresh: _refreshKycStatus,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: AppColors.error.withValues(alpha: 0.08),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.error_outline_rounded,
-                  color: AppColors.error,
-                ),
-              ),
+          const SizedBox(height: 18),
+        ],
 
-              const SizedBox(height: 14),
+        _buildKycForm(),
+      ],
+    );
+  }
 
-              Text(
-                'Unable to Load Information',
-                style: AppTextStyles.titleMedium,
-                textAlign: TextAlign.center,
-              ),
+  bool get _isApprovedStatus {
+    switch (_kycStatus?.trim().toLowerCase()) {
+      case 'approved':
+      case 'verified':
+      case 'accepted':
+        return true;
 
-              const SizedBox(height: 6),
+      default:
+        return false;
+    }
+  }
 
-              Text(
-                _settingsError ?? 'Something went wrong. Please try again.',
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-                textAlign: TextAlign.center,
-              ),
+  KycStatus get _headerStatus {
+    switch (_kycStatus?.trim().toLowerCase()) {
+      case 'approved':
+      case 'verified':
+      case 'accepted':
+        return KycStatus.approved;
 
-              const SizedBox(height: 18),
+      case 'rejected':
+      case 'declined':
+      case 'denied':
+        return KycStatus.rejected;
 
-              CustomButton(
-                text: 'Try Again',
-                icon: Icons.refresh_rounded,
-                height: 48,
-                borderRadius: 12,
-                elevation: 1,
-                onPressed: _retryVendorSettings,
-              ),
-            ],
-          ),
+      case 'under_review':
+      case 'underreview':
+      case 'review':
+      case 'in_review':
+      case 'pending':
+      default:
+        return KycStatus.pending;
+    }
+  }
+  // ============================================================
+  // EXISTING KYC STATE
+  // ============================================================
+
+  Widget _buildExistingKycState() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        KycStatusCard(
+          status: _kycStatus,
+          rejectionReason: _kycRejectionReason,
+          submissionCount: _kycSubmissionCount,
+          message: _kycMessage,
+          onRefresh: _refreshKycStatus,
         ),
-      ),
+
+        const SizedBox(height: 18),
+
+        // --------------------------------------------------------
+        // APPROVED KYC
+        //
+        // Approved hone par information aur documents hide.
+        // --------------------------------------------------------
+        if (!_isApprovedStatus) ...[
+          if (_kycDetail != null) ...[
+            KycDetailsCard(detail: _kycDetail),
+
+            const SizedBox(height: 18),
+          ],
+
+          if (_kycDocuments.isNotEmpty)
+            KycDocumentsSection(
+              documents: _kycDocuments,
+              onPreview: _previewServerDocument,
+              onDownload: _downloadServerDocument,
+            ),
+        ],
+      ],
+    );
+  }
+
+  // ============================================================
+  // FORM
+  // ============================================================
+
+  Widget _buildKycForm() {
+    return Column(
+      children: [
+        _buildStepIndicator(),
+        const SizedBox(height: 20),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 250),
+          switchInCurve: Curves.easeOut,
+          switchOutCurve: Curves.easeIn,
+          child: _currentStep == 0
+              ? _buildInformationStep()
+              : _buildDocumentsStep(),
+        ),
+      ],
     );
   }
 
@@ -588,7 +789,6 @@ class _KycScreenState extends ConsumerState<KycScreen> {
             active: _currentStep == 0,
             completed: _currentStep > 0,
           ),
-
           Expanded(
             child: Container(
               height: 2,
@@ -596,7 +796,6 @@ class _KycScreenState extends ConsumerState<KycScreen> {
               color: _currentStep > 0 ? AppColors.primary : AppColors.border,
             ),
           ),
-
           _buildStepCircle(
             number: 2,
             title: 'Documents',
@@ -638,9 +837,7 @@ class _KycScreenState extends ConsumerState<KycScreen> {
                   ),
           ),
         ),
-
         const SizedBox(width: 8),
-
         if (MediaQuery.sizeOf(context).width >= 430)
           Text(
             title,
@@ -653,7 +850,7 @@ class _KycScreenState extends ConsumerState<KycScreen> {
   }
 
   // ============================================================
-  // STEP 1
+  // INFORMATION STEP
   // ============================================================
 
   Widget _buildInformationStep() {
@@ -666,12 +863,10 @@ class _KycScreenState extends ConsumerState<KycScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ========================================================
-            // STORE NAME + STORE EMAIL
-            // ========================================================
-            _buildResponsiveFields(
-              first: _buildFieldWithExample(
-                field: CustomTextField(
+            KycResponsiveFields(
+              first: KycFormFieldWithExample(
+                example: 'Example: Beauty Store',
+                field: KycFormField(
                   controller: _storeNameController,
                   label: 'Store Name *',
                   hintText: 'Store name',
@@ -682,10 +877,10 @@ class _KycScreenState extends ConsumerState<KycScreen> {
                   ),
                   validator: KycValidators.storeName,
                 ),
-                example: 'Example: Beauty Store',
               ),
-              second: _buildFieldWithExample(
-                field: CustomTextField(
+              second: KycFormFieldWithExample(
+                example: 'Example: store@example.com',
+                field: KycFormField(
                   controller: _storeEmailController,
                   label: 'Store Email *',
                   hintText: 'Store email',
@@ -697,28 +892,25 @@ class _KycScreenState extends ConsumerState<KycScreen> {
                   ),
                   validator: KycValidators.storeEmail,
                 ),
-                example: 'Example: store@example.com',
               ),
             ),
 
             const SizedBox(height: 18),
 
-            // ========================================================
-            // OWNER NAME + EMAIL
-            // ========================================================
-            _buildResponsiveFields(
-              first: _buildFieldWithExample(
-                field: CustomTextField(
+            KycResponsiveFields(
+              first: KycFormFieldWithExample(
+                example: 'Example: Ahmed Ali',
+                field: KycFormField(
                   controller: _ownerNameController,
                   label: 'Owner Full Name *',
                   hintText: 'Enter owner full name',
                   textInputAction: TextInputAction.next,
                   validator: KycValidators.ownerName,
                 ),
-                example: 'Example: Ahmed Ali',
               ),
-              second: _buildFieldWithExample(
-                field: CustomTextField(
+              second: KycFormFieldWithExample(
+                example: 'Example: ahmed@example.com',
+                field: KycFormField(
                   controller: _ownerEmailController,
                   label: 'Owner Email',
                   hintText: 'Enter owner email',
@@ -726,56 +918,47 @@ class _KycScreenState extends ConsumerState<KycScreen> {
                   textInputAction: TextInputAction.next,
                   validator: KycValidators.ownerEmail,
                 ),
-                example: 'Example: ahmed@example.com',
               ),
             ),
 
             const SizedBox(height: 18),
 
-            // ========================================================
-            // PHONE + DESIGNATION
-            // ========================================================
-            _buildResponsiveFields(
+            KycResponsiveFields(
               first: _buildPhoneField(),
-              second: _buildFieldWithExample(
-                field: CustomTextField(
+              second: KycFormFieldWithExample(
+                example: 'Example: Owner / Director / Manager',
+                field: KycFormField(
                   controller: _designationController,
                   label: 'Designation / Role',
                   hintText: 'e.g. Owner, Director, Manager',
                   textInputAction: TextInputAction.next,
                   validator: KycValidators.designation,
                 ),
-                example: 'Example: Owner / Director / Manager',
               ),
             ),
 
             const SizedBox(height: 18),
 
-            // ========================================================
-            // TRADE LICENSE + EXPIRY
-            // ========================================================
-            _buildResponsiveFields(
-              first: _buildFieldWithExample(
-                field: CustomTextField(
+            KycResponsiveFields(
+              first: KycFormFieldWithExample(
+                example: 'Example: TL-DXB-12345',
+                field: KycFormField(
                   controller: _tradeLicenseController,
                   label: 'Trade License Number *',
                   hintText: 'Enter trade license number',
                   textInputAction: TextInputAction.next,
                   validator: KycValidators.tradeLicense,
                 ),
-                example: 'Example: TL-DXB-12345',
               ),
               second: _buildExpiryField(),
             ),
 
             const SizedBox(height: 18),
 
-            // ========================================================
-            // TRN + WEBSITE
-            // ========================================================
-            _buildResponsiveFields(
-              first: _buildFieldWithExample(
-                field: CustomTextField(
+            KycResponsiveFields(
+              first: KycFormFieldWithExample(
+                example: 'Example: 100123456789003',
+                field: KycFormField(
                   controller: _trnController,
                   label: 'Tax Registration Number (TRN)',
                   hintText: 'Enter 15 digit TRN',
@@ -784,10 +967,10 @@ class _KycScreenState extends ConsumerState<KycScreen> {
                   inputFormatters: KycValidators.trnFormatters,
                   validator: KycValidators.trn,
                 ),
-                example: 'Example: 100123456789003',
               ),
-              second: _buildFieldWithExample(
-                field: CustomTextField(
+              second: KycFormFieldWithExample(
+                example: 'Example: https://mystore.ae',
+                field: KycFormField(
                   controller: _websiteController,
                   label: 'Company Website',
                   hintText: 'https://example.com',
@@ -795,17 +978,14 @@ class _KycScreenState extends ConsumerState<KycScreen> {
                   textInputAction: TextInputAction.next,
                   validator: KycValidators.website,
                 ),
-                example: 'Example: https://mystore.ae',
               ),
             ),
 
             const SizedBox(height: 18),
 
-            // ========================================================
-            // ADDRESS
-            // ========================================================
-            _buildFieldWithExample(
-              field: CustomTextField(
+            KycFormFieldWithExample(
+              example: 'Example: Office 101, Business Bay, Dubai',
+              field: KycFormField(
                 controller: _businessAddressController,
                 label: 'Registered Business Address *',
                 hintText: 'Enter complete registered business address',
@@ -814,16 +994,13 @@ class _KycScreenState extends ConsumerState<KycScreen> {
                 textInputAction: TextInputAction.newline,
                 validator: KycValidators.businessAddress,
               ),
-              example: 'Example: Office 101, Business Bay, Dubai',
             ),
 
             const SizedBox(height: 18),
 
-            // ========================================================
-            // NOTES
-            // ========================================================
-            _buildFieldWithExample(
-              field: CustomTextField(
+            KycFormFieldWithExample(
+              example: 'Example: Additional information about your documents',
+              field: KycFormField(
                 controller: _notesController,
                 label: 'Notes for Compliance Team',
                 hintText:
@@ -833,7 +1010,6 @@ class _KycScreenState extends ConsumerState<KycScreen> {
                 textInputAction: TextInputAction.newline,
                 validator: KycValidators.notes,
               ),
-              example: 'Example: Additional information about your documents',
             ),
 
             const SizedBox(height: 24),
@@ -842,76 +1018,6 @@ class _KycScreenState extends ConsumerState<KycScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildFieldWithExample({
-    required Widget field,
-    required String example,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        field,
-
-        const SizedBox(height: 6),
-
-        Padding(
-          padding: const EdgeInsets.only(left: 2),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(
-                Icons.info_outline_rounded,
-                size: 13,
-                color: AppColors.iconSecondary,
-              ),
-
-              const SizedBox(width: 5),
-
-              Expanded(
-                child: Text(
-                  example,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ============================================================
-  // RESPONSIVE FIELDS
-  // ============================================================
-
-  Widget _buildResponsiveFields({
-    required Widget first,
-    required Widget second,
-  }) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth < 600) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [first, const SizedBox(height: 18), second],
-          );
-        }
-
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: first),
-            const SizedBox(width: 14),
-            Expanded(child: second),
-          ],
-        );
-      },
     );
   }
 
@@ -926,103 +1032,62 @@ class _KycScreenState extends ConsumerState<KycScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Owner Phone *', style: AppTextStyles.authFieldLabel),
-
         const SizedBox(height: 8),
-
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ========================================================
-            // COUNTRY CODE DROPDOWN
-            // ========================================================
             SizedBox(
               width: 125,
               child: PhoneCodeDropdown(
                 value: _selectedCountryIsoCode,
-
                 onChanged: (_) {},
-
                 onCountryChanged: (country) {
-                  if (!mounted || country == null) {
-                    return;
-                  }
+                  if (!mounted || country == null) return;
 
                   final isoCode = country.code?.trim();
                   final dialCode = country.dialCode?.trim();
 
-                  if (isoCode == null || isoCode.isEmpty) {
+                  if (isoCode == null ||
+                      isoCode.isEmpty ||
+                      dialCode == null ||
+                      dialCode.isEmpty) {
                     return;
                   }
 
-                  if (dialCode == null || dialCode.isEmpty) {
-                    return;
-                  }
-
-                  // Previous country dial code.
                   final previousDialCode = _selectedCountryDialCode;
-
-                  // Normalize new dial code.
                   final normalizedDialCode = dialCode.startsWith('+')
                       ? dialCode
                       : '+$dialCode';
 
                   setState(() {
                     _selectedCountryIsoCode = isoCode.toUpperCase();
-
                     _selectedCountryDialCode = normalizedDialCode;
                   });
-
-                  // --------------------------------------------------
-                  // Put new dial code inside phone field.
-                  // Same approach as RegisterScreen.
-                  // --------------------------------------------------
 
                   _setPhoneDialCode(
                     normalizedDialCode,
                     previousDialCode: previousDialCode,
                   );
 
-                  // --------------------------------------------------
-                  // Load phone rule for selected country.
-                  // --------------------------------------------------
-
                   _updatePhoneRuleForCountry(isoCode);
                 },
               ),
             ),
-
             const SizedBox(width: 8),
-
-            // ========================================================
-            // PHONE NUMBER FIELD
-            // ========================================================
             Expanded(
               child: CustomTextField(
                 controller: _ownerPhoneController,
-
                 keyboardType: TextInputType.phone,
-
                 textInputAction: TextInputAction.next,
-
                 hintText: rule?.example != null
                     ? 'Example: ${rule!.example}'
                     : 'Enter phone number',
-
-                // IMPORTANT:
-                // Dial code is already inside controller.
-                prefixText: null,
-
                 validator: _validateOwnerPhone,
               ),
             ),
           ],
         ),
-
         const SizedBox(height: 6),
-
-        // ==========================================================
-        // PHONE RULE INFO
-        // ==========================================================
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1031,9 +1096,7 @@ class _KycScreenState extends ConsumerState<KycScreen> {
               size: 13,
               color: AppColors.iconSecondary,
             ),
-
             const SizedBox(width: 5),
-
             Expanded(
               child: Text(
                 _phoneRuleHelperText(),
@@ -1048,17 +1111,9 @@ class _KycScreenState extends ConsumerState<KycScreen> {
     );
   }
 
-  // ============================================================
-  // PHONE RULE HELPER TEXT
-  // ============================================================
-
   String _phoneRuleHelperText() {
     final rule = _selectedPhoneRule;
-
-    if (_isPhoneRuleLoading) {
-      return 'Loading phone validation rules...';
-    }
-
+    if (_isPhoneRuleLoading) return 'Loading phone validation rules...';
     if (rule == null) {
       return 'Select a country to load phone validation rules.';
     }
@@ -1068,13 +1123,10 @@ class _KycScreenState extends ConsumerState<KycScreen> {
     final example = rule.example;
 
     String lengthText;
-
     if (minLength != null && maxLength != null) {
-      if (minLength == maxLength) {
-        lengthText = '$minLength digits';
-      } else {
-        lengthText = '$minLength-$maxLength digits';
-      }
+      lengthText = minLength == maxLength
+          ? '$minLength digits'
+          : '$minLength-$maxLength digits';
     } else if (minLength != null) {
       lengthText = 'at least $minLength digits';
     } else if (maxLength != null) {
@@ -1092,73 +1144,22 @@ class _KycScreenState extends ConsumerState<KycScreen> {
     return parts.join(' • ');
   }
 
-  // ============================================================
-  // OWNER PHONE VALIDATION
-  // ============================================================
-  //
-  // IMPORTANT:
-  //
-  // Field:
-  // +92 3212345678
-  //
-  // Validator sirf:
-  // 3212345678
-  //
-  // ko validate karega.
-  //
-  // +92 length mein count nahi hoga.
-  // ============================================================
-
   String? _validateOwnerPhone(String? value) {
     final rawPhone = value?.trim() ?? '';
-
-    // ============================================================
-    // REQUIRED
-    // ============================================================
-
-    if (rawPhone.isEmpty) {
-      return 'Owner phone number is required.';
-    }
-
-    // ============================================================
-    // COUNTRY
-    // ============================================================
+    if (rawPhone.isEmpty) return 'Owner phone number is required.';
 
     final countryCode = _selectedCountryIsoCode?.trim();
-
     if (countryCode == null || countryCode.isEmpty) {
       return 'Please select a country.';
     }
 
-    // ============================================================
-    // DIAL CODE
-    // ============================================================
-
     final dialCode = _selectedCountryDialCode.trim();
-
-    if (dialCode.isEmpty) {
-      return 'Please select a valid country code.';
-    }
-
-    // ============================================================
-    // REMOVE DIAL CODE
-    //
-    // UI:
-    // +92 3212345678
-    //
-    // LOCAL:
-    // 3212345678
-    // ============================================================
+    if (dialCode.isEmpty) return 'Please select a valid country code.';
 
     var phone = rawPhone;
-
     if (phone.startsWith(dialCode)) {
       phone = phone.substring(dialCode.length).trim();
     }
-
-    // ============================================================
-    // REMOVE FORMATTING
-    // ============================================================
 
     phone = phone
         .replaceAll(' ', '')
@@ -1166,139 +1167,51 @@ class _KycScreenState extends ConsumerState<KycScreen> {
         .replaceAll('(', '')
         .replaceAll(')', '');
 
-    // ============================================================
-    // REQUIRED LOCAL NUMBER
-    // ============================================================
-
-    if (phone.isEmpty) {
-      return 'Phone number is required.';
-    }
-
-    // ============================================================
-    // DIGITS ONLY
-    // ============================================================
-
+    if (phone.isEmpty) return 'Phone number is required.';
     if (!RegExp(r'^\d+$').hasMatch(phone)) {
       return 'Phone number must contain digits only.';
     }
-
-    // ============================================================
-    // LEADING ZERO
-    // ============================================================
-
     if (phone.startsWith('0')) {
       return 'Enter the phone number without the leading 0.';
     }
 
-    // ============================================================
-    // PHONE RULE FROM API
-    // ============================================================
-
     final rule = _selectedPhoneRule;
-
     if (rule == null) {
       if (_isPhoneRuleLoading) {
         return 'Phone validation rules are still loading.';
       }
-
       return 'Phone validation rule is not available for this country.';
     }
 
-    final minLength = rule.minLength;
-    final maxLength = rule.maxLength;
-    final example = rule.example;
-
-    final phoneLength = phone.length;
-
-    // ============================================================
-    // MINIMUM LENGTH
-    // ============================================================
-
-    if (minLength != null && phoneLength < minLength) {
-      if (minLength == maxLength) {
-        return example != null
-            ? 'Phone number must be $minLength digits. '
-                  'Example: $example'
-            : 'Phone number must be $minLength digits.';
-      }
-
-      return example != null
-          ? 'Phone number must be at least $minLength digits. '
-                'Example: $example'
-          : 'Phone number must be at least $minLength digits.';
+    final length = phone.length;
+    if (rule.minLength != null && length < rule.minLength!) {
+      return 'Phone number must be at least ${rule.minLength} digits.';
     }
-
-    // ============================================================
-    // MAXIMUM LENGTH
-    // ============================================================
-
-    if (maxLength != null && phoneLength > maxLength) {
-      if (minLength == maxLength) {
-        return example != null
-            ? 'Phone number must be $maxLength digits. '
-                  'Example: $example'
-            : 'Phone number must be $maxLength digits.';
-      }
-
-      final rangeText = minLength != null
-          ? '$minLength-$maxLength'
-          : 'up to $maxLength';
-
-      return example != null
-          ? 'Phone number must be $rangeText digits. '
-                'Example: $example'
-          : 'Phone number must be $rangeText digits.';
+    if (rule.maxLength != null && length > rule.maxLength!) {
+      return 'Phone number must not exceed ${rule.maxLength} digits.';
     }
 
     return null;
   }
 
-  // ============================================================
-  // SET PHONE DIAL CODE
-  // ============================================================
-
   void _setPhoneDialCode(String dialCode, {String? previousDialCode}) {
     var normalizedDialCode = dialCode.trim();
-
-    if (normalizedDialCode.isEmpty) {
-      return;
-    }
-
+    if (normalizedDialCode.isEmpty) return;
     if (!normalizedDialCode.startsWith('+')) {
       normalizedDialCode = '+$normalizedDialCode';
     }
 
     var currentValue = _ownerPhoneController.text.trim();
 
-    // ============================================================
-    // REMOVE PREVIOUS COUNTRY DIAL CODE
-    // ============================================================
-
     if (previousDialCode != null && previousDialCode.isNotEmpty) {
-      var normalizedPreviousDialCode = previousDialCode.trim();
-
-      if (!normalizedPreviousDialCode.startsWith('+')) {
-        normalizedPreviousDialCode = '+$normalizedPreviousDialCode';
-      }
-
-      if (currentValue.startsWith(normalizedPreviousDialCode)) {
-        currentValue = currentValue
-            .substring(normalizedPreviousDialCode.length)
-            .trim();
+      var previous = previousDialCode.trim();
+      if (!previous.startsWith('+')) previous = '+$previous';
+      if (currentValue.startsWith(previous)) {
+        currentValue = currentValue.substring(previous.length).trim();
       }
     }
 
-    // ============================================================
-    // IF ALREADY USING NEW DIAL CODE
-    // ============================================================
-
-    if (currentValue.startsWith(normalizedDialCode)) {
-      return;
-    }
-
-    // ============================================================
-    // REMOVE FORMATTING
-    // ============================================================
+    if (currentValue.startsWith(normalizedDialCode)) return;
 
     currentValue = currentValue
         .replaceAll(' ', '')
@@ -1306,15 +1219,7 @@ class _KycScreenState extends ConsumerState<KycScreen> {
         .replaceAll('(', '')
         .replaceAll(')', '');
 
-    // ============================================================
-    // REMOVE LEADING ZERO
-    // ============================================================
-
     currentValue = currentValue.replaceFirst(RegExp(r'^0+'), '');
-
-    // ============================================================
-    // FINAL FIELD VALUE
-    // ============================================================
 
     final newValue = currentValue.isEmpty
         ? '$normalizedDialCode '
@@ -1332,50 +1237,32 @@ class _KycScreenState extends ConsumerState<KycScreen> {
   // ============================================================
 
   Widget _buildExpiryField() {
-    return CustomTextField(
-      controller: _tradeLicenseExpiryController,
-      label: 'Trade License Expiry *',
-      hintText: 'yyyy/mm/dd',
-      readOnly: true,
-      suffixIcon: const Icon(Icons.calendar_today_outlined, size: 19),
-      onTap: _selectExpiryDate,
-      validator: KycValidators.tradeLicenseExpiry,
+    return KycFormFieldWithExample(
+      example: 'Select from date picker',
+      field: KycFormField(
+        controller: _tradeLicenseExpiryController,
+        label: 'Trade License Expiry *',
+        hintText: 'yyyy/mm/dd',
+        readOnly: true,
+        suffixIcon: const Icon(Icons.calendar_today_outlined, size: 19),
+        onTap: _selectExpiryDate,
+        validator: KycValidators.tradeLicenseExpiry,
+      ),
     );
   }
 
-  // ============================================================
-  // EXPIRY DATE PICKER
-  // ============================================================
-
   Future<void> _selectExpiryDate() async {
     final now = DateTime.now();
-
     final today = DateTime(now.year, now.month, now.day);
 
     final selectedDate = await showDatePicker(
       context: context,
-
-      // ----------------------------------------------------------
-      // DEFAULT SELECTED DATE
-      // ----------------------------------------------------------
       initialDate: today.add(const Duration(days: 30)),
-
-      // ----------------------------------------------------------
-      // EXPIRY MUST BE A FUTURE DATE
-      // ----------------------------------------------------------
       firstDate: today.add(const Duration(days: 1)),
-
-      // ----------------------------------------------------------
-      // MAXIMUM 20 YEARS
-      // ----------------------------------------------------------
       lastDate: DateTime(today.year + 20, 12, 31),
-
       helpText: 'Select Trade License Expiry',
-
       cancelText: 'Cancel',
-
       confirmText: 'Select',
-
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -1389,67 +1276,35 @@ class _KycScreenState extends ConsumerState<KycScreen> {
       },
     );
 
-    if (selectedDate == null || !mounted) {
-      return;
-    }
+    if (selectedDate == null || !mounted) return;
 
-    // ============================================================
-    // FORMAT DATE
-    //
-    // UI:
-    // yyyy/mm/dd
-    //
-    // Example:
-    // 2027/12/31
-    // ============================================================
-
-    final year = selectedDate.year.toString();
-
-    final month = selectedDate.month.toString().padLeft(2, '0');
-
-    final day = selectedDate.day.toString().padLeft(2, '0');
-
-    final formattedDate = '$year/$month/$day';
-
-    // ============================================================
-    // SET FIELD VALUE
-    // ============================================================
+    final formatted =
+        '${selectedDate.year}/'
+        '${selectedDate.month.toString().padLeft(2, '0')}/'
+        '${selectedDate.day.toString().padLeft(2, '0')}';
 
     setState(() {
-      _tradeLicenseExpiryController.text = formattedDate;
+      _tradeLicenseExpiryController.text = formatted;
     });
 
-    // ============================================================
-    // REVALIDATE FORM
-    // ============================================================
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) {
-        return;
-      }
-
+      if (!mounted) return;
       _formKey.currentState?.validate();
     });
   }
 
   // ============================================================
-  // NEXT
+  // NEXT BUTTON
   // ============================================================
 
   void _goToDocuments() {
     FocusScope.of(context).unfocus();
-
     final valid = _formKey.currentState?.validate() ?? false;
-
     if (!valid) {
       _showMessage('Please complete the highlighted fields.', isError: true);
-
       return;
     }
-
-    setState(() {
-      _currentStep = 1;
-    });
+    setState(() => _currentStep = 1);
   }
 
   Widget _buildNextButton() {
@@ -1467,7 +1322,7 @@ class _KycScreenState extends ConsumerState<KycScreen> {
   }
 
   // ============================================================
-  // STEP 2
+  // DOCUMENTS STEP
   // ============================================================
 
   Widget _buildDocumentsStep() {
@@ -1478,22 +1333,14 @@ class _KycScreenState extends ConsumerState<KycScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildDocumentGrid(),
-
           const SizedBox(height: 18),
-
           const KycGuidelinesCard(),
-
           const SizedBox(height: 24),
-
           _buildStepNavigation(),
         ],
       ),
     );
   }
-
-  // ============================================================
-  // DOCUMENT GRID
-  // ============================================================
 
   Widget _buildDocumentGrid() {
     return LayoutBuilder(
@@ -1511,7 +1358,6 @@ class _KycScreenState extends ConsumerState<KycScreen> {
                 ? null
                 : () => _removeDocument(type: _DocumentType.tradeLicense),
           ),
-
           KycDocumentUploadCard(
             title: 'Authorized Person ID',
             required: true,
@@ -1522,7 +1368,6 @@ class _KycScreenState extends ConsumerState<KycScreen> {
                 ? null
                 : () => _removeDocument(type: _DocumentType.authorizedId),
           ),
-
           KycDocumentUploadCard(
             title: 'VAT / Tax Registration',
             file: _vatFile,
@@ -1532,7 +1377,6 @@ class _KycScreenState extends ConsumerState<KycScreen> {
                 ? null
                 : () => _removeDocument(type: _DocumentType.vat),
           ),
-
           KycDocumentUploadCard(
             title: 'Additional Supporting Document',
             file: _additionalFile,
@@ -1568,9 +1412,7 @@ class _KycScreenState extends ConsumerState<KycScreen> {
                 Expanded(child: cards[1]),
               ],
             ),
-
             const SizedBox(height: 14),
-
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1585,10 +1427,6 @@ class _KycScreenState extends ConsumerState<KycScreen> {
     );
   }
 
-  // ============================================================
-  // STEP NAVIGATION
-  // ============================================================
-
   Widget _buildStepNavigation() {
     return Row(
       children: [
@@ -1597,9 +1435,7 @@ class _KycScreenState extends ConsumerState<KycScreen> {
             onPressed: _isSubmitting
                 ? null
                 : () {
-                    setState(() {
-                      _currentStep = 0;
-                    });
+                    setState(() => _currentStep = 0);
                   },
             icon: const Icon(Icons.arrow_back_rounded),
             label: const Text('Back'),
@@ -1611,9 +1447,7 @@ class _KycScreenState extends ConsumerState<KycScreen> {
             ),
           ),
         ),
-
         const SizedBox(width: 12),
-
         Expanded(
           flex: 2,
           child: CustomButton(
@@ -1631,7 +1465,7 @@ class _KycScreenState extends ConsumerState<KycScreen> {
   }
 
   // ============================================================
-  // DOCUMENT PICKER
+  // PICK DOCUMENT
   // ============================================================
 
   Future<void> _pickDocument({required _DocumentType type}) async {
@@ -1656,39 +1490,27 @@ class _KycScreenState extends ConsumerState<KycScreen> {
                   size: 38,
                   color: AppColors.primary,
                 ),
-
                 const SizedBox(height: 10),
-
                 Text('Upload Document', style: AppTextStyles.titleLarge),
-
                 const SizedBox(height: 5),
-
                 Text(
                   'Choose how you want to add your document.',
                   textAlign: TextAlign.center,
                   style: AppTextStyles.bodySmall,
                 ),
-
                 const SizedBox(height: 20),
-
                 _buildUploadOption(
                   icon: Icons.folder_outlined,
                   title: 'Choose from Files',
                   subtitle: 'PDF, JPG, PNG or WEBP',
-                  onTap: () {
-                    Navigator.pop(context, _DocumentSource.files);
-                  },
+                  onTap: () => Navigator.pop(context, _DocumentSource.files),
                 ),
-
                 const SizedBox(height: 10),
-
                 _buildUploadOption(
                   icon: Icons.camera_alt_outlined,
                   title: 'Take a Photo',
                   subtitle: 'Capture your document',
-                  onTap: () {
-                    Navigator.pop(context, _DocumentSource.camera);
-                  },
+                  onTap: () => Navigator.pop(context, _DocumentSource.camera),
                 ),
               ],
             ),
@@ -1699,13 +1521,10 @@ class _KycScreenState extends ConsumerState<KycScreen> {
 
     if (source == null || !mounted) return;
 
-    setState(() {
-      _isPickingDocument = true;
-    });
+    setState(() => _isPickingDocument = true);
 
     try {
       KycDocumentFile? selectedFile;
-
       if (source == _DocumentSource.files) {
         selectedFile = await _pickFromFiles();
       } else {
@@ -1721,28 +1540,18 @@ class _KycScreenState extends ConsumerState<KycScreen> {
 
       setState(() {
         _setDocument(type: type, file: selectedFile!);
-
         _clearDocumentError(type);
       });
-    } catch (error) {
+    } catch (_) {
       if (!mounted) return;
-
       _showMessage(
         'Unable to select the document. Please try again.',
         isError: true,
       );
     } finally {
-      if (mounted) {
-        setState(() {
-          _isPickingDocument = false;
-        });
-      }
+      if (mounted) setState(() => _isPickingDocument = false);
     }
   }
-
-  // ============================================================
-  // PICK FROM FILES
-  // ============================================================
 
   Future<KycDocumentFile?> _pickFromFiles() async {
     final result = await FilePicker.pickFiles(
@@ -1753,20 +1562,12 @@ class _KycScreenState extends ConsumerState<KycScreen> {
     if (result.isEmpty) return null;
 
     final selected = result.single;
-
     final path = selected.path;
-
-    if (path == null || path.isEmpty) {
-      return null;
-    }
+    if (path == null || path.isEmpty) return null;
 
     final extension = selected.extension?.toLowerCase() ?? '';
-
     final file = File(path);
-
-    final exists = await file.exists();
-
-    if (!exists) return null;
+    if (!await file.exists()) return null;
 
     final sizeBytes = await file.length();
 
@@ -1777,10 +1578,6 @@ class _KycScreenState extends ConsumerState<KycScreen> {
       isImage: _isImageExtension(extension),
     );
   }
-
-  // ============================================================
-  // PICK FROM CAMERA
-  // ============================================================
 
   Future<KycDocumentFile?> _pickFromCamera() async {
     final image = await _imagePicker.pickImage(
@@ -1793,10 +1590,7 @@ class _KycScreenState extends ConsumerState<KycScreen> {
     if (image == null) return null;
 
     final file = File(image.path);
-
-    final exists = await file.exists();
-
-    if (!exists) return null;
+    if (!await file.exists()) return null;
 
     final size = await file.length();
 
@@ -1826,13 +1620,10 @@ class _KycScreenState extends ConsumerState<KycScreen> {
     switch (type) {
       case _DocumentType.tradeLicense:
         _tradeLicenseFile = file;
-
       case _DocumentType.authorizedId:
         _authorizedIdFile = file;
-
       case _DocumentType.vat:
         _vatFile = file;
-
       case _DocumentType.additional:
         _additionalFile = file;
     }
@@ -1844,15 +1635,12 @@ class _KycScreenState extends ConsumerState<KycScreen> {
         case _DocumentType.tradeLicense:
           _tradeLicenseFile = null;
           _tradeLicenseError = null;
-
         case _DocumentType.authorizedId:
           _authorizedIdFile = null;
           _authorizedIdError = null;
-
         case _DocumentType.vat:
           _vatFile = null;
           _vatError = null;
-
         case _DocumentType.additional:
           _additionalFile = null;
           _additionalError = null;
@@ -1864,21 +1652,14 @@ class _KycScreenState extends ConsumerState<KycScreen> {
     switch (type) {
       case _DocumentType.tradeLicense:
         _tradeLicenseError = null;
-
       case _DocumentType.authorizedId:
         _authorizedIdError = null;
-
       case _DocumentType.vat:
         _vatError = null;
-
       case _DocumentType.additional:
         _additionalError = null;
     }
   }
-
-  // ============================================================
-  // UPLOAD OPTION
-  // ============================================================
 
   Widget _buildUploadOption({
     required IconData icon,
@@ -1910,22 +1691,17 @@ class _KycScreenState extends ConsumerState<KycScreen> {
                 ),
                 child: Icon(icon, color: AppColors.primary, size: 21),
               ),
-
               const SizedBox(width: 12),
-
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(title, style: AppTextStyles.titleSmall),
-
                     const SizedBox(height: 3),
-
                     Text(subtitle, style: AppTextStyles.caption),
                   ],
                 ),
               ),
-
               const Icon(
                 Icons.chevron_right_rounded,
                 color: AppColors.iconSecondary,
@@ -1938,118 +1714,135 @@ class _KycScreenState extends ConsumerState<KycScreen> {
   }
 
   // ============================================================
-  // BUILD API PHONE
-  // ============================================================
-  //
-  // UI:
-  // +92 3212345678
-  //
-  // API:
-  // +923212345678
+  // SERVER DOCUMENT PREVIEW / DOWNLOAD
   // ============================================================
 
-  String? _buildOwnerPhoneForApi() {
-    final dialCode = _selectedCountryDialCode.trim();
+  void _previewServerDocument(VendorKycDocumentModel document) {
+    final dioClient = ref.read(dioProvider);
 
-    if (dialCode.isEmpty) {
-      return null;
-    }
-
-    var phone = _ownerPhoneController.text.trim();
-
-    if (phone.isEmpty) {
-      return null;
-    }
-
-    // ============================================================
-    // REMOVE DIAL CODE
-    //
-    // UI:
-    // +92 3212345678
-    //
-    // AFTER:
-    // 3212345678
-    // ============================================================
-
-    if (phone.startsWith(dialCode)) {
-      phone = phone.substring(dialCode.length).trim();
-    }
-
-    // ============================================================
-    // REMOVE FORMATTING
-    // ============================================================
-
-    phone = phone
-        .replaceAll(' ', '')
-        .replaceAll('-', '')
-        .replaceAll('(', '')
-        .replaceAll(')', '');
-
-    // ============================================================
-    // REMOVE LEADING ZERO
-    // ============================================================
-
-    phone = phone.replaceFirst(RegExp(r'^0+'), '');
-
-    if (phone.isEmpty) {
-      return null;
-    }
-
-    // ============================================================
-    // DIGITS ONLY
-    // ============================================================
-
-    if (!RegExp(r'^\d+$').hasMatch(phone)) {
-      return null;
-    }
-
-    // ============================================================
-    // API FORMAT
-    //
-    // UI:
-    // +92 3212345678
-    //
-    // API:
-    // +923212345678
-    // ============================================================
-
-    return '$dialCode$phone';
+    showDialog<void>(
+      context: context,
+      builder: (_) {
+        return KycDocumentPreviewDialog(
+          document: document,
+          dioClient: dioClient,
+        );
+      },
+    );
   }
 
-  // ============================================================
-  // SUBMIT KYC
-  // ============================================================
-
-  Future<void> _submitKyc() async {
-    if (_isSubmitting || _isKycSubmitted) {
+  Future<void> _downloadServerDocument(VendorKycDocumentModel document) async {
+    if (_isDownloading) {
       return;
     }
 
-    FocusScope.of(context).unfocus();
+    final controller = ref.read(kycDocumentDownloadControllerProvider);
 
-    // ============================================================
-    // STEP 1 FORM VALIDATION
-    // ============================================================
-    //
-    // Form sirf Step 1 par mounted hota hai.
-    // Step 2 par Form AnimatedSwitcher ki wajah se remove ho jata hai.
-    //
-    // Isliye Step 2 se submit karte waqt form validate nahi karna.
-    // ============================================================
+    const downloadService = FileDownloadService();
 
-    if (_currentStep == 0) {
-      final formValid = _formKey.currentState?.validate() ?? false;
+    try {
+      _setDownloading(true);
 
-      if (!formValid) {
-        _showMessage('Please complete the highlighted fields.', isError: true);
+      if (mounted) {
+        _showMessage('Downloading document...');
+      }
 
+      // ==========================================================
+      // Download authenticated document bytes
+      // ==========================================================
+
+      final result = await controller.downloadDocument(document: document);
+
+      // ==========================================================
+      // Validate
+      // ==========================================================
+
+      if (result.bytes.isEmpty) {
+        throw const ApiException(
+          message: 'Downloaded document is empty.',
+          code: 'EMPTY_DOCUMENT',
+        );
+      }
+
+      // ==========================================================
+      // Save File
+      // ==========================================================
+
+      final file = await downloadService.saveBytesFile(
+        bytes: result.bytes,
+        fileName: result.fileName,
+        mimeType: result.mimeType,
+      );
+
+      // ==========================================================
+      // Success
+      // ==========================================================
+
+      if (!mounted) {
         return;
       }
-    }
 
-    // ============================================================
-    // DOCUMENT VALIDATION
-    // ============================================================
+      _showMessage('Document saved successfully.\n${file.path}');
+    } on ApiException catch (error) {
+      debugPrint(
+        'KYC DOCUMENT DOWNLOAD API ERROR: '
+        '${error.code} - ${error.message}',
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      _showMessage(
+        error.message.trim().isNotEmpty
+            ? error.message
+            : 'Unable to download document.',
+        isError: true,
+      );
+    } on FileSystemException catch (error) {
+      debugPrint('KYC DOCUMENT FILE ERROR: ${error.message}');
+
+      if (!mounted) {
+        return;
+      }
+
+      _showMessage(
+        error.message.trim().isNotEmpty
+            ? error.message
+            : 'Unable to save document.',
+        isError: true,
+      );
+    } catch (error, stackTrace) {
+      debugPrint('KYC DOCUMENT DOWNLOAD UNKNOWN ERROR: $error');
+
+      debugPrint('$stackTrace');
+
+      if (!mounted) {
+        return;
+      }
+
+      _showMessage(
+        'Something went wrong while downloading the document.',
+        isError: true,
+      );
+    } finally {
+      if (mounted) {
+        _setDownloading(false);
+      }
+    }
+  }
+
+  // ============================================================
+  // SUBMIT
+  // ============================================================
+
+  Future<void> _submitKyc() async {
+    if (_isSubmitting) return;
+
+    FocusScope.of(context).unfocus();
+
+    final tradeLicenseFile = _tradeLicenseFile;
+    final authorizedIdFile = _authorizedIdFile;
 
     _validateDocuments();
 
@@ -2059,77 +1852,35 @@ class _KycScreenState extends ConsumerState<KycScreen> {
         _vatError == null &&
         _additionalError == null;
 
-    if (!documentsValid) {
+    if (!documentsValid ||
+        tradeLicenseFile == null ||
+        authorizedIdFile == null) {
       _showMessage('Please upload the required documents.', isError: true);
-
       return;
     }
-
-    // ============================================================
-    // REQUIRED FILE SAFETY CHECK
-    // ============================================================
-
-    final tradeLicenseFile = _tradeLicenseFile;
-    final authorizedIdFile = _authorizedIdFile;
-
-    if (tradeLicenseFile == null || authorizedIdFile == null) {
-      _showMessage('Please upload the required documents.', isError: true);
-
-      return;
-    }
-
-    // ============================================================
-    // FORM DATA
-    // ============================================================
 
     final ownerName = _ownerNameController.text.trim();
-
     final ownerEmail = _ownerEmailController.text.trim();
-
     final designation = _designationController.text.trim();
-
     final tradeLicenseNumber = _tradeLicenseController.text.trim();
-
-    final tradeLicenseExpiry = _tradeLicenseExpiryController.text.trim();
-
+    final expiry = _tradeLicenseExpiryController.text.trim();
     final trn = _trnController.text.trim();
-
     final website = _websiteController.text.trim();
-
     final businessAddress = _businessAddressController.text.trim();
-
     final notes = _notesController.text.trim();
-
-    // ============================================================
-    // PHONE COUNTRY SAFETY
-    // ============================================================
-
     final phoneCountry = _selectedCountryIsoCode?.trim();
-
-    final phoneDialCode = _selectedCountryDialCode.trim();
 
     if (phoneCountry == null || phoneCountry.isEmpty) {
       _showMessage('Unable to determine phone country.', isError: true);
       return;
     }
 
-    if (phoneDialCode.isEmpty) {
-      _showMessage('Unable to determine phone dial code.', isError: true);
-      return;
-    }
-
-    // ============================================================
-    // PHONE RULE SAFETY
-    // ============================================================
-
-    final phoneRule = _selectedPhoneRule;
-
     if (_isPhoneRuleLoading) {
       _showMessage('Please wait while phone rules are loading.', isError: true);
       return;
     }
 
-    if (phoneRule == null) {
+    if (_selectedPhoneRule == null) {
       _showMessage(
         'Phone number rules are not available for the selected country.',
         isError: true,
@@ -2137,35 +1888,19 @@ class _KycScreenState extends ConsumerState<KycScreen> {
       return;
     }
 
-    // ============================================================
-    // PHONE API VALUE
-    // ============================================================
-
-    final apiOwnerPhone = _buildOwnerPhoneForApi();
-
-    if (apiOwnerPhone == null || apiOwnerPhone.isEmpty) {
+    final apiPhone = _buildOwnerPhoneForApi();
+    if (apiPhone == null) {
       _showMessage('Please enter a valid phone number.', isError: true);
       return;
     }
 
-    // ============================================================
-    // DATE CONVERSION
-    // ============================================================
-
-    final apiExpiryDate = _convertExpiryDateForApi(tradeLicenseExpiry);
-
-    if (apiExpiryDate == null) {
+    final apiExpiry = _convertExpiryDateForApi(expiry);
+    if (apiExpiry == null) {
       _showMessage('Invalid trade license expiry date.', isError: true);
       return;
     }
 
-    // ============================================================
-    // START SUBMITTING
-    // ============================================================
-
-    setState(() {
-      _isSubmitting = true;
-    });
+    setState(() => _isSubmitting = true);
 
     try {
       final result = await ref
@@ -2173,13 +1908,13 @@ class _KycScreenState extends ConsumerState<KycScreen> {
           .submitKyc(
             ownerName: ownerName,
             ownerEmail: ownerEmail.isEmpty ? null : ownerEmail,
-            ownerPhone: apiOwnerPhone,
+            ownerPhone: apiPhone,
             phoneCountry: phoneCountry,
             authorizedPersonDesignation: designation.isEmpty
                 ? null
                 : designation,
             tradeLicenseNumber: tradeLicenseNumber,
-            tradeLicenseExpiry: apiExpiryDate,
+            tradeLicenseExpiry: apiExpiry,
             taxRegistrationNumber: trn.isEmpty ? null : trn,
             businessAddress: businessAddress,
             website: website.isEmpty ? null : website,
@@ -2190,162 +1925,232 @@ class _KycScreenState extends ConsumerState<KycScreen> {
             supportingDocumentFile: _additionalFile,
           );
 
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
 
       if (result.success) {
+        if (!mounted) return;
+
         setState(() {
-          _kycSubmitResult = result;
-          _isKycSubmitted = true;
           _isSubmitting = false;
         });
 
         _showMessage(result.message ?? 'KYC submitted successfully.');
 
+        // ----------------------------------------------------------
+        // GET latest KYC state from server
+        // ----------------------------------------------------------
+
+        final refreshed = await _loadKyc(showError: true);
+
+        if (!mounted) return;
+
+        if (!refreshed) {
+          return;
+        }
+
         return;
       }
 
-      setState(() {
-        _isSubmitting = false;
-      });
-
+      setState(() => _isSubmitting = false);
       _showMessage(
         result.message ?? 'Unable to submit KYC. Please try again.',
         isError: true,
       );
     } catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _isSubmitting = false;
-      });
-
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
       _showMessage(_getKycSubmitErrorMessage(error), isError: true);
     }
   }
 
+  Widget _buildKycLoading() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: [
+          const SizedBox(
+            width: 30,
+            height: 30,
+            child: CircularProgressIndicator(strokeWidth: 2.5),
+          ),
+
+          const SizedBox(height: 16),
+
+          Text(
+            'Checking KYC status...',
+            style: AppTextStyles.titleMedium,
+            textAlign: TextAlign.center,
+          ),
+
+          const SizedBox(height: 6),
+
+          Text(
+            'Please wait while we load your verification information.',
+            style: AppTextStyles.bodySmall.copyWith(
+              color: AppColors.textSecondary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
   // ============================================================
-  // CONVERT EXPIRY DATE FOR API
+  // REFRESH
   // ============================================================
-  //
-  // UI FORMAT:
-  // YYYY/MM/DD
-  //
-  // Example:
-  // 2027/12/31
-  //
-  // API FORMAT:
-  // YYYY-MM-DD
-  //
-  // Example:
-  // 2027-12-31
+
+  Future<void> _refreshKycStatus() async {
+    final success = await _loadKyc(showError: true);
+
+    if (!mounted || !success) {
+      return;
+    }
+
+    _showMessage('KYC status refreshed.');
+  }
   // ============================================================
+  // HELPERS
+  // ============================================================
+
+  String? _buildOwnerPhoneForApi() {
+    final dialCode = _selectedCountryDialCode.trim();
+    if (dialCode.isEmpty) return null;
+
+    var phone = _ownerPhoneController.text.trim();
+    if (phone.isEmpty) return null;
+
+    if (phone.startsWith(dialCode)) {
+      phone = phone.substring(dialCode.length).trim();
+    }
+
+    phone = phone
+        .replaceAll(' ', '')
+        .replaceAll('-', '')
+        .replaceAll('(', '')
+        .replaceAll(')', '');
+
+    phone = phone.replaceFirst(RegExp(r'^0+'), '');
+
+    if (phone.isEmpty) return null;
+    if (!RegExp(r'^\d+$').hasMatch(phone)) return null;
+
+    return '$dialCode$phone';
+  }
 
   String? _convertExpiryDateForApi(String value) {
     final normalized = value.trim();
-
-    if (normalized.isEmpty) {
-      return null;
-    }
-
-    // ------------------------------------------------------------
-    // STRICT UI FORMAT
-    // YYYY/MM/DD
-    // ------------------------------------------------------------
+    if (normalized.isEmpty) return null;
 
     final match = RegExp(r'^(\d{4})/(\d{2})/(\d{2})$').firstMatch(normalized);
-
-    if (match == null) {
-      return null;
-    }
+    if (match == null) return null;
 
     final year = int.tryParse(match.group(1)!);
     final month = int.tryParse(match.group(2)!);
     final day = int.tryParse(match.group(3)!);
 
-    if (year == null || month == null || day == null) {
-      return null;
-    }
-
-    // ------------------------------------------------------------
-    // BASIC RANGE
-    // ------------------------------------------------------------
-
+    if (year == null || month == null || day == null) return null;
     if (year < 2000 || month < 1 || month > 12 || day < 1 || day > 31) {
       return null;
     }
 
-    // ------------------------------------------------------------
-    // ACTUAL CALENDAR DATE
-    //
-    // Example:
-    // 2027/02/31 => invalid
-    // ------------------------------------------------------------
-
     final date = DateTime(year, month, day);
-
     if (date.year != year || date.month != month || date.day != day) {
       return null;
     }
 
-    // ------------------------------------------------------------
-    // MUST BE FUTURE
-    // ------------------------------------------------------------
-
     final now = DateTime.now();
-
     final today = DateTime(now.year, now.month, now.day);
-
-    if (!date.isAfter(today)) {
-      return null;
-    }
-
-    // ------------------------------------------------------------
-    // API FORMAT
-    // YYYY-MM-DD
-    // ------------------------------------------------------------
+    if (!date.isAfter(today)) return null;
 
     return '$year-'
         '${month.toString().padLeft(2, '0')}-'
         '${day.toString().padLeft(2, '0')}';
   }
-  // ============================================================
-  // KYC SUBMIT ERROR MESSAGE
-  // ============================================================
-
-  String _getKycSubmitErrorMessage(Object error) {
-    if (error is ApiException) {
-      final message = error.message.trim();
-
-      if (message.isNotEmpty) {
-        return message;
-      }
-    }
-
-    return 'Unable to submit KYC. Please try again.';
-  }
-
-  // ============================================================
-  // VALIDATE DOCUMENTS
-  // ============================================================
 
   void _validateDocuments() {
     setState(() {
       _tradeLicenseError = _tradeLicenseFile == null
           ? 'Trade License Copy is required.'
           : null;
-
       _authorizedIdError = _authorizedIdFile == null
           ? 'Authorized Person ID is required.'
           : null;
-
-      // Optional documents
       _vatError = null;
       _additionalError = null;
     });
+  }
+
+  String _getKycSubmitErrorMessage(Object error) {
+    if (error is ApiException) {
+      final message = error.message.trim();
+      if (message.isNotEmpty) return message;
+    }
+    return 'Unable to submit KYC. Please try again.';
+  }
+
+  Widget _buildSettingsError() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Container(
+          width: double.infinity,
+          constraints: const BoxConstraints(maxWidth: 450),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.08),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.error_outline_rounded,
+                  color: AppColors.error,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                'Unable to Load Information',
+                style: AppTextStyles.titleMedium,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                _settingsError ?? 'Something went wrong. Please try again.',
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 18),
+              CustomButton(
+                text: 'Try Again',
+                icon: Icons.refresh_rounded,
+                height: 48,
+                borderRadius: 12,
+                elevation: 1,
+                onPressed: _retryVendorSettings,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   // ============================================================
@@ -2370,9 +2175,7 @@ class _KycScreenState extends ConsumerState<KycScreen> {
                 color: Colors.white,
                 size: 20,
               ),
-
               const SizedBox(width: 10),
-
               Expanded(
                 child: Text(
                   message,
@@ -2383,6 +2186,27 @@ class _KycScreenState extends ConsumerState<KycScreen> {
           ),
         ),
       );
+  }
+
+  // ============================================================
+  // DISPOSE
+  // ============================================================
+
+  @override
+  void dispose() {
+    _storeNameController.dispose();
+    _storeEmailController.dispose();
+    _ownerNameController.dispose();
+    _ownerEmailController.dispose();
+    _ownerPhoneController.dispose();
+    _designationController.dispose();
+    _tradeLicenseController.dispose();
+    _tradeLicenseExpiryController.dispose();
+    _trnController.dispose();
+    _websiteController.dispose();
+    _businessAddressController.dispose();
+    _notesController.dispose();
+    super.dispose();
   }
 }
 
