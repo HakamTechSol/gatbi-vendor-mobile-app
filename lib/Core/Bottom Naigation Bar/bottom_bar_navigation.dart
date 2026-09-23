@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../Features/Chat/Screens/chat_list_screen.dart';
 import '../../Features/Dashboard/dashboard_screen.dart';
 import '../../Features/More/more_screen.dart';
-import '../../Features/My Product/my_products_screen.dart';
+import '../../Features/Product Section/My Product/my_products_screen.dart';
 import '../../Routes/app_route.dart';
 import 'bottom_bar_screen.dart';
 
@@ -23,6 +23,11 @@ class _BottomMainScreenState extends State<BottomMainScreen> {
   /// Dashboard ko fresh state ke saath rebuild karne ke liye.
   int _dashboardVersion = 0;
 
+  /// My Products screen ko manually refresh karne ke liye.
+  final GlobalKey<MyProductScreenState> _myProductsScreenKey =
+      GlobalKey<MyProductScreenState>();
+
+  /// Chat screen ko manually refresh karne ke liye.
   final GlobalKey<ChatListScreenState> _chatScreenKey =
       GlobalKey<ChatListScreenState>();
 
@@ -38,13 +43,17 @@ class _BottomMainScreenState extends State<BottomMainScreen> {
   // ═══════════════════════════════════════════════════════════════════════════
 
   void _onTabChanged(BottomTab tab) {
+    debugPrint('');
     debugPrint('════════════════════════════════════════════════════════════');
     debugPrint('BOTTOM TAB CHANGED');
     debugPrint('Previous Tab: ${_currentTab.name}');
     debugPrint('New Tab: ${tab.name}');
     debugPrint('════════════════════════════════════════════════════════════');
 
-    // Agar already isi tab par hain aur dobara tap kiya gaya hai.
+    // ============================================================
+    // SAME TAB TAPPED AGAIN
+    // ============================================================
+
     if (_currentTab == tab) {
       debugPrint('Same tab tapped again → refreshing ${tab.name}...');
 
@@ -57,6 +66,10 @@ class _BottomMainScreenState extends State<BottomMainScreen> {
       return;
     }
 
+    // ============================================================
+    // TAB CHANGE
+    // ============================================================
+
     setState(() {
       _currentTab = tab;
 
@@ -66,26 +79,46 @@ class _BottomMainScreenState extends State<BottomMainScreen> {
       }
     });
 
-    // Tab change ke baad selected screen ka data refresh.
+    // ============================================================
+    // REFRESH SELECTED TAB
+    // ============================================================
+
     _refreshCurrentTab(tab);
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // DASHBOARD RESET
+  // ═══════════════════════════════════════════════════════════════════════════
+
   /// Dashboard ko fresh state mein reset karta hai.
   ///
-  /// Is se DashboardHeader ka:
+  /// Is se DashboardScreen dobara create hogi aur
+  /// DashboardHeader ka:
+  ///
   /// _isExpanded = false
-  /// dobara initialize hota hai.
+  ///
+  /// dobara initialize hoga.
   void _resetDashboard() {
+    if (!mounted) {
+      return;
+    }
+
     setState(() {
       _dashboardVersion++;
     });
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // REFRESH
+  // REFRESH CURRENT TAB
   // ═══════════════════════════════════════════════════════════════════════════
 
   void _refreshCurrentTab(BottomTab tab) {
+    debugPrint('');
+    debugPrint('════════════════════════════════════════════════════════════');
+    debugPrint('REFRESH CURRENT TAB');
+    debugPrint('TAB: ${tab.name}');
+    debugPrint('════════════════════════════════════════════════════════════');
+
     switch (tab) {
       case BottomTab.dashboard:
         _refreshDashboard();
@@ -105,13 +138,41 @@ class _BottomMainScreenState extends State<BottomMainScreen> {
     }
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // DASHBOARD REFRESH
+  // ═══════════════════════════════════════════════════════════════════════════
+
   void _refreshDashboard() {
-    debugPrint('Refresh Dashboard API');
+    debugPrint('DASHBOARD REFRESH');
+    debugPrint('DashboardScreen recreated with version $_dashboardVersion');
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PRODUCTS REFRESH
+  // ═══════════════════════════════════════════════════════════════════════════
+
   void _refreshProducts() {
-    debugPrint('Refresh Products API');
+    debugPrint('');
+    debugPrint('════════════════════════════════════════════════════════════');
+    debugPrint('PRODUCTS REFRESH');
+    debugPrint('Calling MyProductScreen.refresh()...');
+    debugPrint('════════════════════════════════════════════════════════════');
+
+    final productState = _myProductsScreenKey.currentState;
+
+    if (productState == null) {
+      debugPrint('PRODUCTS REFRESH: MyProductScreen state is not mounted yet.');
+      return;
+    }
+
+    productState.refresh();
+
+    debugPrint('PRODUCTS REFRESH: refresh() called successfully.');
   }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CHAT REFRESH
+  // ═══════════════════════════════════════════════════════════════════════════
 
   void _refreshChat() {
     final chatState = _chatScreenKey.currentState;
@@ -122,10 +183,16 @@ class _BottomMainScreenState extends State<BottomMainScreen> {
     }
 
     chatState.refresh();
+
+    debugPrint('CHAT REFRESH: refresh() called successfully.');
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MORE REFRESH
+  // ═══════════════════════════════════════════════════════════════════════════
+
   void _refreshMore() {
-    debugPrint('Refresh More API');
+    debugPrint('MORE REFRESH API');
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -174,14 +241,27 @@ class _BottomMainScreenState extends State<BottomMainScreen> {
       body: IndexedStack(
         index: _currentTab.index,
         children: [
+          // ============================================================
+          // DASHBOARD
+          // ============================================================
           DashboardScreen(key: ValueKey<int>(_dashboardVersion)),
 
-          const MyProductScreen(),
+          // ============================================================
+          // MY PRODUCTS
+          // ============================================================
+          MyProductScreen(key: _myProductsScreenKey),
+
+          // ============================================================
+          // CHAT
+          // ============================================================
 
           /// Important:
-          /// const ko remove kiya gaya hai because GlobalKey use kar rahe hain.
+          /// const remove kiya gaya hai because GlobalKey use kar rahe hain.
           ChatListScreen(key: _chatScreenKey),
 
+          // ============================================================
+          // MORE
+          // ============================================================
           MoreScreen(
             onBulkProducts: _openBulkProducts,
             onTickets: _openSupportTickets,
@@ -195,6 +275,9 @@ class _BottomMainScreenState extends State<BottomMainScreen> {
         ],
       ),
 
+      // ═══════════════════════════════════════════════════════════════════════
+      // BOTTOM NAVIGATION
+      // ═══════════════════════════════════════════════════════════════════════
       bottomNavigationBar: BottomBarScreen(
         currentTab: _currentTab,
         onTabChanged: _onTabChanged,

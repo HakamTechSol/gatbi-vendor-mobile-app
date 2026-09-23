@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
 
-import '../../Models/ticket_message_model.dart';
-
+import '../Models/ticket_detail_message_model.dart';
 import 'ticket_message_bubble.dart';
 
 class TicketConversation extends StatelessWidget {
@@ -14,7 +13,7 @@ class TicketConversation extends StatelessWidget {
     this.title = 'Conversation',
   });
 
-  final List<TicketMessageModel> messages;
+  final List<TicketDetailMessageModel> messages;
   final String title;
 
   @override
@@ -24,13 +23,11 @@ class TicketConversation extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Conversation header
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
           child: _buildHeader(),
         ),
 
-        // Conversation area
         Expanded(
           child: isEmpty
               ? Center(child: _buildEmptyConversation())
@@ -67,6 +64,7 @@ class TicketConversation extends StatelessWidget {
           title,
           style: AppTextStyles.titleMedium.copyWith(
             color: AppColors.textPrimary,
+            fontWeight: FontWeight.w700,
           ),
         ),
 

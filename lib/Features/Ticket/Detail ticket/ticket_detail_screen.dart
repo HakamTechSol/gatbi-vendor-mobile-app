@@ -1,25 +1,36 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../Services/api_exception.dart';
 import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
 
-import '../Models/ticket_model.dart';
-import '../Models/ticket_message_model.dart';
-
+import '../Send Message/Controller/ticket_send_controller.dart';
+import '../Send Message/Models/ticket_send_model.dart';
+import 'Controller/ticket_detail_controller.dart';
+import 'Models/ticket_detail_message_model.dart';
+import 'Models/ticket_detail_model.dart';
 import 'Reuse Widgets/ticket_conversation.dart';
 import 'Reuse Widgets/ticket_detail_header.dart';
+import 'Reuse Widgets/ticket_details_shimmer_screen.dart';
 import 'Reuse Widgets/ticket_reply_input.dart';
 
-class TicketDetailScreen extends StatefulWidget {
+class TicketDetailScreen extends ConsumerStatefulWidget {
   const TicketDetailScreen({
     super.key,
-    required this.ticket,
+    required this.ticketId,
+    this.ticketNumber,
     this.onBack,
     this.onCreateTicket,
     this.onSendReply,
   });
 
-  final TicketModel ticket;
+  final int ticketId;
+
+  /// Optional fallback ticket number.
+  ///
+  /// Actual ticket number API detail response se update hoga.
+  final String? ticketNumber;
 
   final VoidCallback? onBack;
 
@@ -28,17 +39,25 @@ class TicketDetailScreen extends StatefulWidget {
   final ValueChanged<String>? onSendReply;
 
   @override
-  State<TicketDetailScreen> createState() => _TicketDetailScreenState();
+  ConsumerState<TicketDetailScreen> createState() {
+    return _TicketDetailScreenState();
+  }
 }
 
-class _TicketDetailScreenState extends State<TicketDetailScreen> {
+class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
   late final TextEditingController _replyController;
 
   late final FocusNode _replyFocusNode;
 
+  bool _isLoading = false;
+  bool _hasError = false;
   bool _isSending = false;
 
-  late List<TicketMessageModel> _messages;
+  String? _errorMessage;
+
+  TicketDetailDataModel? _ticket;
+
+  List<TicketDetailMessageModel> _messages = [];
 
   @override
   void initState() {
@@ -47,55 +66,85 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     _replyController = TextEditingController();
     _replyFocusNode = FocusNode();
 
-    // ─────────────────────────────────────────────────────────
-    // DUMMY CHAT
-    // ─────────────────────────────────────────────────────────
-
-    _messages = [
-      TicketMessageModel(
-        id: 1,
-        sender: 'You',
-        senderType: 'user',
-        message: 'Hi! I need some help with my order.',
-        createdAt: DateTime.now().subtract(const Duration(minutes: 15)),
-      ),
-
-      TicketMessageModel(
-        id: 2,
-        sender: 'Support Team',
-        senderType: 'support',
-        message: 'Sure! I will be happy to help you with that.',
-        createdAt: DateTime.now().subtract(const Duration(minutes: 12)),
-      ),
-
-      TicketMessageModel(
-        id: 3,
-        sender: 'Support Team',
-        senderType: 'support',
-        message: 'Could you please share your order details?',
-        createdAt: DateTime.now().subtract(const Duration(minutes: 10)),
-      ),
-
-      TicketMessageModel(
-        id: 4,
-        sender: 'You',
-        senderType: 'user',
-        message: 'Yes, sure. I will share them right away 😊',
-        createdAt: DateTime.now().subtract(const Duration(minutes: 7)),
-      ),
-    ];
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadTicketDetail();
+    });
   }
 
   @override
   void dispose() {
     _replyController.dispose();
     _replyFocusNode.dispose();
+
     super.dispose();
   }
 
-  // ═════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
+  // LOAD TICKET DETAIL
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Future<void> _loadTicketDetail() async {
+    if (_isLoading) {
+      return;
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+      _errorMessage = null;
+    });
+
+    try {
+      final result = await ref
+          .read(ticketDetailControllerProvider)
+          .getTicketDetail(ticketId: widget.ticketId);
+
+      if (!mounted) {
+        return;
+      }
+
+      final ticket = result.ticket;
+
+      setState(() {
+        _ticket = ticket;
+        _messages = List<TicketDetailMessageModel>.from(
+          ticket?.messages ?? const [],
+        );
+
+        _isLoading = false;
+        _hasError = false;
+        _errorMessage = null;
+      });
+    } on ApiException catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isLoading = false;
+        _hasError = true;
+        _errorMessage = error.message;
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isLoading = false;
+        _hasError = true;
+        _errorMessage = 'Unable to load ticket details. Please try again.';
+      });
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // SEND REPLY
-  // ═════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
 
   Future<void> _handleSendReply() async {
     final message = _replyController.text.trim();
@@ -109,33 +158,33 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     });
 
     try {
-      // ───────────────────────────────────────────────────────
-      // LOCAL DUMMY MESSAGE
-      // ───────────────────────────────────────────────────────
+      final result = await ref
+          .read(ticketSendControllerProvider)
+          .sendTicketReply(ticketId: widget.ticketId, message: message);
 
-      final newMessage = TicketMessageModel(
-        id: DateTime.now().millisecondsSinceEpoch,
-        sender: 'You',
-        senderType: 'user',
-        message: message,
-        createdAt: DateTime.now(),
-      );
+      if (!mounted) {
+        return;
+      }
 
-      setState(() {
-        _messages.add(newMessage);
-      });
+      _handleSendResponse(result, sentMessage: message);
 
-      // Optional parent callback.
-      widget.onSendReply?.call(message);
-
-      // Clear input.
       _replyController.clear();
 
-      // Hide keyboard.
       _replyFocusNode.unfocus();
 
-      // Small dummy sending delay.
-      await Future<void>.delayed(const Duration(milliseconds: 300));
+      widget.onSendReply?.call(message);
+    } on ApiException catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      _showErrorMessage(error.message);
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      _showErrorMessage('Unable to send reply. Please try again.');
     } finally {
       if (mounted) {
         setState(() {
@@ -145,16 +194,58 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     }
   }
 
-  // ═════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
+  // HANDLE SEND RESPONSE
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  void _handleSendResponse(
+    TicketSendModel result, {
+    required String sentMessage,
+  }) {
+    final updatedTicket = result.ticket;
+
+    if (updatedTicket == null) {
+      return;
+    }
+
+    final updatedMessages = updatedTicket.messages;
+
+    setState(() {
+      _messages = updatedMessages
+          .map(
+            (message) => TicketDetailMessageModel(
+              id: message.id,
+              message: message.message,
+              senderType: message.senderType,
+              senderName: message.senderName,
+              createdAt: message.createdAt,
+            ),
+          )
+          .toList();
+
+      _ticket = TicketDetailDataModel(
+        id: updatedTicket.id,
+        ticketNumber: updatedTicket.ticketNumber,
+        subject: updatedTicket.subject,
+        category: updatedTicket.category,
+        priority: updatedTicket.priority,
+        status: updatedTicket.status,
+        createdAt: updatedTicket.createdAt,
+        updatedAt: updatedTicket.updatedAt,
+        messages: _messages,
+      );
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // EMOJI PICKER
-  // ═════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
 
   Future<void> _openEmojiPicker() async {
     if (_isSending) {
       return;
     }
 
-    // Keyboard temporarily hide.
     _replyFocusNode.unfocus();
 
     final emoji = await showModalBottomSheet<String>(
@@ -176,7 +267,6 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
 
     _insertEmoji(emoji);
 
-    // Keyboard dobara open.
     await Future<void>.delayed(const Duration(milliseconds: 100));
 
     if (mounted) {
@@ -184,9 +274,9 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     }
   }
 
-  // ═════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
   // INSERT EMOJI
-  // ═════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
 
   void _insertEmoji(String emoji) {
     final text = _replyController.text;
@@ -203,13 +293,11 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
       text: newText,
       selection: TextSelection.collapsed(offset: start + emoji.length),
     );
-
-    setState(() {});
   }
 
-  // ═════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
   // BACK
-  // ═════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
 
   void _handleBack() {
     if (widget.onBack != null) {
@@ -220,48 +308,231 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     Navigator.of(context).maybePop();
   }
 
-  // ═════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ERROR MESSAGE
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  void _showErrorMessage(String? message) {
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(
+                Icons.error_outline_rounded,
+                color: AppColors.white,
+                size: 20,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  message == null || message.trim().isEmpty
+                      ? 'Something went wrong. Please try again.'
+                      : message,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFFDC2626),
+          margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // BUILD
-  // ═════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
 
   @override
   Widget build(BuildContext context) {
-    final ticket = widget.ticket;
+    final ticketNumber = _ticket?.ticketNumber ?? widget.ticketNumber ?? '';
 
     return Scaffold(
       backgroundColor: AppColors.background,
       resizeToAvoidBottomInset: true,
-
       body: SafeArea(
         child: Column(
           children: [
-            // ═══════════════════════════════════════════════════
+            // ═══════════════════════════════════════════════════════════════
             // HEADER
-            // ═══════════════════════════════════════════════════
+            // ═══════════════════════════════════════════════════════════════
             TicketDetailHeader(
-              ticketNumber: ticket.ticketNumber,
+              ticketNumber: ticketNumber,
               onBack: _handleBack,
-              onMore: () => _showTicketDetails(context),
+              onMore: _ticket == null
+                  ? null
+                  : () => _showTicketDetails(context, _ticket!),
             ),
 
-            // ═══════════════════════════════════════════════════
-            // CHAT
-            // ═══════════════════════════════════════════════════
-            Expanded(child: TicketConversation(messages: _messages)),
+            // ═══════════════════════════════════════════════════════════════
+            // CONTENT
+            // ═══════════════════════════════════════════════════════════════
+            Expanded(child: _buildContent()),
 
-            // ═══════════════════════════════════════════════════
+            // ═══════════════════════════════════════════════════════════════
             // REPLY INPUT
-            // ═══════════════════════════════════════════════════
-            _buildReplyComposer(),
+            // ═══════════════════════════════════════════════════════════════
+            if (!_isLoading && !_hasError) _buildReplyComposer(),
           ],
         ),
       ),
     );
   }
 
-  // ═════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CONTENT
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildContent() {
+    if (_isLoading) {
+      return TicketDetailsShimmerScreen();
+    }
+
+    if (_hasError) {
+      return _buildError();
+    }
+
+    return TicketConversation(messages: _messages);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // LOADING
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildLoading() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: AppColors.primaryLight,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Center(
+              child: SizedBox(
+                width: 23,
+                height: 23,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 14),
+
+          Text(
+            'Loading conversation...',
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ERROR
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildError() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 66,
+              height: 66,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEE2E2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.cloud_off_rounded,
+                color: Color(0xFFDC2626),
+                size: 29,
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            Text(
+              'Unable to load ticket',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.titleMedium.copyWith(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+
+            const SizedBox(height: 7),
+
+            Text(
+              _errorMessage == null || _errorMessage!.trim().isEmpty
+                  ? 'Something went wrong while loading this ticket.'
+                  : _errorMessage!,
+              textAlign: TextAlign.center,
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.textSecondary,
+                height: 1.45,
+              ),
+            ),
+
+            const SizedBox(height: 18),
+
+            SizedBox(
+              height: 42,
+              child: ElevatedButton.icon(
+                onPressed: _loadTicketDetail,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: Text(
+                  'Try Again',
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // REPLY COMPOSER
-  // ═════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildReplyComposer() {
     return Container(
@@ -276,7 +547,6 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
         controller: _replyController,
         enabled: !_isSending,
 
-        // Emoji connected here.
         onEmojiTap: _openEmojiPicker,
 
         onChanged: (_) {
@@ -292,24 +562,24 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     );
   }
 
-  // ═════════════════════════════════════════════════════════════
-  // BOTTOM SHEET
-  // ═════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
+  // TICKET DETAILS
+  // ═══════════════════════════════════════════════════════════════════════════
 
-  void _showTicketDetails(BuildContext context) {
+  void _showTicketDetails(BuildContext context, TicketDetailDataModel ticket) {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) {
-        return _TicketDetailsBottomSheet(ticket: widget.ticket);
+        return _TicketDetailsBottomSheet(ticket: ticket);
       },
     );
   }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// EMOJI PICKER SHEET
+// EMOJI PICKER
 // ═══════════════════════════════════════════════════════════════════════════
 
 class _EmojiPickerSheet extends StatelessWidget {
@@ -393,7 +663,6 @@ class _EmojiPickerSheet extends StatelessWidget {
           children: [
             const SizedBox(height: 10),
 
-            // Handle
             Container(
               width: 38,
               height: 4,
@@ -405,7 +674,6 @@ class _EmojiPickerSheet extends StatelessWidget {
 
             const SizedBox(height: 14),
 
-            // Header
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18),
               child: Row(
@@ -496,7 +764,7 @@ class _EmojiPickerSheet extends StatelessWidget {
 class _TicketDetailsBottomSheet extends StatelessWidget {
   const _TicketDetailsBottomSheet({required this.ticket});
 
-  final TicketModel ticket;
+  final TicketDetailDataModel ticket;
 
   @override
   Widget build(BuildContext context) {
@@ -518,7 +786,6 @@ class _TicketDetailsBottomSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Handle
             Center(
               child: Container(
                 width: 38,
@@ -532,7 +799,6 @@ class _TicketDetailsBottomSheet extends StatelessWidget {
 
             const SizedBox(height: 18),
 
-            // Header
             Row(
               children: [
                 Container(
@@ -566,9 +832,7 @@ class _TicketDetailsBottomSheet extends StatelessWidget {
                       const SizedBox(height: 2),
 
                       Text(
-                        ticket.ticketNumber.isEmpty
-                            ? 'Ticket'
-                            : ticket.ticketNumber,
+                        _valueOrDash(ticket.ticketNumber),
                         style: AppTextStyles.caption.copyWith(
                           color: AppColors.textSecondary,
                         ),
@@ -637,7 +901,25 @@ class _TicketDetailsBottomSheet extends StatelessWidget {
     );
   }
 
-  String _formatDate(DateTime date) {
+  static String _valueOrDash(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return '—';
+    }
+
+    return value.trim();
+  }
+
+  static String _formatDate(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return '—';
+    }
+
+    final date = DateTime.tryParse(value.trim().replaceFirst(' ', 'T'));
+
+    if (date == null) {
+      return value;
+    }
+
     final day = date.day.toString().padLeft(2, '0');
     final month = date.month.toString().padLeft(2, '0');
     final year = date.year.toString();
@@ -653,10 +935,12 @@ class _TicketDetailsBottomSheet extends StatelessWidget {
 class _BottomSheetSubject extends StatelessWidget {
   const _BottomSheetSubject({required this.subject});
 
-  final String subject;
+  final String? subject;
 
   @override
   Widget build(BuildContext context) {
+    final value = subject?.trim() ?? '';
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
@@ -678,7 +962,7 @@ class _BottomSheetSubject extends StatelessWidget {
           const SizedBox(height: 5),
 
           Text(
-            subject.trim().isEmpty ? 'Untitled Ticket' : subject,
+            value.isEmpty ? 'Untitled Ticket' : value,
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
             style: AppTextStyles.bodyLarge.copyWith(
@@ -706,11 +990,15 @@ class _InfoRow extends StatelessWidget {
 
   final IconData icon;
   final String label;
-  final String value;
+  final String? value;
   final bool showDivider;
 
   @override
   Widget build(BuildContext context) {
+    final displayValue = value == null || value!.trim().isEmpty
+        ? '—'
+        : value!.trim();
+
     return Column(
       children: [
         Padding(
@@ -743,7 +1031,7 @@ class _InfoRow extends StatelessWidget {
 
               Flexible(
                 child: Text(
-                  value.isEmpty ? '—' : value,
+                  displayValue,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.end,

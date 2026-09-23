@@ -27,6 +27,9 @@ class ApiUrls {
   // Dashboard
   static const String dashboard = 'vendor/dashboard';
 
+  // Categery
+  static const String categoryOptions = '/vendor/registration-options';
+
   // analytics
   static const String analytics = 'vendor/analytics';
 
@@ -43,6 +46,10 @@ class ApiUrls {
   static String deleteProduct(int id) => 'vendor/products/$id/delete';
 
   static String updateStock(int id) => 'vendor/products/$id/stock';
+
+  static const String bulkProduct = 'vendor/products/bulk';
+
+  static const String exportProductsCsv = 'vendor/products/export/csv';
 
   static const String translateProduct = 'vendor/products/translate';
 
@@ -138,4 +145,10 @@ class ApiUrls {
   static const String changePassword = 'vendor/settings/password';
 
   static const String preferences = 'vendor/settings/preferences';
+
+  // ============================================================
+  // Vendor Attributes
+  // ============================================================
+
+  static const String vendorAttributes = '/vendor/attributes';
 }

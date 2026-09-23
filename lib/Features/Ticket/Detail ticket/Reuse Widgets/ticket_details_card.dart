@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
 
-import '../../Models/ticket_model.dart';
-
+import '../Models/ticket_detail_model.dart';
 import 'ticket_detail_category.dart';
 import 'ticket_detail_priority.dart';
 import 'ticket_detail_status.dart';
@@ -12,7 +11,7 @@ import 'ticket_detail_status.dart';
 class TicketDetailsCard extends StatelessWidget {
   const TicketDetailsCard({super.key, required this.ticket});
 
-  final TicketModel ticket;
+  final TicketDetailDataModel ticket;
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +40,13 @@ class TicketDetailsCard extends StatelessWidget {
     );
   }
 
+  // ============================================================
+  // SUBJECT
+  // ============================================================
+
   Widget _buildSubject() {
+    final subject = ticket.subject?.trim() ?? '';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -53,7 +58,7 @@ class TicketDetailsCard extends StatelessWidget {
         ),
         const SizedBox(height: 7),
         Text(
-          ticket.subject.trim().isEmpty ? 'Untitled Ticket' : ticket.subject,
+          subject.isEmpty ? 'Untitled Ticket' : subject,
           style: AppTextStyles.titleMedium.copyWith(
             color: AppColors.textPrimary,
           ),
@@ -62,33 +67,39 @@ class TicketDetailsCard extends StatelessWidget {
     );
   }
 
+  // ============================================================
+  // INFORMATION GRID
+  // ============================================================
+
   Widget _buildInformationGrid() {
     return Column(
       children: [
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
               child: _InformationItem(
                 label: 'Status',
-                child: TicketDetailStatus(status: ticket.status),
+                child: TicketDetailStatus(status: ticket.status ?? ''),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: _InformationItem(
                 label: 'Priority',
-                child: TicketDetailPriority(priority: ticket.priority),
+                child: TicketDetailPriority(priority: ticket.priority ?? ''),
               ),
             ),
           ],
         ),
         const SizedBox(height: 14),
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
               child: _InformationItem(
                 label: 'Category',
-                child: TicketDetailCategory(category: ticket.category),
+                child: TicketDetailCategory(category: ticket.category ?? ''),
               ),
             ),
             const SizedBox(width: 12),
@@ -96,7 +107,7 @@ class TicketDetailsCard extends StatelessWidget {
               child: _InformationItem(
                 label: 'Ticket',
                 child: Text(
-                  ticket.ticketNumber.isEmpty ? '—' : ticket.ticketNumber,
+                  _displayText(ticket.ticketNumber),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.bodyMedium.copyWith(
@@ -112,8 +123,13 @@ class TicketDetailsCard extends StatelessWidget {
     );
   }
 
+  // ============================================================
+  // DATES
+  // ============================================================
+
   Widget _buildDates() {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
           child: _DateItem(
@@ -134,11 +150,36 @@ class TicketDetailsCard extends StatelessWidget {
     );
   }
 
+  // ============================================================
+  // DIVIDER
+  // ============================================================
+
   Widget _buildDivider() {
     return const Divider(height: 1, thickness: 1, color: AppColors.border);
   }
 
-  String _formatDate(DateTime date) {
+  // ============================================================
+  // HELPERS
+  // ============================================================
+
+  String _displayText(String? value) {
+    final text = value?.trim() ?? '';
+
+    return text.isEmpty ? '—' : text;
+  }
+
+  String _formatDate(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return '—';
+    }
+
+    final normalized = value.trim().replaceFirst(' ', 'T');
+    final date = DateTime.tryParse(normalized);
+
+    if (date == null) {
+      return '—';
+    }
+
     final day = date.day.toString().padLeft(2, '0');
     final month = date.month.toString().padLeft(2, '0');
     final year = date.year.toString();
@@ -146,6 +187,10 @@ class TicketDetailsCard extends StatelessWidget {
     return '$day/$month/$year';
   }
 }
+
+// ================================================================
+// INFORMATION ITEM
+// ================================================================
 
 class _InformationItem extends StatelessWidget {
   const _InformationItem({required this.label, required this.child});
@@ -168,6 +213,10 @@ class _InformationItem extends StatelessWidget {
     );
   }
 }
+
+// ================================================================
+// DATE ITEM
+// ================================================================
 
 class _DateItem extends StatelessWidget {
   const _DateItem({

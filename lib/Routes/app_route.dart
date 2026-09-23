@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../Core/Bottom Naigation Bar/bottom_bar_screen.dart';
 import '../Core/Bottom Naigation Bar/bottom_bar_navigation.dart';
-import '../Features/Add Product/Screens/add_product_screen.dart';
+import '../Features/Product Section/Add Product/Screens/add_product_screen.dart';
 import '../Features/Authentication/Email Verification OTP/email_otp_verification_screen.dart';
 import '../Features/Authentication/Forget Password/Screens/forget_password_Screen.dart';
 import '../Features/Authentication/Forget Verification OTP/forget_verification_otp.dart';
@@ -16,24 +16,22 @@ import '../Features/Change Password/Screens/change_password_screen.dart';
 import '../Features/Chat/Screens/chat_detail_screen.dart';
 import '../Features/Chat/Screens/chat_list_screen.dart';
 import '../Features/Dashboard/dashboard_screen.dart';
-import '../Features/Edit Product/edit_product_screen.dart';
 import '../Features/KYC/Screens/kyc_screen.dart';
 import '../Features/More/more_screen.dart';
-import '../Features/My Product/Models/my_product_model.dart';
-import '../Features/My Product/my_products_screen.dart';
+import '../Features/Product Section/My Product/my_products_screen.dart';
 import '../Features/Onboarding/onboarding_screen.dart';
 import '../Features/Order/Order Detail/screens/order_detail_screen.dart';
 import '../Features/Order/Order List/screens/orders_screen.dart';
-import '../Features/Product Detail/Model/product_detail_model.dart';
-import '../Features/Product Detail/Screens/product_detail_screen.dart';
+import '../Features/Product Section/Product Detail/Model/product_detail_model.dart';
+import '../Features/Product Section/Product Detail/Screens/product_detail_screen.dart';
 import '../Features/Splash/splash_screen.dart';
 import '../Features/Support/screen/create_support_ticket_screen.dart';
 import '../Features/Support/screen/support_screen.dart';
 import '../Features/Ticket/Create Ticket/Models/create_ticket_model.dart';
 import '../Features/Ticket/Create Ticket/create_ticket_screen.dart';
 import '../Features/Ticket/Detail ticket/ticket_detail_screen.dart';
+import '../Features/Ticket/List Ticket/Models/ticket_list_item_model.dart';
 import '../Features/Ticket/List Ticket/ticket_list_screen.dart';
-import '../Features/Ticket/Models/ticket_model.dart';
 import '../Features/analytics/Screens/analytics_screen.dart';
 import 'route_observer.dart';
 
@@ -360,51 +358,36 @@ final GoRouter appRouter = GoRouter(
       },
     ),
 
-    GoRoute(
-      path: AppRoutes.editProduct,
-      name: 'edit-product',
-      builder: (context, state) {
-        final extra = state.extra;
+    // GoRoute(
+    //   path: AppRoutes.editProduct,
+    //   name: 'edit-product',
+    //   builder: (context, state) {
+    //     final extra = state.extra;
 
-        if (extra is! MyProductModel) {
-          return const Scaffold(
-            body: Center(
-              child: Text(
-                'Product data is missing.',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-              ),
-            ),
-          );
-        }
+    //     if (extra is! MyProductModel) {
+    //       return const Scaffold(
+    //         body: Center(
+    //           child: Text(
+    //             'Product data is missing.',
+    //             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+    //           ),
+    //         ),
+    //       );
+    //     }
 
-        return EditProductScreen(product: extra);
-      },
-    ),
-
+    //     return EditProductScreen(product: extra);
+    //   },
+    // ),
     GoRoute(
       path: AppRoutes.productDetail,
       name: 'product-detail',
       builder: (context, state) {
-        final product = state.extra as ProductDetailModel;
+        final productId = state.extra as int;
 
         return ProductDetailScreen(
-          product: product,
+          productId: productId,
           onEdit: () {
-            final myProduct = MyProductModel(
-              id: product.id,
-              name: product.productName,
-              price: product.price ?? 0,
-              originalPrice: product.compareAtPrice,
-              stockQuantity: product.stock,
-              status: product.status,
-              imageUrl: product.images.isNotEmpty ? product.images.first : '',
-              category: product.categoryName ?? 'Uncategorized',
-              inStock: product.stock > 0,
-              sku: product.sku,
-              createdAt: product.createdAt,
-            );
-
-            context.push(AppRoutes.editProduct, extra: myProduct);
+            // TODO: Open edit product screen
           },
         );
       },
@@ -436,14 +419,17 @@ final GoRouter appRouter = GoRouter(
         );
       },
     ),
-
     GoRoute(
       path: AppRoutes.ticketDetail,
       name: 'ticket-detail',
       builder: (context, state) {
         final extra = state.extra;
 
-        if (extra is! TicketModel) {
+        // ============================================================
+        // VALIDATE TICKET DATA
+        // ============================================================
+
+        if (extra is! TicketListItemModel) {
           return const Scaffold(
             body: Center(
               child: Text(
@@ -454,26 +440,65 @@ final GoRouter appRouter = GoRouter(
           );
         }
 
-        return TicketDetailScreen(
-          ticket: extra,
+        // ============================================================
+        // VALIDATE TICKET ID
+        // ============================================================
 
+        final ticketId = extra.id;
+
+        if (ticketId == null) {
+          return const Scaffold(
+            body: Center(
+              child: Text(
+                'Ticket ID is missing.',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+          );
+        }
+
+        // ============================================================
+        // TICKET DETAIL SCREEN
+        // ============================================================
+
+        return TicketDetailScreen(
+          ticketId: ticketId,
+          ticketNumber: extra.ticketNumber,
+
+          // ----------------------------------------------------------
+          // BACK
+          // ----------------------------------------------------------
           onBack: () {
             context.pop();
           },
 
+          // ----------------------------------------------------------
+          // CREATE TICKET
+          // ----------------------------------------------------------
           onCreateTicket: () {
             context.push(AppRoutes.createTicket);
           },
 
+          // ----------------------------------------------------------
+          // SEND REPLY
+          // ----------------------------------------------------------
+          //
+          // API is already connected inside TicketDetailScreen.
+          // No separate API call is required here.
+          //
+          // ----------------------------------------------------------
           onSendReply: (message) {
-            // API will be connected later.
-            debugPrint('Ticket ID: ${extra.id}');
-            debugPrint('Reply: $message');
+            debugPrint('');
+            debugPrint('========== TICKET REPLY ==========');
+            debugPrint('TICKET ID: $ticketId');
+            debugPrint('TICKET NUMBER: ${extra.ticketNumber ?? 'N/A'}');
+            debugPrint('REPLY: $message');
+            debugPrint('==================================');
+            debugPrint('');
           },
         );
       },
     ),
-
     GoRoute(
       path: AppRoutes.createTicket,
       name: 'create-ticket',
