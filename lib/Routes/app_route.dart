@@ -18,11 +18,12 @@ import '../Features/Chat/Screens/chat_list_screen.dart';
 import '../Features/Dashboard/dashboard_screen.dart';
 import '../Features/KYC/Screens/kyc_screen.dart';
 import '../Features/More/more_screen.dart';
+import '../Features/Product Section/Edit Product/edit_product_screen.dart';
+import '../Features/Product Section/My Product/Models/my_product_model.dart';
 import '../Features/Product Section/My Product/my_products_screen.dart';
 import '../Features/Onboarding/onboarding_screen.dart';
 import '../Features/Order/Order Detail/screens/order_detail_screen.dart';
 import '../Features/Order/Order List/screens/orders_screen.dart';
-import '../Features/Product Section/Product Detail/Model/product_detail_model.dart';
 import '../Features/Product Section/Product Detail/Screens/product_detail_screen.dart';
 import '../Features/Splash/splash_screen.dart';
 import '../Features/Support/screen/create_support_ticket_screen.dart';
@@ -358,38 +359,34 @@ final GoRouter appRouter = GoRouter(
       },
     ),
 
-    // GoRoute(
-    //   path: AppRoutes.editProduct,
-    //   name: 'edit-product',
-    //   builder: (context, state) {
-    //     final extra = state.extra;
+    GoRoute(
+      path: AppRoutes.editProduct,
+      name: 'edit-product',
+      builder: (context, state) {
+        final extra = state.extra;
 
-    //     if (extra is! MyProductModel) {
-    //       return const Scaffold(
-    //         body: Center(
-    //           child: Text(
-    //             'Product data is missing.',
-    //             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-    //           ),
-    //         ),
-    //       );
-    //     }
+        if (extra is! MyProductModel) {
+          return const Scaffold(
+            body: Center(
+              child: Text(
+                'Product data is missing.',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+          );
+        }
 
-    //     return EditProductScreen(product: extra);
-    //   },
-    // ),
+        return EditProductScreen(product: extra);
+      },
+    ),
+
     GoRoute(
       path: AppRoutes.productDetail,
       name: 'product-detail',
       builder: (context, state) {
         final productId = state.extra as int;
 
-        return ProductDetailScreen(
-          productId: productId,
-          onEdit: () {
-            // TODO: Open edit product screen
-          },
-        );
+        return ProductDetailScreen(productId: productId);
       },
     ),
 

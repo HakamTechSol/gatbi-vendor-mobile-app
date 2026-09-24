@@ -29,11 +29,6 @@ class ProductDetailHeader extends StatelessWidget {
           const SizedBox(width: 12),
 
           Expanded(child: _buildTitleSection()),
-
-          if (onEdit != null) ...[
-            const SizedBox(width: 10),
-            _buildEditButton(),
-          ],
         ],
       ),
     );

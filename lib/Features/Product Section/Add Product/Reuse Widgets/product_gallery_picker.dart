@@ -11,16 +11,27 @@ class ProductGalleryPicker extends StatelessWidget {
     required this.images,
     required this.onAdd,
     required this.onRemove,
+    this.networkImages = const [],
+    this.onRemoveNetworkImage,
     this.title = 'Product Gallery',
     this.subtitle = 'Add additional images to showcase your product.',
     this.maxImages = 8,
     this.enabled = true,
   });
 
+  /// Newly selected local images.
   final List<File> images;
 
+  /// Existing images received from API.
+  final List<String> networkImages;
+
   final VoidCallback onAdd;
+
+  /// Removes a local image.
   final ValueChanged<int> onRemove;
+
+  /// Removes an existing API image.
+  final ValueChanged<int>? onRemoveNetworkImage;
 
   final String title;
   final String subtitle;
@@ -28,10 +39,16 @@ class ProductGalleryPicker extends StatelessWidget {
   final int maxImages;
   final bool enabled;
 
+  int get totalImages {
+    return networkImages.length + images.length;
+  }
+
+  bool get canAddMore {
+    return totalImages < maxImages;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final canAddMore = images.length < maxImages;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -47,6 +64,21 @@ class ProductGalleryPicker extends StatelessWidget {
           spacing: 12,
           runSpacing: 12,
           children: [
+            // ============================================================
+            // EXISTING API IMAGES
+            // ============================================================
+            ...List.generate(networkImages.length, (index) {
+              return _NetworkGalleryImage(
+                imageUrl: networkImages[index],
+                onRemove: enabled && onRemoveNetworkImage != null
+                    ? () => onRemoveNetworkImage!(index)
+                    : null,
+              );
+            }),
+
+            // ============================================================
+            // NEW LOCAL IMAGES
+            // ============================================================
             ...List.generate(images.length, (index) {
               return _GalleryImage(
                 image: images[index],
@@ -54,25 +86,29 @@ class ProductGalleryPicker extends StatelessWidget {
               );
             }),
 
+            // ============================================================
+            // ADD IMAGE BUTTON
+            // ============================================================
             if (canAddMore) _AddImageButton(onTap: enabled ? onAdd : null),
           ],
         ),
 
         const SizedBox(height: 8),
 
-        Text(
-          '${images.length}/$maxImages images',
-          style: AppTextStyles.caption,
-        ),
+        Text('$totalImages/$maxImages images', style: AppTextStyles.caption),
       ],
     );
   }
 }
 
-class _GalleryImage extends StatelessWidget {
-  const _GalleryImage({required this.image, this.onRemove});
+// ============================================================================
+// NETWORK GALLERY IMAGE
+// ============================================================================
 
-  final File image;
+class _NetworkGalleryImage extends StatelessWidget {
+  const _NetworkGalleryImage({required this.imageUrl, this.onRemove});
+
+  final String imageUrl;
   final VoidCallback? onRemove;
 
   @override
@@ -85,7 +121,42 @@ class _GalleryImage extends StatelessWidget {
           Positioned.fill(
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: Image.file(image, fit: BoxFit.cover),
+              child: Image.network(
+                imageUrl,
+                fit: BoxFit.cover,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) {
+                    return child;
+                  }
+
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.inputBackground,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    alignment: Alignment.center,
+                    child: const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  );
+                },
+                errorBuilder: (_, __, ___) {
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.inputBackground,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    alignment: Alignment.center,
+                    child: Icon(
+                      Icons.broken_image_outlined,
+                      size: 30,
+                      color: AppColors.inputIcon,
+                    ),
+                  );
+                },
+              ),
             ),
           ),
 
@@ -115,6 +186,75 @@ class _GalleryImage extends StatelessWidget {
     );
   }
 }
+
+// ============================================================================
+// LOCAL GALLERY IMAGE
+// ============================================================================
+
+class _GalleryImage extends StatelessWidget {
+  const _GalleryImage({required this.image, this.onRemove});
+
+  final File image;
+  final VoidCallback? onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 110,
+      height: 110,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.file(
+                image,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) {
+                  return Container(
+                    color: AppColors.inputBackground,
+                    alignment: Alignment.center,
+                    child: Icon(
+                      Icons.broken_image_outlined,
+                      size: 30,
+                      color: AppColors.inputIcon,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+
+          if (onRemove != null)
+            Positioned(
+              top: 6,
+              right: 6,
+              child: Material(
+                color: Colors.black.withValues(alpha: 0.6),
+                shape: const CircleBorder(),
+                child: InkWell(
+                  onTap: onRemove,
+                  customBorder: const CircleBorder(),
+                  child: const Padding(
+                    padding: EdgeInsets.all(5),
+                    child: Icon(
+                      Icons.close_rounded,
+                      size: 16,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// ADD IMAGE BUTTON
+// ============================================================================
 
 class _AddImageButton extends StatelessWidget {
   const _AddImageButton({required this.onTap});

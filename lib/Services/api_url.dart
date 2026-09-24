@@ -49,6 +49,8 @@ class ApiUrls {
 
   static const String bulkProduct = 'vendor/products/bulk';
 
+  static const String productOptions = 'vendor/product-options';
+
   static const String exportProductsCsv = 'vendor/products/export/csv';
 
   static const String translateProduct = 'vendor/products/translate';

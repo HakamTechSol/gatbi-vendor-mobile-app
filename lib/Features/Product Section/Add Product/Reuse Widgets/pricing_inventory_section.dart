@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'product_dropdown_field.dart';
 import 'product_form_section.dart';
 import 'product_section_header.dart';
 import 'product_text_field.dart';
@@ -96,9 +95,6 @@ class PricingInventorySection extends StatelessWidget {
           hintText: 'Enter SKU',
         ),
 
-        const SizedBox(height: 20),
-
-        _buildInventoryDropdown(),
       ],
     );
   }
@@ -165,30 +161,8 @@ class PricingInventorySection extends StatelessWidget {
           ],
         ),
 
-        const SizedBox(height: 20),
-
-        _buildInventoryDropdown(),
       ],
     );
   }
 
-  Widget _buildInventoryDropdown() {
-    return ProductDropdownField<String>(
-      label: 'Inventory Type',
-      value: inventoryType,
-      items: const [
-        ProductDropdownItem<String>(
-          value: 'track',
-          label: 'Track Inventory',
-          subtitle: 'Track available product stock.',
-        ),
-        ProductDropdownItem<String>(
-          value: 'unlimited',
-          label: 'Unlimited',
-          subtitle: 'Product can be purchased without stock limits.',
-        ),
-      ],
-      onChanged: onInventoryTypeChanged,
-    );
-  }
 }

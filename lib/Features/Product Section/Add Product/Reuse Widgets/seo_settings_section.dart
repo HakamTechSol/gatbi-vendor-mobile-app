@@ -58,7 +58,6 @@ class SeoSettingsSection extends StatelessWidget {
             hintText: 'Enter SEO meta description',
             maxLines: 4,
             maxLength: 160,
-            prefixIcon: Icons.description_outlined,
           ),
 
           const SizedBox(height: 20),
@@ -68,7 +67,6 @@ class SeoSettingsSection extends StatelessWidget {
             label: 'Meta Keywords',
             hintText: 'Enter keywords separated by commas',
             maxLines: 2,
-            prefixIcon: Icons.key_rounded,
           ),
         ],
       ),

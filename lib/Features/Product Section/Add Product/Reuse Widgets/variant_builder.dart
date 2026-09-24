@@ -4,30 +4,50 @@ import '../../../../../Theme/app_colors.dart';
 import '../../../../../Theme/app_text_styles.dart';
 import '../../../Attributes/Get Attributes/Models/get_attributes_model.dart';
 
+// ============================================================
+// VARIANT ATTRIBUTE
+// ============================================================
+
 class VariantAttribute {
   VariantAttribute({required this.name, this.id, List<String>? values})
-    : values = values ?? [];
+    : values = values ?? <String>[];
 
   final int? id;
   String name;
   List<String> values;
 }
 
+// ============================================================
+// VARIANT DATA
+// ============================================================
+
 class VariantData {
   VariantData({
     required this.attributes,
     this.price = '',
     this.compareAtPrice = '',
-    this.stock = '',
+    this.stockQuantity = '',
     this.sku = '',
+    this.attributeValueIds = const {},
+    this.isNew = true,
   });
 
   final Map<String, String> attributes;
 
   String price;
   String compareAtPrice;
-  String stock;
+  String stockQuantity;
   String sku;
+
+  final Map<int, int> attributeValueIds;
+
+  final bool isNew;
+
+  String get stock => stockQuantity;
+
+  set stock(String value) {
+    stockQuantity = value;
+  }
 
   String get displayName {
     if (attributes.isEmpty) {
@@ -38,7 +58,30 @@ class VariantData {
         .map((entry) => '${entry.key}: ${entry.value}')
         .join(' • ');
   }
+
+  VariantData copyWith({
+    Map<String, String>? attributes,
+    String? price,
+    String? compareAtPrice,
+    String? stockQuantity,
+    String? sku,
+    Map<int, int>? attributeValueIds,
+  }) {
+    return VariantData(
+      attributes: attributes ?? Map<String, String>.from(this.attributes),
+      price: price ?? this.price,
+      compareAtPrice: compareAtPrice ?? this.compareAtPrice,
+      stockQuantity: stockQuantity ?? this.stockQuantity,
+      sku: sku ?? this.sku,
+      attributeValueIds:
+          attributeValueIds ?? Map<int, int>.from(this.attributeValueIds),
+    );
+  }
 }
+
+// ============================================================
+// VARIANT BUILDER
+// ============================================================
 
 class VariantBuilder extends StatefulWidget {
   const VariantBuilder({
@@ -47,31 +90,65 @@ class VariantBuilder extends StatefulWidget {
     required this.onAttributesChanged,
     required this.variants,
     required this.onVariantsChanged,
-    this.availableAttributes = const [],
+    this.availableAttributes = const <GetAttributeModel>[],
     this.enabled = true,
+
+    // ----------------------------------------------------------
+    // PRICING DEFAULTS
+    // ----------------------------------------------------------
+    //
+    // These values come from the main Product Pricing section.
+    //
+    // They are used ONLY when a NEW variant is created.
+    // Existing variants are never overwritten automatically.
+    //
+    this.defaultPrice = '',
+    this.defaultCompareAtPrice = '',
+    this.defaultStockQuantity = '',
+    this.defaultSku = '',
   });
 
-  /// Currently selected attributes.
   final List<VariantAttribute> attributes;
 
   final ValueChanged<List<VariantAttribute>> onAttributesChanged;
 
-  /// Current variants.
   final List<VariantData> variants;
 
   final ValueChanged<List<VariantData>> onVariantsChanged;
 
-  /// Real attributes received from API.
+  /// Full API attributes.
   final List<GetAttributeModel> availableAttributes;
 
   final bool enabled;
+
+  // ==========================================================
+  // PRICING DEFAULT VALUES
+  // ==========================================================
+
+  final String defaultPrice;
+
+  final String defaultCompareAtPrice;
+
+  final String defaultStockQuantity;
+
+  final String defaultSku;
 
   @override
   State<VariantBuilder> createState() => _VariantBuilderState();
 }
 
+// ============================================================
+// VARIANT BUILDER STATE
+// ============================================================
+
 class _VariantBuilderState extends State<VariantBuilder> {
   late List<GetAttributeModel> _availableAttributes;
+
+  /// Local state.
+  ///
+  /// This is important because Add Variant should immediately
+  /// render the card without waiting for another interaction.
+  late List<VariantData> _variants;
 
   @override
   void initState() {
@@ -80,19 +157,194 @@ class _VariantBuilderState extends State<VariantBuilder> {
     _availableAttributes = List<GetAttributeModel>.from(
       widget.availableAttributes,
     );
+
+    _variants = List<VariantData>.from(widget.variants);
   }
 
   @override
   void didUpdateWidget(covariant VariantBuilder oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (oldWidget.availableAttributes != widget.availableAttributes) {
+    // ----------------------------------------------------------
+    // Available API attributes changed
+    // ----------------------------------------------------------
+
+    if (!_sameAttributeList(
+      oldWidget.availableAttributes,
+      widget.availableAttributes,
+    )) {
       _availableAttributes = List<GetAttributeModel>.from(
         widget.availableAttributes,
       );
+    }
 
+    // ----------------------------------------------------------
+    // Parent variants changed externally
+    //
+    // Do NOT blindly replace local variants on every rebuild.
+    // Only synchronize when the actual content changed.
+    // ----------------------------------------------------------
+
+    if (!_sameVariantList(oldWidget.variants, widget.variants)) {
+      _variants = List<VariantData>.from(widget.variants);
+    }
+
+    // ----------------------------------------------------------
+    // Selected attributes changed
+    // ----------------------------------------------------------
+
+    if (!_sameSelectedAttributeList(oldWidget.attributes, widget.attributes)) {
       _removeUnavailableSelectedAttributes();
     }
+  }
+
+  // ============================================================
+  // LIST COMPARISON
+  // ============================================================
+
+  bool _sameAttributeList(
+    List<GetAttributeModel> first,
+    List<GetAttributeModel> second,
+  ) {
+    if (identical(first, second)) {
+      return true;
+    }
+
+    if (first.length != second.length) {
+      return false;
+    }
+
+    for (var index = 0; index < first.length; index++) {
+      final firstItem = first[index];
+      final secondItem = second[index];
+
+      if (firstItem.id != secondItem.id) {
+        return false;
+      }
+
+      final firstName = (firstItem.name ?? '').trim().toLowerCase();
+      final secondName = (secondItem.name ?? '').trim().toLowerCase();
+
+      if (firstName != secondName) {
+        return false;
+      }
+
+      if (firstItem.values.length != secondItem.values.length) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  bool _sameSelectedAttributeList(
+    List<VariantAttribute> first,
+    List<VariantAttribute> second,
+  ) {
+    if (identical(first, second)) {
+      return true;
+    }
+
+    if (first.length != second.length) {
+      return false;
+    }
+
+    for (var index = 0; index < first.length; index++) {
+      final firstItem = first[index];
+      final secondItem = second[index];
+
+      if (firstItem.id != secondItem.id) {
+        return false;
+      }
+
+      if (firstItem.name.trim().toLowerCase() !=
+          secondItem.name.trim().toLowerCase()) {
+        return false;
+      }
+
+      if (firstItem.values.length != secondItem.values.length) {
+        return false;
+      }
+
+      for (
+        var valueIndex = 0;
+        valueIndex < firstItem.values.length;
+        valueIndex++
+      ) {
+        final firstValue = firstItem.values[valueIndex].trim().toLowerCase();
+
+        final secondValue = secondItem.values[valueIndex].trim().toLowerCase();
+
+        if (firstValue != secondValue) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
+  bool _sameVariantList(List<VariantData> first, List<VariantData> second) {
+    if (identical(first, second)) {
+      return true;
+    }
+
+    if (first.length != second.length) {
+      return false;
+    }
+
+    for (var index = 0; index < first.length; index++) {
+      final firstVariant = first[index];
+      final secondVariant = second[index];
+
+      if (!_sameStringMap(firstVariant.attributes, secondVariant.attributes)) {
+        return false;
+      }
+
+      if (!_sameIntMap(
+        firstVariant.attributeValueIds,
+        secondVariant.attributeValueIds,
+      )) {
+        return false;
+      }
+
+      if (firstVariant.price != secondVariant.price ||
+          firstVariant.compareAtPrice != secondVariant.compareAtPrice ||
+          firstVariant.stockQuantity != secondVariant.stockQuantity ||
+          firstVariant.sku != secondVariant.sku) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  bool _sameStringMap(Map<String, String> first, Map<String, String> second) {
+    if (first.length != second.length) {
+      return false;
+    }
+
+    for (final entry in first.entries) {
+      if (second[entry.key] != entry.value) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  bool _sameIntMap(Map<int, int> first, Map<int, int> second) {
+    if (first.length != second.length) {
+      return false;
+    }
+
+    for (final entry in first.entries) {
+      if (second[entry.key] != entry.value) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   // ============================================================
@@ -101,6 +353,10 @@ class _VariantBuilderState extends State<VariantBuilder> {
 
   void _removeUnavailableSelectedAttributes() {
     if (widget.attributes.isEmpty) {
+      return;
+    }
+
+    if (_availableAttributes.isEmpty) {
       return;
     }
 
@@ -124,15 +380,33 @@ class _VariantBuilderState extends State<VariantBuilder> {
       return availableNames.contains(name);
     }).toList();
 
-    if (updated.length != widget.attributes.length) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) {
-          return;
-        }
-
-        widget.onAttributesChanged(updated);
-      });
+    if (updated.length == widget.attributes.length) {
+      return;
     }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+
+      widget.onAttributesChanged(List<VariantAttribute>.from(updated));
+    });
+  }
+
+  // ============================================================
+  // CLONE ATTRIBUTES
+  // ============================================================
+
+  List<VariantAttribute> _cloneAttributes(List<VariantAttribute> source) {
+    return source
+        .map(
+          (item) => VariantAttribute(
+            id: item.id,
+            name: item.name,
+            values: List<String>.from(item.values),
+          ),
+        )
+        .toList();
   }
 
   // ============================================================
@@ -144,46 +418,66 @@ class _VariantBuilderState extends State<VariantBuilder> {
       return;
     }
 
+    final attributeId = attribute.id;
     final attributeName = attribute.name?.trim();
 
-    if (attribute.id == null ||
-        attributeName == null ||
-        attributeName.isEmpty) {
+    if (attributeId == null || attributeName == null || attributeName.isEmpty) {
       return;
     }
 
-    final updated = widget.attributes
-        .map(
-          (item) => VariantAttribute(
-            id: item.id,
-            name: item.name,
-            values: List<String>.from(item.values),
-          ),
-        )
-        .toList();
+    final updated = _cloneAttributes(widget.attributes);
 
     final index = updated.indexWhere(
       (item) =>
-          item.id == attribute.id ||
-          item.name.toLowerCase() == attributeName.toLowerCase(),
+          item.id == attributeId ||
+          item.name.trim().toLowerCase() == attributeName.toLowerCase(),
     );
+
+    // ----------------------------------------------------------
+    // REMOVE ATTRIBUTE
+    // ----------------------------------------------------------
 
     if (index >= 0) {
       final removedAttribute = updated.removeAt(index);
 
-      final variants = widget.variants.where((variant) {
-        return !variant.attributes.containsKey(removedAttribute.name);
+      final updatedVariants = _variants.where((variant) {
+        final hasAttributeByName = variant.attributes.keys.any(
+          (key) =>
+              key.trim().toLowerCase() ==
+              removedAttribute.name.trim().toLowerCase(),
+        );
+
+        final hasAttributeById =
+            removedAttribute.id != null &&
+            variant.attributeValueIds.containsKey(removedAttribute.id);
+
+        return !hasAttributeByName && !hasAttributeById;
       }).toList();
 
-      widget.onAttributesChanged(updated);
-      widget.onVariantsChanged(variants);
+      setState(() {
+        _variants = List<VariantData>.from(updatedVariants);
+      });
+
+      widget.onAttributesChanged(List<VariantAttribute>.from(updated));
+
+      widget.onVariantsChanged(List<VariantData>.from(updatedVariants));
 
       return;
     }
 
-    updated.add(VariantAttribute(id: attribute.id, name: attributeName));
+    // ----------------------------------------------------------
+    // ADD ATTRIBUTE
+    // ----------------------------------------------------------
 
-    widget.onAttributesChanged(updated);
+    updated.add(
+      VariantAttribute(
+        id: attributeId,
+        name: attributeName,
+        values: <String>[],
+      ),
+    );
+
+    widget.onAttributesChanged(List<VariantAttribute>.from(updated));
   }
 
   // ============================================================
@@ -196,27 +490,24 @@ class _VariantBuilderState extends State<VariantBuilder> {
     }
 
     final attributeId = attribute.id;
-
     final attributeName = attribute.name?.trim();
 
     if (attributeId == null || attributeName == null || attributeName.isEmpty) {
       return;
     }
 
-    final updated = widget.attributes
-        .map(
-          (item) => VariantAttribute(
-            id: item.id,
-            name: item.name,
-            values: List<String>.from(item.values),
-          ),
-        )
-        .toList();
+    final normalizedValue = value.trim();
+
+    if (normalizedValue.isEmpty) {
+      return;
+    }
+
+    final updated = _cloneAttributes(widget.attributes);
 
     final attributeIndex = updated.indexWhere(
       (item) =>
           item.id == attributeId ||
-          item.name.toLowerCase() == attributeName.toLowerCase(),
+          item.name.trim().toLowerCase() == attributeName.toLowerCase(),
     );
 
     if (attributeIndex < 0) {
@@ -225,17 +516,43 @@ class _VariantBuilderState extends State<VariantBuilder> {
 
     final values = updated[attributeIndex].values;
 
-    if (values.contains(value)) {
-      values.remove(value);
+    final existingIndex = values.indexWhere(
+      (item) => item.trim().toLowerCase() == normalizedValue.toLowerCase(),
+    );
+
+    if (existingIndex >= 0) {
+      values.removeAt(existingIndex);
     } else {
-      values.add(value);
+      values.add(normalizedValue);
     }
 
-    widget.onAttributesChanged(updated);
+    widget.onAttributesChanged(List<VariantAttribute>.from(updated));
   }
 
   // ============================================================
-  // ADD VARIANT
+  // FIND API ATTRIBUTE
+  // ============================================================
+
+  GetAttributeModel? _findApiAttribute(VariantAttribute selected) {
+    for (final attribute in _availableAttributes) {
+      if (selected.id != null && attribute.id == selected.id) {
+        return attribute;
+      }
+
+      final apiName = attribute.name?.trim();
+
+      if (apiName != null &&
+          apiName.isNotEmpty &&
+          apiName.toLowerCase() == selected.name.trim().toLowerCase()) {
+        return attribute;
+      }
+    }
+
+    return null;
+  }
+
+  // ============================================================
+  // SHOW ADD VARIANT SHEET
   // ============================================================
 
   void _showAddVariantSheet() {
@@ -248,12 +565,12 @@ class _VariantBuilderState extends State<VariantBuilder> {
       return;
     }
 
-    final hasValues = widget.attributes.any(
-      (attribute) => attribute.values.isNotEmpty,
-    );
+    final attributesWithoutValues = widget.attributes
+        .where((attribute) => attribute.values.isEmpty)
+        .toList();
 
-    if (!hasValues) {
-      _showMessage('Please select allowed values first.');
+    if (attributesWithoutValues.isNotEmpty) {
+      _showMessage('Please select at least one value for every attribute.');
       return;
     }
 
@@ -261,24 +578,105 @@ class _VariantBuilderState extends State<VariantBuilder> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
+      builder: (sheetContext) {
         return _AddVariantSheet(
           attributes: widget.attributes,
-          existingVariants: widget.variants,
-          onAdd: (variant) {
-            final updated = [...widget.variants, variant];
+          availableAttributes: _availableAttributes,
+          existingVariants: _variants,
+          onAdd: _addVariant,
 
-            widget.onVariantsChanged(updated);
-          },
+          // ----------------------------------------------------
+          // MAIN PRODUCT PRICING DEFAULTS
+          // ----------------------------------------------------
+          defaultPrice: widget.defaultPrice,
+          defaultCompareAtPrice: widget.defaultCompareAtPrice,
+          defaultStockQuantity: widget.defaultStockQuantity,
+          defaultSku: widget.defaultSku,
         );
       },
     );
   }
 
+  // ============================================================
+  // ADD VARIANT
+  // ============================================================
+
+  void _addVariant(VariantData variant) {
+    if (!mounted) {
+      return;
+    }
+
+    debugPrint('============================================================');
+    debugPrint('VARIANT BUILDER: ADD VARIANT');
+    debugPrint('Display: ${variant.displayName}');
+    debugPrint('Attributes: ${variant.attributes}');
+    debugPrint('Attribute Value IDs: ${variant.attributeValueIds}');
+
+    debugPrint('MAIN PRODUCT DEFAULTS');
+    debugPrint('Default Price: "${widget.defaultPrice}"');
+    debugPrint('Default Compare At Price: "${widget.defaultCompareAtPrice}"');
+    debugPrint('Default Stock Quantity: "${widget.defaultStockQuantity}"');
+    debugPrint('Default SKU: "${widget.defaultSku}"');
+
+    // ----------------------------------------------------------
+    // IMPORTANT
+    //
+    // Apply pricing defaults ONLY to this NEW variant.
+    //
+    // Existing variants are never modified here.
+    // ----------------------------------------------------------
+
+    final newVariant = variant.copyWith(
+      price: widget.defaultPrice,
+      compareAtPrice: widget.defaultCompareAtPrice,
+      stockQuantity: widget.defaultStockQuantity,
+      sku: widget.defaultSku,
+    );
+
+    debugPrint('NEW VARIANT DEFAULTED VALUES');
+    debugPrint('Price: "${newVariant.price}"');
+    debugPrint('Compare At Price: "${newVariant.compareAtPrice}"');
+    debugPrint('Stock Quantity: "${newVariant.stockQuantity}"');
+    debugPrint('SKU: "${newVariant.sku}"');
+
+    debugPrint('Existing variants before add: ${_variants.length}');
+
+    // ----------------------------------------------------------
+    // IMPORTANT
+    //
+    // Always create a completely NEW list.
+    // ----------------------------------------------------------
+
+    final updatedVariants = <VariantData>[..._variants, newVariant];
+
+    setState(() {
+      _variants = updatedVariants;
+    });
+
+    debugPrint('Updated variants after add: ${updatedVariants.length}');
+
+    // ----------------------------------------------------------
+    // Parent gets a NEW LIST instance.
+    // ----------------------------------------------------------
+
+    widget.onVariantsChanged(List<VariantData>.from(updatedVariants));
+
+    debugPrint('VARIANT BUILDER: onVariantsChanged fired');
+    debugPrint('============================================================');
+  }
+
+  // ============================================================
+  // SHOW MESSAGE
+  // ============================================================
+
   void _showMessage(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+    );
   }
 
   // ============================================================
@@ -286,13 +684,21 @@ class _VariantBuilderState extends State<VariantBuilder> {
   // ============================================================
 
   void _removeVariant(int index) {
-    if (index < 0 || index >= widget.variants.length) {
+    if (!widget.enabled) {
       return;
     }
 
-    final updated = [...widget.variants]..removeAt(index);
+    if (index < 0 || index >= _variants.length) {
+      return;
+    }
 
-    widget.onVariantsChanged(updated);
+    final updatedVariants = <VariantData>[..._variants]..removeAt(index);
+
+    setState(() {
+      _variants = updatedVariants;
+    });
+
+    widget.onVariantsChanged(List<VariantData>.from(updatedVariants));
   }
 
   // ============================================================
@@ -300,15 +706,19 @@ class _VariantBuilderState extends State<VariantBuilder> {
   // ============================================================
 
   void _updateVariant(int index, VariantData updatedVariant) {
-    if (index < 0 || index >= widget.variants.length) {
+    if (index < 0 || index >= _variants.length) {
       return;
     }
 
-    final variants = [...widget.variants];
+    final updatedVariants = <VariantData>[..._variants];
 
-    variants[index] = updatedVariant;
+    updatedVariants[index] = updatedVariant;
 
-    widget.onVariantsChanged(variants);
+    setState(() {
+      _variants = updatedVariants;
+    });
+
+    widget.onVariantsChanged(List<VariantData>.from(updatedVariants));
   }
 
   // ============================================================
@@ -374,7 +784,10 @@ class _VariantBuilderState extends State<VariantBuilder> {
           ),
         ],
 
-        if (widget.variants.isNotEmpty) ...[
+        // ======================================================
+        // VARIANT CARDS
+        // ======================================================
+        if (_variants.isNotEmpty) ...[
           const SizedBox(height: 28),
 
           Row(
@@ -388,11 +801,19 @@ class _VariantBuilderState extends State<VariantBuilder> {
                   ),
                 ),
               ),
-              Text(
-                '${widget.variants.length}',
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: AppColors.textMuted,
-                  fontWeight: FontWeight.w600,
+
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${_variants.length}',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
@@ -400,15 +821,16 @@ class _VariantBuilderState extends State<VariantBuilder> {
 
           const SizedBox(height: 12),
 
-          ...List.generate(widget.variants.length, (index) {
-            final variant = widget.variants[index];
+          ...List.generate(_variants.length, (index) {
+            final variant = _variants[index];
 
             return Padding(
               padding: const EdgeInsets.only(bottom: 14),
               child: _VariantEditor(
-                key: ValueKey('${index}_${variant.displayName}'),
+                key: ValueKey('variant_card_${index}_${variant.displayName}'),
                 variant: variant,
                 selectedAttributes: widget.attributes,
+                availableAttributes: _availableAttributes,
                 enabled: widget.enabled,
                 onChanged: (updated) {
                   _updateVariant(index, updated);
@@ -422,24 +844,6 @@ class _VariantBuilderState extends State<VariantBuilder> {
         ],
       ],
     );
-  }
-
-  GetAttributeModel? _findApiAttribute(VariantAttribute selected) {
-    for (final attribute in _availableAttributes) {
-      if (selected.id != null && attribute.id == selected.id) {
-        return attribute;
-      }
-
-      final apiName = attribute.name?.trim();
-
-      if (apiName != null &&
-          apiName.isNotEmpty &&
-          apiName.toLowerCase() == selected.name.trim().toLowerCase()) {
-        return attribute;
-      }
-    }
-
-    return null;
   }
 }
 
@@ -495,8 +899,9 @@ class _AttributeSelectionCard extends StatelessWidget {
   bool _isSelected(GetAttributeModel attribute) {
     return selectedAttributes.any(
       (item) =>
-          item.id == attribute.id ||
-          item.name.toLowerCase() == (attribute.name ?? '').toLowerCase(),
+          (item.id != null && item.id == attribute.id) ||
+          item.name.trim().toLowerCase() ==
+              (attribute.name ?? '').trim().toLowerCase(),
     );
   }
 
@@ -544,7 +949,6 @@ class _AttributeSelectionCard extends StatelessWidget {
       child: Column(
         children: attributes.map((attribute) {
           final selected = _isSelected(attribute);
-
           final name = attribute.name?.trim();
 
           if (name == null || name.isEmpty) {
@@ -654,7 +1058,6 @@ class _AllowedValuesCard extends StatelessWidget {
                   ),
                 ),
               ),
-
               Text(
                 '${selectedValues.length} selected',
                 style: AppTextStyles.caption.copyWith(
@@ -679,7 +1082,9 @@ class _AllowedValuesCard extends StatelessWidget {
               children: values.map((attributeValue) {
                 final value = attributeValue.value!.trim();
 
-                final selected = selectedValues.contains(value);
+                final selected = selectedValues.any(
+                  (item) => item.trim().toLowerCase() == value.toLowerCase(),
+                );
 
                 return _SelectableValueChip(
                   label: value,
@@ -699,7 +1104,7 @@ class _AllowedValuesCard extends StatelessWidget {
 }
 
 // ============================================================
-// SELECTABLE CHIP
+// SELECTABLE VALUE CHIP
 // ============================================================
 
 class _SelectableValueChip extends StatelessWidget {
@@ -761,6 +1166,7 @@ class _SelectableValueChip extends StatelessWidget {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                  softWrap: false,
                   style: AppTextStyles.caption.copyWith(
                     color: selected ? AppColors.primary : AppColors.textPrimary,
                     fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
@@ -856,17 +1262,42 @@ class _AddVariantButton extends StatelessWidget {
 class _AddVariantSheet extends StatefulWidget {
   const _AddVariantSheet({
     required this.attributes,
+    required this.availableAttributes,
     required this.existingVariants,
     required this.onAdd,
+
+    // ----------------------------------------------------------
+    // PRICING DEFAULTS
+    // ----------------------------------------------------------
+    required this.defaultPrice,
+    required this.defaultCompareAtPrice,
+    required this.defaultStockQuantity,
+    required this.defaultSku,
   });
 
   final List<VariantAttribute> attributes;
+
+  final List<GetAttributeModel> availableAttributes;
+
   final List<VariantData> existingVariants;
+
   final ValueChanged<VariantData> onAdd;
+
+  final String defaultPrice;
+
+  final String defaultCompareAtPrice;
+
+  final String defaultStockQuantity;
+
+  final String defaultSku;
 
   @override
   State<_AddVariantSheet> createState() => _AddVariantSheetState();
 }
+
+// ============================================================
+// ADD VARIANT SHEET STATE
+// ============================================================
 
 class _AddVariantSheetState extends State<_AddVariantSheet> {
   late Map<String, String> _selectedValues;
@@ -875,19 +1306,109 @@ class _AddVariantSheetState extends State<_AddVariantSheet> {
   void initState() {
     super.initState();
 
-    _selectedValues = {
+    _selectedValues = <String, String>{
       for (final attribute in widget.attributes)
         if (attribute.values.isNotEmpty) attribute.name: attribute.values.first,
     };
   }
 
-  bool _alreadyExists() {
-    return widget.existingVariants.any(
-      (variant) => _sameAttributes(variant.attributes, _selectedValues),
-    );
+  // ============================================================
+  // FIND API ATTRIBUTE
+  // ============================================================
+
+  GetAttributeModel? _findApiAttribute(VariantAttribute selected) {
+    for (final attribute in widget.availableAttributes) {
+      if (selected.id != null && attribute.id == selected.id) {
+        return attribute;
+      }
+
+      final apiName = attribute.name?.trim();
+
+      if (apiName != null &&
+          apiName.isNotEmpty &&
+          apiName.toLowerCase() == selected.name.trim().toLowerCase()) {
+        return attribute;
+      }
+    }
+
+    return null;
   }
 
-  bool _sameAttributes(Map<String, String> first, Map<String, String> second) {
+  // ============================================================
+  // FIND VALUE ID
+  // ============================================================
+
+  int? _findValueId(VariantAttribute selectedAttribute, String selectedValue) {
+    final apiAttribute = _findApiAttribute(selectedAttribute);
+
+    if (apiAttribute == null) {
+      return null;
+    }
+
+    final normalizedValue = selectedValue.trim().toLowerCase();
+
+    for (final value in apiAttribute.values) {
+      final apiValue = value.value?.trim().toLowerCase();
+
+      if (apiValue == normalizedValue && value.id != null && value.id! > 0) {
+        return value.id;
+      }
+    }
+
+    return null;
+  }
+
+  // ============================================================
+  // BUILD ATTRIBUTE VALUE IDS
+  // ============================================================
+
+  Map<int, int> _buildAttributeValueIds() {
+    final result = <int, int>{};
+
+    for (final attribute in widget.attributes) {
+      final attributeId = attribute.id;
+
+      if (attributeId == null || attributeId <= 0) {
+        continue;
+      }
+
+      final selectedValue = _selectedValues[attribute.name];
+
+      if (selectedValue == null || selectedValue.trim().isEmpty) {
+        continue;
+      }
+
+      final valueId = _findValueId(attribute, selectedValue);
+
+      if (valueId != null && valueId > 0) {
+        result[attributeId] = valueId;
+      }
+    }
+
+    return result;
+  }
+
+  // ============================================================
+  // DUPLICATE CHECK
+  // ============================================================
+
+  bool _alreadyExists(Map<int, int> currentIds) {
+    if (currentIds.isEmpty) {
+      return widget.existingVariants.any(
+        (variant) => _sameAttributes(variant.attributes, _selectedValues),
+      );
+    }
+
+    return widget.existingVariants.any((variant) {
+      if (variant.attributeValueIds.isEmpty) {
+        return false;
+      }
+
+      return _sameIdAttributes(variant.attributeValueIds, currentIds);
+    });
+  }
+
+  bool _sameIdAttributes(Map<int, int> first, Map<int, int> second) {
     if (first.length != second.length) {
       return false;
     }
@@ -901,18 +1422,107 @@ class _AddVariantSheetState extends State<_AddVariantSheet> {
     return true;
   }
 
+  bool _sameAttributes(Map<String, String> first, Map<String, String> second) {
+    if (first.length != second.length) {
+      return false;
+    }
+
+    for (final firstEntry in first.entries) {
+      String? matchingKey;
+
+      for (final secondKey in second.keys) {
+        if (secondKey.trim().toLowerCase() ==
+            firstEntry.key.trim().toLowerCase()) {
+          matchingKey = secondKey;
+          break;
+        }
+      }
+
+      if (matchingKey == null) {
+        return false;
+      }
+
+      final secondValue = second[matchingKey];
+
+      if (secondValue == null) {
+        return false;
+      }
+
+      if (secondValue.trim().toLowerCase() !=
+          firstEntry.value.trim().toLowerCase()) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  // ============================================================
+  // ADD
+  // ============================================================
+
   void _add() {
-    if (_selectedValues.length != widget.attributes.length) {
+    // ----------------------------------------------------------
+    // Validate
+    // ----------------------------------------------------------
+
+    for (final attribute in widget.attributes) {
+      final selectedValue = _selectedValues[attribute.name];
+
+      if (selectedValue == null || selectedValue.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Please select a value for ${attribute.name}.'),
+          ),
+        );
+
+        return;
+      }
+    }
+
+    // ----------------------------------------------------------
+    // Resolve IDs
+    // ----------------------------------------------------------
+
+    final attributeValueIds = _buildAttributeValueIds();
+
+    debugPrint('============================================================');
+    debugPrint('ADD VARIANT SHEET');
+    debugPrint('Selected values: $_selectedValues');
+    debugPrint('Resolved attribute/value IDs: $attributeValueIds');
+
+    debugPrint('PRICING DEFAULTS');
+    debugPrint('Price: "${widget.defaultPrice}"');
+    debugPrint('Compare At Price: "${widget.defaultCompareAtPrice}"');
+    debugPrint('Stock Quantity: "${widget.defaultStockQuantity}"');
+    debugPrint('SKU: "${widget.defaultSku}"');
+    debugPrint('============================================================');
+
+    // ----------------------------------------------------------
+    // API attributes exist
+    //
+    // Then IDs are required.
+    // ----------------------------------------------------------
+
+    if (widget.availableAttributes.isNotEmpty &&
+        attributeValueIds.length != widget.attributes.length) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please select a value for every attribute.'),
+          content: Text(
+            'Unable to resolve attribute values. '
+            'Please refresh attributes and try again.',
+          ),
         ),
       );
 
       return;
     }
 
-    if (_alreadyExists()) {
+    // ----------------------------------------------------------
+    // Duplicate
+    // ----------------------------------------------------------
+
+    if (_alreadyExists(attributeValueIds)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('This variant already exists.')),
       );
@@ -920,12 +1530,51 @@ class _AddVariantSheetState extends State<_AddVariantSheet> {
       return;
     }
 
-    widget.onAdd(
-      VariantData(attributes: Map<String, String>.from(_selectedValues)),
+    // ----------------------------------------------------------
+    // CREATE VARIANT
+    //
+    // Pricing values are copied from the main Pricing section.
+    // ----------------------------------------------------------
+
+    final variant = VariantData(
+      attributes: Map<String, String>.from(_selectedValues),
+
+      // --------------------------------------------------------
+      // AUTO-FILL MAIN PRODUCT PRICING
+      // --------------------------------------------------------
+      price: widget.defaultPrice,
+      compareAtPrice: widget.defaultCompareAtPrice,
+      stockQuantity: widget.defaultStockQuantity,
+      sku: widget.defaultSku,
+
+      attributeValueIds: Map<int, int>.from(attributeValueIds),
     );
 
-    Navigator.pop(context);
+    debugPrint('CREATED VARIANT: ${variant.displayName}');
+
+    debugPrint('CREATED VARIANT IDS: ${variant.attributeValueIds}');
+
+    debugPrint('CREATED VARIANT PRICE: "${variant.price}"');
+    debugPrint('CREATED VARIANT COMPARE PRICE: "${variant.compareAtPrice}"');
+    debugPrint('CREATED VARIANT STOCK: "${variant.stockQuantity}"');
+    debugPrint('CREATED VARIANT SKU: "${variant.sku}"');
+
+    // ----------------------------------------------------------
+    // SEND TO BUILDER
+    // ----------------------------------------------------------
+
+    widget.onAdd(variant);
+
+    // ----------------------------------------------------------
+    // CLOSE
+    // ----------------------------------------------------------
+
+    Navigator.of(context).pop();
   }
+
+  // ============================================================
+  // BUILD
+  // ============================================================
 
   @override
   Widget build(BuildContext context) {
@@ -956,7 +1605,9 @@ class _AddVariantSheetState extends State<_AddVariantSheet> {
                   ),
 
                   IconButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
                     icon: const Icon(Icons.close_rounded),
                   ),
                 ],
@@ -980,13 +1631,22 @@ class _AddVariantSheetState extends State<_AddVariantSheet> {
                   return const SizedBox.shrink();
                 }
 
+                final currentValue = _selectedValues[attribute.name];
+
+                final safeInitialValue =
+                    currentValue != null && values.contains(currentValue)
+                    ? currentValue
+                    : values.first;
+
+                if (!_selectedValues.containsKey(attribute.name)) {
+                  _selectedValues[attribute.name] = values.first;
+                }
+
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 16),
                   child: DropdownButtonFormField<String>(
-                    initialValue: _selectedValues[attribute.name],
-
+                    initialValue: safeInitialValue,
                     isExpanded: true,
-
                     decoration: InputDecoration(
                       labelText: attribute.name,
                       filled: true,
@@ -1011,7 +1671,6 @@ class _AddVariantSheetState extends State<_AddVariantSheet> {
                         ),
                       ),
                     ),
-
                     items: values.map((value) {
                       return DropdownMenuItem<String>(
                         value: value,
@@ -1023,7 +1682,6 @@ class _AddVariantSheetState extends State<_AddVariantSheet> {
                         ),
                       );
                     }).toList(),
-
                     onChanged: (value) {
                       if (value == null) {
                         return;
@@ -1070,28 +1728,44 @@ class _VariantEditor extends StatefulWidget {
     super.key,
     required this.variant,
     required this.selectedAttributes,
+    required this.availableAttributes,
     required this.enabled,
     required this.onChanged,
     required this.onDelete,
   });
 
   final VariantData variant;
+
   final List<VariantAttribute> selectedAttributes;
+
+  final List<GetAttributeModel> availableAttributes;
+
   final bool enabled;
+
   final ValueChanged<VariantData> onChanged;
+
   final VoidCallback onDelete;
 
   @override
   State<_VariantEditor> createState() => _VariantEditorState();
 }
 
+// ============================================================
+// VARIANT EDITOR STATE
+// ============================================================
+
 class _VariantEditorState extends State<_VariantEditor> {
   late final TextEditingController _priceController;
+
   late final TextEditingController _compareController;
+
   late final TextEditingController _stockController;
+
   late final TextEditingController _skuController;
 
   late Map<String, String> _attributes;
+
+  late Map<int, int> _attributeValueIds;
 
   @override
   void initState() {
@@ -1099,13 +1773,17 @@ class _VariantEditorState extends State<_VariantEditor> {
 
     _attributes = Map<String, String>.from(widget.variant.attributes);
 
+    _attributeValueIds = Map<int, int>.from(widget.variant.attributeValueIds);
+
     _priceController = TextEditingController(text: widget.variant.price);
 
     _compareController = TextEditingController(
       text: widget.variant.compareAtPrice,
     );
 
-    _stockController = TextEditingController(text: widget.variant.stock);
+    _stockController = TextEditingController(
+      text: widget.variant.stockQuantity,
+    );
 
     _skuController = TextEditingController(text: widget.variant.sku);
   }
@@ -1114,14 +1792,20 @@ class _VariantEditorState extends State<_VariantEditor> {
   void didUpdateWidget(covariant _VariantEditor oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (oldWidget.variant != widget.variant) {
+    // ----------------------------------------------------------
+    // Sync only when the actual variant object changes.
+    // ----------------------------------------------------------
+
+    if (!identical(oldWidget.variant, widget.variant)) {
       _attributes = Map<String, String>.from(widget.variant.attributes);
+
+      _attributeValueIds = Map<int, int>.from(widget.variant.attributeValueIds);
 
       _setControllerValue(_priceController, widget.variant.price);
 
       _setControllerValue(_compareController, widget.variant.compareAtPrice);
 
-      _setControllerValue(_stockController, widget.variant.stock);
+      _setControllerValue(_stockController, widget.variant.stockQuantity);
 
       _setControllerValue(_skuController, widget.variant.sku);
     }
@@ -1148,29 +1832,85 @@ class _VariantEditorState extends State<_VariantEditor> {
     super.dispose();
   }
 
+  // ============================================================
+  // UPDATE
+  // ============================================================
+
   void _update() {
     widget.onChanged(
       VariantData(
         attributes: Map<String, String>.from(_attributes),
         price: _priceController.text,
         compareAtPrice: _compareController.text,
-        stock: _stockController.text,
+        stockQuantity: _stockController.text,
         sku: _skuController.text,
+        attributeValueIds: Map<int, int>.from(_attributeValueIds),
       ),
     );
   }
 
-  void _changeAttribute(String name, String? value) {
+  // ============================================================
+  // CHANGE ATTRIBUTE
+  // ============================================================
+
+  void _changeAttribute(VariantAttribute attribute, String? value) {
     if (value == null) {
       return;
     }
 
+    final attributeId = attribute.id;
+
+    final valueId = _findValueId(attribute, value);
+
     setState(() {
-      _attributes[name] = value;
+      _attributes[attribute.name] = value;
+
+      if (attributeId != null && valueId != null && valueId > 0) {
+        _attributeValueIds[attributeId] = valueId;
+      }
     });
+
+    debugPrint(
+      'VARIANT EDITOR: '
+      '${attribute.name} changed to $value',
+    );
+
+    debugPrint('Updated IDs: $_attributeValueIds');
 
     _update();
   }
+
+  // ============================================================
+  // FIND VALUE ID
+  // ============================================================
+
+  int? _findValueId(VariantAttribute attribute, String selectedValue) {
+    final normalized = selectedValue.trim().toLowerCase();
+
+    for (final apiAttribute in widget.availableAttributes) {
+      final sameId = attribute.id != null && apiAttribute.id == attribute.id;
+
+      final sameName =
+          (apiAttribute.name ?? '').trim().toLowerCase() ==
+          attribute.name.trim().toLowerCase();
+
+      if (!sameId && !sameName) {
+        continue;
+      }
+
+      for (final value in apiAttribute.values) {
+        if ((value.value ?? '').trim().toLowerCase() == normalized) {
+          return value.id;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  // ============================================================
+  // BUILD
+  // ============================================================
 
   @override
   Widget build(BuildContext context) {
@@ -1192,6 +1932,9 @@ class _VariantEditorState extends State<_VariantEditor> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ====================================================
+          // HEADER
+          // ====================================================
           Row(
             children: [
               Container(
@@ -1235,23 +1978,26 @@ class _VariantEditorState extends State<_VariantEditor> {
 
           const SizedBox(height: 16),
 
+          // ====================================================
+          // ATTRIBUTE DROPDOWNS
+          // ====================================================
           ...widget.selectedAttributes.map((attribute) {
             if (attribute.values.isEmpty) {
               return const SizedBox.shrink();
             }
 
+            final storedValue = _attributes[attribute.name];
+
             final currentValue =
-                attribute.values.contains(_attributes[attribute.name])
-                ? _attributes[attribute.name]
+                storedValue != null && attribute.values.contains(storedValue)
+                ? storedValue
                 : attribute.values.first;
 
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: DropdownButtonFormField<String>(
                 initialValue: currentValue,
-
                 isExpanded: true,
-
                 decoration: InputDecoration(
                   labelText: attribute.name,
                   filled: true,
@@ -1276,7 +2022,6 @@ class _VariantEditorState extends State<_VariantEditor> {
                     ),
                   ),
                 ),
-
                 items: attribute.values.map((value) {
                   return DropdownMenuItem<String>(
                     value: value,
@@ -1288,10 +2033,9 @@ class _VariantEditorState extends State<_VariantEditor> {
                     ),
                   );
                 }).toList(),
-
                 onChanged: widget.enabled
                     ? (value) {
-                        _changeAttribute(attribute.name, value);
+                        _changeAttribute(attribute, value);
                       }
                     : null,
               ),
@@ -1300,6 +2044,9 @@ class _VariantEditorState extends State<_VariantEditor> {
 
           const SizedBox(height: 4),
 
+          // ====================================================
+          // PRICE
+          // ====================================================
           _VariantTextField(
             controller: _priceController,
             label: 'Price',
@@ -1311,6 +2058,9 @@ class _VariantEditorState extends State<_VariantEditor> {
 
           const SizedBox(height: 12),
 
+          // ====================================================
+          // COMPARE PRICE
+          // ====================================================
           _VariantTextField(
             controller: _compareController,
             label: 'Compare at Price',
@@ -1322,6 +2072,9 @@ class _VariantEditorState extends State<_VariantEditor> {
 
           const SizedBox(height: 12),
 
+          // ====================================================
+          // STOCK
+          // ====================================================
           _VariantTextField(
             controller: _stockController,
             label: 'Stock Quantity',
@@ -1333,6 +2086,9 @@ class _VariantEditorState extends State<_VariantEditor> {
 
           const SizedBox(height: 12),
 
+          // ====================================================
+          // SKU
+          // ====================================================
           _VariantTextField(
             controller: _skuController,
             label: 'SKU',
@@ -1361,10 +2117,13 @@ class _VariantTextField extends StatelessWidget {
   });
 
   final TextEditingController controller;
+
   final String label;
   final String hint;
   final bool enabled;
+
   final ValueChanged<String> onChanged;
+
   final TextInputType? keyboardType;
 
   @override

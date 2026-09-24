@@ -21,7 +21,6 @@ class ArabicTranslationSection extends StatelessWidget {
   final TextEditingController arabicShortDescriptionController;
   final TextEditingController arabicFullDescriptionController;
 
-  // New fields
   final TextEditingController arabicMetaTitleController;
   final TextEditingController arabicMetaKeywordsController;
   final TextEditingController arabicMetaDescriptionController;
@@ -37,23 +36,33 @@ class ArabicTranslationSection extends StatelessWidget {
         children: [
           ProductSectionHeader(
             title: 'Arabic Translation',
-            description: 'Provide the Arabic version of your product details.',
+            description:
+                'Provide the Arabic version of your product details.',
             trailing: OutlinedButton.icon(
               onPressed: isTranslating ? null : onAutoTranslate,
               icon: isTranslating
                   ? const SizedBox(
                       width: 16,
                       height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                      ),
                     )
-                  : const Icon(Icons.translate_rounded, size: 18),
+                  : const Icon(
+                      Icons.translate_rounded,
+                      size: 18,
+                    ),
               label: Text(
-                isTranslating ? 'Translating...' : 'Auto Translate Arabic',
+                isTranslating
+                    ? 'Translating...'
+                    : 'Auto Translate Arabic',
                 overflow: TextOverflow.ellipsis,
               ),
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size(0, 48),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -63,44 +72,67 @@ class ArabicTranslationSection extends StatelessWidget {
 
           const SizedBox(height: 24),
 
-          // Arabic Name
+          // ============================================================
+          // ARABIC NAME
+          // ============================================================
+
           ProductTextField(
             controller: arabicNameController,
             label: 'Arabic Name',
             hintText: 'أدخل اسم المنتج',
             isRequired: true,
-            textDirection: TextDirection.rtl,
+
+            // Keep input direction LTR so the keyboard/input behaves
+            // like a normal English text field.
+            textDirection: TextDirection.ltr,
+            textAlign: TextAlign.left,
+
             textInputAction: TextInputAction.next,
           ),
 
           const SizedBox(height: 20),
 
-          // Arabic Short Description
+          // ============================================================
+          // ARABIC SHORT DESCRIPTION
+          // ============================================================
+
           ProductTextField(
             controller: arabicShortDescriptionController,
             label: 'Arabic Short Description',
             hintText: 'أدخل وصفًا مختصرًا للمنتج',
             maxLines: 3,
-            textDirection: TextDirection.rtl,
+
+            textDirection: TextDirection.ltr,
+            textAlign: TextAlign.left,
+
             textInputAction: TextInputAction.next,
           ),
 
           const SizedBox(height: 20),
 
-          // Arabic Full Description
+          // ============================================================
+          // ARABIC FULL DESCRIPTION
+          // ============================================================
+
           ProductTextField(
             controller: arabicFullDescriptionController,
             label: 'Arabic Full Description',
             hintText: 'أدخل وصف المنتج الكامل',
             isRequired: true,
             maxLines: 7,
-            textDirection: TextDirection.rtl,
+
+            textDirection: TextDirection.ltr,
+            textAlign: TextAlign.left,
+
             textInputAction: TextInputAction.newline,
           ),
 
           const SizedBox(height: 20),
 
-          // Meta Title + Meta Keywords
+          // ============================================================
+          // ARABIC META TITLE + KEYWORDS
+          // ============================================================
+
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -109,7 +141,10 @@ class ArabicTranslationSection extends StatelessWidget {
                   controller: arabicMetaTitleController,
                   label: 'Arabic Meta Title',
                   hintText: 'أدخل عنوان الميتا',
-                  textDirection: TextDirection.rtl,
+
+                  textDirection: TextDirection.ltr,
+                  textAlign: TextAlign.left,
+
                   textInputAction: TextInputAction.next,
                 ),
               ),
@@ -121,7 +156,10 @@ class ArabicTranslationSection extends StatelessWidget {
                   controller: arabicMetaKeywordsController,
                   label: 'Arabic Meta Keywords',
                   hintText: 'أدخل الكلمات المفتاحية',
-                  textDirection: TextDirection.rtl,
+
+                  textDirection: TextDirection.ltr,
+                  textAlign: TextAlign.left,
+
                   textInputAction: TextInputAction.next,
                 ),
               ),
@@ -130,13 +168,19 @@ class ArabicTranslationSection extends StatelessWidget {
 
           const SizedBox(height: 20),
 
-          // Meta Description
+          // ============================================================
+          // ARABIC META DESCRIPTION
+          // ============================================================
+
           ProductTextField(
             controller: arabicMetaDescriptionController,
             label: 'Arabic Meta Description',
             hintText: 'أدخل وصف الميتا',
             maxLines: 4,
-            textDirection: TextDirection.rtl,
+
+            textDirection: TextDirection.ltr,
+            textAlign: TextAlign.left,
+
             textInputAction: TextInputAction.newline,
           ),
         ],

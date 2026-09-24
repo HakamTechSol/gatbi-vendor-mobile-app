@@ -18,14 +18,12 @@ import '../Reuse Widgets/product_stock_card.dart';
 import '../Reuse Widgets/product_variants_card.dart';
 
 class ProductDetailScreen extends ConsumerStatefulWidget {
-  const ProductDetailScreen({super.key, required this.productId, this.onEdit});
+  const ProductDetailScreen({super.key, required this.productId,});
 
   /// Product ID used to load the latest product detail
   /// directly from the vendor product detail API.
   final int productId;
 
-  /// Edit product callback.
-  final VoidCallback? onEdit;
 
   @override
   ConsumerState<ProductDetailScreen> createState() =>
@@ -207,7 +205,6 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
               SliverToBoxAdapter(
                 child: ProductDetailHeader(
                   product: product,
-                  onEdit: widget.onEdit,
                 ),
               ),
 

@@ -9,6 +9,7 @@ class ProductImagePicker extends StatelessWidget {
   const ProductImagePicker({
     super.key,
     this.image,
+    this.imageUrl,
     required this.onPick,
     this.onRemove,
     this.title = 'Product Image',
@@ -18,7 +19,12 @@ class ProductImagePicker extends StatelessWidget {
     this.enabled = true,
   });
 
+  /// Local image selected from device.
   final File? image;
+
+  /// Existing image received from API.
+  final String? imageUrl;
+
   final VoidCallback onPick;
   final VoidCallback? onRemove;
 
@@ -28,6 +34,10 @@ class ProductImagePicker extends StatelessWidget {
   final double height;
   final bool isRequired;
   final bool enabled;
+
+  bool get hasImage {
+    return image != null || (imageUrl != null && imageUrl!.trim().isNotEmpty);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -63,7 +73,7 @@ class ProductImagePicker extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppColors.border),
             ),
-            child: image != null ? _buildImagePreview() : _buildEmptyState(),
+            child: hasImage ? _buildImagePreview() : _buildEmptyState(),
           ),
         ),
       ],
@@ -76,7 +86,7 @@ class ProductImagePicker extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Image.file(image!, fit: BoxFit.cover),
+          _buildImage(),
 
           Positioned(
             top: 10,
@@ -101,6 +111,53 @@ class ProductImagePicker extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildImage() {
+    if (image != null) {
+      return Image.file(
+        image!,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        errorBuilder: (_, __, ___) {
+          return _imageErrorState();
+        },
+      );
+    }
+
+    if (imageUrl != null && imageUrl!.trim().isNotEmpty) {
+      return Image.network(
+        imageUrl!,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) {
+            return child;
+          }
+
+          return const Center(child: CircularProgressIndicator());
+        },
+        errorBuilder: (_, __, ___) {
+          return _imageErrorState();
+        },
+      );
+    }
+
+    return _imageErrorState();
+  }
+
+  Widget _imageErrorState() {
+    return Container(
+      color: AppColors.inputBackground,
+      alignment: Alignment.center,
+      child: Icon(
+        Icons.broken_image_outlined,
+        size: 40,
+        color: AppColors.inputIcon,
       ),
     );
   }

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../Attributes/Get Attributes/Models/get_attributes_model.dart';
-import '../Models/product_attribute_model.dart';
-import '../Models/product_variant_model.dart';
 
 import 'product_form_section.dart';
 import 'product_section_header.dart';
@@ -13,32 +11,49 @@ class VariantsSection extends StatelessWidget {
     super.key,
     required this.attributes,
     required this.onAttributesChanged,
-    required this.variants,
+    this.variants,
     required this.onVariantsChanged,
     required this.enabledVariants,
     required this.onVariantsEnabledChanged,
     this.availableAttributes = const [],
     this.enabled = true,
+
+    // ============================================================
+    // PRICING DEFAULTS
+    //
+    // These values are used ONLY when a NEW variant is created.
+    //
+    // Existing variants must never be overwritten during rebuild.
+    // ============================================================
+    this.defaultPrice = '',
+    this.defaultCompareAtPrice = '',
+    this.defaultStockQuantity = '',
+    this.defaultSku = '',
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
   // SELECTED PRODUCT ATTRIBUTES
+  //
+  // ProductAttributeModel remove kar diya gaya hai.
+  // Ab API ka GetAttributeModel directly use hoga.
   // ═══════════════════════════════════════════════════════════════════════════
 
-  final List<ProductAttributeModel> attributes;
+  final List<GetAttributeModel> attributes;
 
-  final ValueChanged<List<ProductAttributeModel>> onAttributesChanged;
+  final ValueChanged<List<GetAttributeModel>> onAttributesChanged;
 
   // ═══════════════════════════════════════════════════════════════════════════
   // PRODUCT VARIANTS
+  //
+  // VariantBuilder ka VariantData directly use hoga.
   // ═══════════════════════════════════════════════════════════════════════════
 
-  final List<ProductVariantModel> variants;
+  final List<VariantData>? variants;
 
-  final ValueChanged<List<ProductVariantModel>> onVariantsChanged;
+  final ValueChanged<List<VariantData>> onVariantsChanged;
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // VARIANTS ENABLE/DISABLE
+  // VARIANTS ENABLE / DISABLE
   // ═══════════════════════════════════════════════════════════════════════════
 
   final bool enabledVariants;
@@ -54,59 +69,75 @@ class VariantsSection extends StatelessWidget {
   final bool enabled;
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // PRODUCT ATTRIBUTE → VARIANT ATTRIBUTE
+  // NEW VARIANT PRICING DEFAULTS
+  //
+  // IMPORTANT:
+  // These are passed to VariantBuilder only.
+  //
+  // VariantBuilder should use them when creating a NEW VariantData.
+  // Existing VariantData should remain unchanged.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  final String defaultPrice;
+
+  final String defaultCompareAtPrice;
+
+  final String defaultStockQuantity;
+
+  final String defaultSku;
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // GET ATTRIBUTE VALUES AS STRINGS
+  //
+  // VariantBuilder works with:
+  //
+  // VariantAttribute(
+  //   id,
+  //   name,
+  //   values: List<String>
+  // )
+  //
+  // GetAttributeModel contains:
+  //
+  // values: List<GetAttributeValueModel>
+  //
+  // Isliye API model ko builder format mein convert karte hain.
   // ═══════════════════════════════════════════════════════════════════════════
 
   List<VariantAttribute> _toBuilderAttributes() {
-    return attributes
-        .map(
-          (attribute) => VariantAttribute(
-            id: attribute.id,
-            name: attribute.name,
-            values: List<String>.from(attribute.values),
-          ),
-        )
-        .toList();
+    return attributes.map((attribute) {
+      return VariantAttribute(
+        id: attribute.id,
+        name: attribute.name ?? '',
+        values: attribute.values
+            .map((value) => value.value ?? '')
+            .where((value) => value.trim().isNotEmpty)
+            .toList(),
+      );
+    }).toList();
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // PRODUCT VARIANT → VARIANT DATA
+  // BUILDER ATTRIBUTE → GET ATTRIBUTE MODEL
   // ═══════════════════════════════════════════════════════════════════════════
 
-  List<VariantData> _toBuilderVariants() {
-    return variants
-        .map(
-          (variant) => VariantData(
-            attributes: Map<String, String>.from(variant.attributes),
-            price: variant.price?.toString() ?? '',
-            compareAtPrice: variant.compareAtPrice?.toString() ?? '',
-            stock: variant.stockQuantity.toString(),
-            sku: variant.sku,
-          ),
-        )
-        .toList();
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // VARIANT ATTRIBUTE → PRODUCT ATTRIBUTE
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  List<ProductAttributeModel> _fromBuilderAttributes(
-    List<VariantAttribute> value,
+  List<GetAttributeModel> _fromBuilderAttributes(
+    List<VariantAttribute> builderAttributes,
   ) {
-    return value.asMap().entries.map((entry) {
-      final index = entry.key;
-      final attribute = entry.value;
+    return builderAttributes.map((builderAttribute) {
+      // ----------------------------------------------------------
+      // Find existing API attribute.
+      // ----------------------------------------------------------
 
-      ProductAttributeModel? existing;
+      GetAttributeModel? existing;
 
-      for (final item in attributes) {
+      for (final item in availableAttributes) {
         final sameId =
-            attribute.id != null && item.id == attribute.id;
+            builderAttribute.id != null && item.id == builderAttribute.id;
 
         final sameName =
-            item.name.trim().toLowerCase() ==
-            attribute.name.trim().toLowerCase();
+            (item.name ?? '').trim().toLowerCase() ==
+            builderAttribute.name.trim().toLowerCase();
 
         if (sameId || sameName) {
           existing = item;
@@ -114,61 +145,66 @@ class VariantsSection extends StatelessWidget {
         }
       }
 
-      return ProductAttributeModel(
-        id: existing?.id ?? attribute.id ?? (index + 1),
-        name: attribute.name,
-        nameAr: existing?.nameAr,
-        values: List<String>.from(attribute.values),
+      // ----------------------------------------------------------
+      // Existing API values
+      // ----------------------------------------------------------
+
+      final selectedValues = <GetAttributeValueModel>[];
+
+      for (final selectedValue in builderAttribute.values) {
+        final normalizedSelected = selectedValue.trim().toLowerCase();
+
+        if (normalizedSelected.isEmpty) {
+          continue;
+        }
+
+        GetAttributeValueModel? matchedValue;
+
+        if (existing != null) {
+          for (final apiValue in existing.values) {
+            final valueName = (apiValue.value ?? '').trim().toLowerCase();
+
+            if (valueName == normalizedSelected) {
+              matchedValue = apiValue;
+              break;
+            }
+          }
+        }
+
+        // --------------------------------------------------------
+        // Agar API value mil gayi to usi ko preserve karo.
+        // --------------------------------------------------------
+
+        if (matchedValue != null) {
+          selectedValues.add(matchedValue);
+        } else {
+          // ------------------------------------------------------
+          // Custom/new value.
+          //
+          // ID null rahegi.
+          // API request mein valid ID wali values hi jayengi.
+          // ------------------------------------------------------
+
+          selectedValues.add(
+            GetAttributeValueModel(id: null, value: selectedValue),
+          );
+        }
+      }
+
+      // ----------------------------------------------------------
+      // Return API model.
+      // ----------------------------------------------------------
+
+      return GetAttributeModel(
+        id: existing?.id ?? builderAttribute.id,
+        name: builderAttribute.name,
+        adminLabel: existing?.adminLabel,
+        slug: existing?.slug,
+        inputType: existing?.inputType,
+        isOwn: existing?.isOwn ?? false,
+        values: selectedValues,
       );
     }).toList();
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // VARIANT DATA → PRODUCT VARIANT
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  List<ProductVariantModel> _fromBuilderVariants(List<VariantData> value) {
-    return value.asMap().entries.map((entry) {
-      final index = entry.key;
-      final variant = entry.value;
-
-      final existing = index < variants.length ? variants[index] : null;
-
-      return ProductVariantModel(
-        id: existing?.id,
-        sku: variant.sku.trim(),
-        price: _parseDouble(variant.price),
-        compareAtPrice: _parseDouble(variant.compareAtPrice),
-        stockQuantity: _parseInt(variant.stock),
-        image: existing?.image,
-        attributes: Map<String, String>.from(variant.attributes),
-        isActive: existing?.isActive ?? true,
-      );
-    }).toList();
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // PARSERS
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  double? _parseDouble(String value) {
-    final text = value.trim();
-
-    if (text.isEmpty) {
-      return null;
-    }
-
-    return double.tryParse(text);
-  }
-
-  int _parseInt(String value) {
-    final text = value.trim();
-
-    if (text.isEmpty) {
-      return 0;
-    }
-
-    return int.tryParse(text) ?? 0;
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -178,7 +214,6 @@ class VariantsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final builderAttributes = _toBuilderAttributes();
-    final builderVariants = _toBuilderVariants();
 
     return ProductFormSection(
       child: Column(
@@ -193,7 +228,7 @@ class VariantsSection extends StatelessWidget {
           const SizedBox(height: 20),
 
           // ═══════════════════════════════════════════════════════════════════
-          // ENABLE VARIANTS TOGGLE
+          // ENABLE VARIANTS
           // ═══════════════════════════════════════════════════════════════════
           _EnableVariantsCard(
             value: enabledVariants,
@@ -210,18 +245,46 @@ class VariantsSection extends StatelessWidget {
             VariantBuilder(
               attributes: builderAttributes,
 
+              // ----------------------------------------------------------
+              // Builder → API attribute model
+              // ----------------------------------------------------------
               onAttributesChanged: (value) {
-                onAttributesChanged(_fromBuilderAttributes(value));
+                final updatedAttributes = _fromBuilderAttributes(value);
+
+                onAttributesChanged(updatedAttributes);
               },
 
-              variants: builderVariants,
+              // ----------------------------------------------------------
+              // Existing variants
+              //
+              // IMPORTANT:
+              // Existing VariantData ko directly builder mein pass kiya
+              // ja raha hai.
+              //
+              // Isliye parent rebuild hone par existing variant ki
+              // pricing overwrite nahi hogi.
+              // ----------------------------------------------------------
+              variants: variants ?? const [],
 
               onVariantsChanged: (value) {
-                onVariantsChanged(_fromBuilderVariants(value));
+                onVariantsChanged(List<VariantData>.from(value));
               },
 
-              // API attributes
+              // ----------------------------------------------------------
+              // API available attributes
+              // ----------------------------------------------------------
               availableAttributes: availableAttributes,
+
+              // ----------------------------------------------------------
+              // New variant pricing defaults
+              //
+              // VariantBuilder in values ko sirf NEW variant create
+              // karte waqt use karega.
+              // ----------------------------------------------------------
+              defaultPrice: defaultPrice,
+              defaultCompareAtPrice: defaultCompareAtPrice,
+              defaultStockQuantity: defaultStockQuantity,
+              defaultSku: defaultSku,
 
               enabled: enabled,
             ),
@@ -244,7 +307,9 @@ class _EnableVariantsCard extends StatelessWidget {
   });
 
   final bool value;
+
   final bool enabled;
+
   final ValueChanged<bool> onChanged;
 
   @override

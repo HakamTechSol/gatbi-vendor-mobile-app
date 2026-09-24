@@ -189,7 +189,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         _isRefreshing = false;
       });
     }
-  } 
+  }
   // ============================================================
   // BUILD
   // ============================================================
@@ -334,7 +334,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 KycBanner(
                   isPending: isKycPending,
                   onView: () {
-                    debugPrint('Open KYC');
+                    context.push(AppRoutes.kyc);
                   },
                 ),
 

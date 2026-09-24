@@ -10,14 +10,15 @@ import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
 
 import '../../../Routes/app_route.dart';
-
 import '../../../Services/file_download_service.dart';
 
+import '../../KYC/Controller/vendor_kyc_controller.dart';
+
+import '../Delete Product/Controller/delete_product_controller.dart';
 import 'Bulk Product/bulk_product_controller.dart';
 import 'Edit Stock/add_stock_product_screen.dart';
 
 import 'Models/my_product_model.dart';
-
 import 'Controller/my_products_controller.dart';
 
 import 'Product Export CSV/my_product_export_controller.dart';
@@ -26,26 +27,9 @@ import 'Reuse Widgets/my_product_card.dart';
 import 'Reuse Widgets/my_products_empty_state.dart';
 import 'Reuse Widgets/my_products_filter.dart';
 import 'Reuse Widgets/my_products_header.dart';
+import 'Reuse Widgets/my_products_kyc_card.dart';
 import 'Reuse Widgets/my_products_loading.dart';
 import 'Reuse Widgets/my_products_search.dart';
-
-// ============================================================
-// Route Observer
-// ============================================================
-//
-// IMPORTANT:
-// Add this observer to your GoRouter:
-//
-// observers: [
-//   myProductsRouteObserver,
-// ],
-//
-// This allows didPopNext() to run when another screen opened
-// above MyProductScreen is popped.
-// ============================================================
-
-final RouteObserver<ModalRoute<void>> myProductsRouteObserver =
-    RouteObserver<ModalRoute<void>>();
 
 // ============================================================
 // Screen
@@ -83,33 +67,46 @@ class MyProductScreen extends ConsumerStatefulWidget {
 // State
 // ============================================================
 
-class MyProductScreenState extends ConsumerState<MyProductScreen>
-    with RouteAware {
+class MyProductScreenState extends ConsumerState<MyProductScreen> {
+  // ============================================================
+  // Services
+  // ============================================================
+
   final FileDownloadService _fileDownloadService = const FileDownloadService();
 
-  // ==========================================================
+  // ============================================================
   // Controllers
-  // ==========================================================
+  // ============================================================
 
   late final TextEditingController _searchController;
 
   late final ScrollController _scrollController;
 
-  // ==========================================================
+  // ============================================================
+  // KYC STATE
+  // ============================================================
+
+  bool _isKycLoading = true;
+
+  String? _kycStatus;
+
+  String? _kycStatusLabel;
+
+  // ============================================================
   // Export
-  // ==========================================================
+  // ============================================================
 
   bool _isExportingCsv = false;
 
-  // ==========================================================
+  // ============================================================
   // Search
-  // ==========================================================
+  // ============================================================
 
   String _searchQuery = '';
 
-  // ==========================================================
+  // ============================================================
   // Bulk Action
-  // ==========================================================
+  // ============================================================
 
   String? _selectedAction;
 
@@ -117,26 +114,15 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
 
   bool _isApplyingBulkAction = false;
 
-  // ==========================================================
+  // ============================================================
   // Refresh
-  // ==========================================================
+  // ============================================================
 
   bool _isRefreshing = false;
 
-  // ==========================================================
-  // Route Refresh Guard
-  // ==========================================================
-  //
-  // Prevents an unnecessary refresh during initial subscription.
-  //
-  // Initial API load is handled separately by initState().
-  // ==========================================================
-
-  bool _routeSubscribed = false;
-
-  // ==========================================================
+  // ============================================================
   // Init
-  // ==========================================================
+  // ============================================================
 
   @override
   void initState() {
@@ -149,7 +135,8 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
     _scrollController.addListener(_handleScroll);
 
     // ----------------------------------------------------------
-    // Initial API request
+    // IMPORTANT:
+    // API calls are started after first frame.
     // ----------------------------------------------------------
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -157,83 +144,227 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
         return;
       }
 
+      unawaited(_loadKycStatus());
+
       unawaited(_loadInitialProducts());
     });
   }
 
-  // ==========================================================
-  // Route Aware Subscription
-  // ==========================================================
+  // ============================================================
+  // KYC
+  // ============================================================
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-
-    if (_routeSubscribed) {
+  Future<void> _loadKycStatus() async {
+    if (!mounted) {
       return;
     }
 
-    final route = ModalRoute.of(context);
+    try {
+      debugPrint('');
+      debugPrint(
+        '============================================================',
+      );
+      debugPrint('[MyProductScreen] KYC STATUS REQUEST START');
+      debugPrint(
+        '============================================================',
+      );
 
-    if (route is PageRoute) {
-      myProductsRouteObserver.subscribe(this, route);
+      final result = await ref.read(vendorKycControllerProvider).getVendorKyc();
 
-      _routeSubscribed = true;
+      if (!mounted) {
+        return;
+      }
+
+      final kyc = result.kyc;
+
+      // --------------------------------------------------------
+      // Normalize API values immediately.
+      // --------------------------------------------------------
+
+      final status = kyc?.status?.trim().toLowerCase();
+
+      final statusLabel = kyc?.statusLabel?.trim().toLowerCase();
+
+      debugPrint('');
+      debugPrint(
+        '============================================================',
+      );
+      debugPrint('[MyProductScreen] KYC STATUS RESPONSE');
+      debugPrint('[MyProductScreen] Status: $status');
+      debugPrint('[MyProductScreen] Status Label: $statusLabel');
+      debugPrint(
+        '============================================================',
+      );
+
+      // --------------------------------------------------------
+      // Update only local KYC state.
+      //
+      // IMPORTANT:
+      // KYC card is now OUTSIDE CustomScrollView/slivers.
+      // --------------------------------------------------------
+
+      setState(() {
+        _kycStatus = status;
+        _kycStatusLabel = statusLabel;
+        _isKycLoading = false;
+      });
+    } on ApiException catch (error) {
+      debugPrint('');
+      debugPrint(
+        '============================================================',
+      );
+      debugPrint('[MyProductScreen] KYC API ERROR');
+      debugPrint('[MyProductScreen] Code: ${error.code}');
+      debugPrint('[MyProductScreen] Message: ${error.message}');
+      debugPrint(
+        '============================================================',
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isKycLoading = false;
+      });
+    } catch (error) {
+      debugPrint('');
+      debugPrint(
+        '============================================================',
+      );
+      debugPrint('[MyProductScreen] KYC UNKNOWN ERROR');
+      debugPrint('[MyProductScreen] Error: $error');
+      debugPrint(
+        '============================================================',
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isKycLoading = false;
+      });
     }
   }
 
-  // ==========================================================
-  // IMPORTANT:
-  // Called when another route above this screen is popped.
-  //
-  // Example:
-  //
-  // My Products
-  //      ↓
-  // Product Detail
-  //      ↓
-  // Back
-  //
-  // didPopNext()
-  //      ↓
-  // refresh()
-  //      ↓
-  // shimmer
-  //      ↓
-  // API
-  //      ↓
-  // updated products
-  // ==========================================================
+  // ============================================================
+  // KYC Visibility
+  // ============================================================
 
-  @override
-  void didPopNext() {
-    super.didPopNext();
+  bool get _shouldShowKycCard {
+    final status = (_kycStatus ?? '').trim().toLowerCase();
+
+    final statusLabel = (_kycStatusLabel ?? '').trim().toLowerCase();
+
+    // ============================================================
+    // APPROVED
+    // ============================================================
+
+    if (status == 'approved' || status == 'verified' || status == 'accepted') {
+      return false;
+    }
+
+    // ============================================================
+    // REJECTED
+    // ============================================================
+
+    if (status == 'rejected' || status == 'declined' || status == 'denied') {
+      return true;
+    }
+
+    // ============================================================
+    // PENDING
+    // ============================================================
+
+    if (status == 'pending') {
+      return true;
+    }
+
+    // ============================================================
+    // UNDER REVIEW
+    // ============================================================
+
+    if (status == 'under_review' ||
+        status == 'underreview' ||
+        status == 'review' ||
+        status == 'in_review' ||
+        status == 'in review') {
+      return true;
+    }
+
+    // ============================================================
+    // NOT SUBMITTED
+    // ============================================================
+
+    if (statusLabel == 'not_submitted' ||
+        statusLabel == 'not-submitted' ||
+        statusLabel == 'not submitted' ||
+        statusLabel == 'not submitted yet' ||
+        statusLabel == 'not submitted yet.') {
+      return true;
+    }
+
+    return false;
+  }
+
+  // ============================================================
+  // Open KYC
+  // ============================================================
+
+  Future<void> _openKycScreen() async {
+    FocusScope.of(context).unfocus();
+
+    debugPrint('');
+    debugPrint('============================================================');
+    debugPrint('[MyProductScreen] OPENING KYC SCREEN');
+    debugPrint('============================================================');
+
+    // ----------------------------------------------------------
+    // Wait until KYC screen is completely closed.
+    // ----------------------------------------------------------
+
+    await context.push(AppRoutes.kyc);
 
     if (!mounted) {
       return;
     }
 
-    debugPrint('');
-    debugPrint('============================================================');
-    debugPrint('[MyProductScreen] RETURNED TO MY PRODUCTS SCREEN');
-    debugPrint('[MyProductScreen] Refreshing products from API...');
-    debugPrint('============================================================');
+    // ----------------------------------------------------------
+    // IMPORTANT:
+    // Wait one frame after route transition before changing
+    // KYC/products state.
+    // ----------------------------------------------------------
 
-    unawaited(_refreshProductsOnReturn());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+
+      debugPrint('');
+      debugPrint(
+        '============================================================',
+      );
+      debugPrint('[MyProductScreen] RETURNED FROM KYC SCREEN');
+      debugPrint('[MyProductScreen] Refreshing KYC + Products');
+      debugPrint(
+        '============================================================',
+      );
+
+      unawaited(_loadKycStatus());
+
+      unawaited(_refreshProductsAfterKyc());
+    });
   }
 
-  // ==========================================================
-  // Refresh When Returning To Screen
-  // ==========================================================
+  // ============================================================
+  // Refresh After KYC
+  // ============================================================
 
-  Future<void> _refreshProductsOnReturn() async {
-    if (!mounted || _isRefreshing) {
+  Future<void> _refreshProductsAfterKyc() async {
+    if (!mounted) {
       return;
     }
-
-    setState(() {
-      _isRefreshing = true;
-    });
 
     try {
       await ref.read(myProductsControllerProvider.notifier).refresh();
@@ -242,66 +373,45 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
         return;
       }
 
-      // --------------------------------------------------------
-      // Remove IDs that no longer exist after refresh.
-      // --------------------------------------------------------
-
       _cleanupSelectedProductIds();
 
-      debugPrint('');
-      debugPrint('========== MY PRODUCTS RETURN REFRESH COMPLETE ==========');
-      debugPrint(
-        'PRODUCTS: '
-        '${ref.read(myProductsControllerProvider).products.length}',
-      );
-      debugPrint('==========================================================');
+      debugPrint('[MyProductScreen] PRODUCTS REFRESHED AFTER KYC');
     } on ApiException catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      _showMessage(error.message, isError: true);
+      debugPrint(
+        '[MyProductScreen] PRODUCTS REFRESH AFTER KYC ERROR: '
+        '${error.message}',
+      );
     } catch (error) {
-      debugPrint('[MyProductScreen] RETURN REFRESH ERROR: $error');
-
-      if (!mounted) {
-        return;
-      }
-
-      _showMessage('Unable to refresh products.', isError: true);
-    } finally {
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _isRefreshing = false;
-      });
+      debugPrint(
+        '[MyProductScreen] PRODUCTS REFRESH AFTER KYC UNKNOWN ERROR: '
+        '$error',
+      );
     }
   }
 
-  // ==========================================================
+  // ============================================================
   // Initial API Load
-  // ==========================================================
+  // ============================================================
 
   Future<void> _loadInitialProducts() async {
     try {
       await ref.read(myProductsControllerProvider.notifier).getProducts();
-    } on ApiException {
-      // Controller already stores error state.
-    } catch (_) {
-      // Controller handles unknown errors.
+    } on ApiException catch (error) {
+      debugPrint(
+        '[MyProductScreen] INITIAL PRODUCTS API ERROR: '
+        '${error.message}',
+      );
+    } catch (error) {
+      debugPrint('[MyProductScreen] INITIAL PRODUCTS UNKNOWN ERROR: $error');
     }
   }
 
-  // ==========================================================
+  // ============================================================
   // Dispose
-  // ==========================================================
+  // ============================================================
 
   @override
   void dispose() {
-    myProductsRouteObserver.unsubscribe(this);
-
     _scrollController.removeListener(_handleScroll);
 
     _scrollController.dispose();
@@ -311,9 +421,9 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
     super.dispose();
   }
 
-  // ==========================================================
+  // ============================================================
   // Scroll / Pagination
-  // ==========================================================
+  // ============================================================
 
   void _handleScroll() {
     if (!_scrollController.hasClients) {
@@ -344,7 +454,9 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
       }
 
       _showMessage(error.message, isError: true);
-    } catch (_) {
+    } catch (error) {
+      debugPrint('[MyProductScreen] LOAD MORE ERROR: $error');
+
       if (!mounted) {
         return;
       }
@@ -353,20 +465,9 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
     }
   }
 
-  // ==========================================================
+  // ============================================================
   // Public Refresh
-  // ==========================================================
-  //
-  // BottomMainScreen se call hota hai:
-  //
-  // _myProductsScreenKey.currentState?.refresh();
-  //
-  // Is method mein:
-  // 1. Products API refresh hoti hai.
-  // 2. Controller isLoading = true karta hai.
-  // 3. MyProductsLoading shimmer show hota hai.
-  // 4. Fresh products API se load hote hain.
-  // ==========================================================
+  // ============================================================
 
   Future<void> refresh() async {
     if (!mounted) {
@@ -375,13 +476,13 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
 
     if (_isRefreshing) {
       debugPrint('[MyProductScreen] REFRESH SKIPPED: Already refreshing.');
+
       return;
     }
 
     debugPrint('');
     debugPrint('════════════════════════════════════════════════════════════');
     debugPrint('[MyProductScreen] PUBLIC REFRESH START');
-    debugPrint('[MyProductScreen] Refreshing products API...');
     debugPrint('════════════════════════════════════════════════════════════');
 
     setState(() {
@@ -390,17 +491,7 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
 
     try {
       // --------------------------------------------------------
-      // Controller refresh
-      //
-      // MyProductsController.refresh()
-      //      ↓
-      // getProducts()
-      //      ↓
-      // isLoading = true
-      //      ↓
-      // MyProductsLoading shimmer
-      //      ↓
-      // GET /vendor/products
+      // Refresh products.
       // --------------------------------------------------------
 
       await ref.read(myProductsControllerProvider.notifier).refresh();
@@ -409,11 +500,44 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
         return;
       }
 
+      _cleanupSelectedProductIds();
+
       // --------------------------------------------------------
-      // Remove selected IDs that no longer exist.
+      // Also refresh KYC status.
       // --------------------------------------------------------
 
-      _cleanupSelectedProductIds();
+      try {
+        final result = await ref
+            .read(vendorKycControllerProvider)
+            .getVendorKyc();
+
+        if (!mounted) {
+          return;
+        }
+
+        final kyc = result.kyc;
+
+        final status = kyc?.status?.trim().toLowerCase();
+
+        final statusLabel = kyc?.statusLabel?.trim().toLowerCase();
+
+        setState(() {
+          _kycStatus = status;
+          _kycStatusLabel = statusLabel;
+          _isKycLoading = false;
+        });
+
+        debugPrint('[MyProductScreen] REFRESHED KYC STATUS: $status');
+
+        debugPrint('[MyProductScreen] REFRESHED KYC LABEL: $statusLabel');
+      } on ApiException catch (error) {
+        debugPrint(
+          '[MyProductScreen] KYC REFRESH ERROR: '
+          '${error.message}',
+        );
+      } catch (error) {
+        debugPrint('[MyProductScreen] KYC REFRESH UNKNOWN ERROR: $error');
+      }
 
       final state = ref.read(myProductsControllerProvider);
 
@@ -422,24 +546,31 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
         '════════════════════════════════════════════════════════════',
       );
       debugPrint('[MyProductScreen] PUBLIC REFRESH SUCCESS');
-      debugPrint('[MyProductScreen] Products: ${state.products.length}');
-      debugPrint('[MyProductScreen] Current Page: ${state.currentPage}');
-      debugPrint('[MyProductScreen] Total Pages: ${state.totalPages}');
-      debugPrint('[MyProductScreen] Total Items: ${state.totalItems}');
+      debugPrint(
+        '[MyProductScreen] Products: '
+        '${state.products.length}',
+      );
+      debugPrint(
+        '[MyProductScreen] Current Page: '
+        '${state.currentPage}',
+      );
+      debugPrint(
+        '[MyProductScreen] Total Pages: '
+        '${state.totalPages}',
+      );
+      debugPrint(
+        '[MyProductScreen] Total Items: '
+        '${state.totalItems}',
+      );
       debugPrint(
         '════════════════════════════════════════════════════════════',
       );
     } on ApiException catch (error) {
-      debugPrint('');
-      debugPrint(
-        '════════════════════════════════════════════════════════════',
-      );
       debugPrint('[MyProductScreen] PUBLIC REFRESH API ERROR');
-      debugPrint('[MyProductScreen] Code: ${error.code}');
-      debugPrint('[MyProductScreen] Message: ${error.message}');
-      debugPrint(
-        '════════════════════════════════════════════════════════════',
-      );
+
+      debugPrint('CODE: ${error.code}');
+
+      debugPrint('MESSAGE: ${error.message}');
 
       if (!mounted) {
         return;
@@ -447,15 +578,7 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
 
       _showMessage(error.message, isError: true);
     } catch (error) {
-      debugPrint('');
-      debugPrint(
-        '════════════════════════════════════════════════════════════',
-      );
-      debugPrint('[MyProductScreen] PUBLIC REFRESH ERROR');
-      debugPrint('[MyProductScreen] Error: $error');
-      debugPrint(
-        '════════════════════════════════════════════════════════════',
-      );
+      debugPrint('[MyProductScreen] PUBLIC REFRESH ERROR: $error');
 
       if (!mounted) {
         return;
@@ -467,43 +590,73 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
         return;
       }
 
-      setState(() {
-        _isRefreshing = false;
-      });
+      // --------------------------------------------------------
+      // Defer final refresh-state update.
+      // --------------------------------------------------------
 
-      debugPrint('[MyProductScreen] PUBLIC REFRESH FINISHED');
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+
+        if (!_isRefreshing) {
+          return;
+        }
+
+        setState(() {
+          _isRefreshing = false;
+        });
+      });
     }
   }
 
-  // ==========================================================
+  // ============================================================
   // Search
-  // ==========================================================
+  // ============================================================
 
   void _onSearchChanged(String value) {
+    if (!mounted) {
+      return;
+    }
+
+    final query = value.trim().toLowerCase();
+
+    if (_searchQuery == query) {
+      return;
+    }
+
     setState(() {
-      _searchQuery = value.trim().toLowerCase();
+      _searchQuery = query;
     });
   }
 
-  // ==========================================================
+  // ============================================================
   // Bulk Action
-  // ==========================================================
+  // ============================================================
 
   void _onActionChanged(String? action) {
+    if (!mounted) {
+      return;
+    }
+
     setState(() {
       _selectedAction = action;
       _selectedProductIds.clear();
     });
   }
 
-  // ==========================================================
+  // ============================================================
   // Product Selection
-  // ==========================================================
+  // ============================================================
 
   void _onProductSelectionChanged(MyProductModel product, bool isSelected) {
     final productId = product.id;
 
     if (productId == null || productId <= 0) {
+      return;
+    }
+
+    if (!mounted) {
       return;
     }
 
@@ -516,22 +669,30 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
     });
   }
 
-  // ==========================================================
+  // ============================================================
   // Clear Bulk Selection
-  // ==========================================================
+  // ============================================================
 
   void _clearBulkSelection() {
+    if (!mounted) {
+      return;
+    }
+
     setState(() {
       _selectedAction = null;
       _selectedProductIds.clear();
     });
   }
 
-  // ==========================================================
+  // ============================================================
   // Cleanup Selection
-  // ==========================================================
+  // ============================================================
 
   void _cleanupSelectedProductIds() {
+    if (!mounted) {
+      return;
+    }
+
     final state = ref.read(myProductsControllerProvider);
 
     final availableIds = state.products
@@ -540,33 +701,33 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
         .where((id) => id > 0)
         .toSet();
 
-    final selectedIds = _selectedProductIds.intersection(availableIds);
+    final invalidIds = _selectedProductIds
+        .where((id) => !availableIds.contains(id))
+        .toList();
 
-    if (selectedIds.length == _selectedProductIds.length) {
+    if (invalidIds.isEmpty) {
       return;
     }
 
-    setState(() {
-      _selectedProductIds
-        ..clear()
-        ..addAll(selectedIds);
-    });
+    _selectedProductIds.removeAll(invalidIds);
   }
 
-  // ==========================================================
+  // ============================================================
   // Apply Bulk Action
-  // ==========================================================
+  // ============================================================
 
   Future<void> _applyBulkAction() async {
     final action = _selectedAction;
 
     if (action == null || action.trim().isEmpty) {
       _showMessage('Please select an action.', isError: true);
+
       return;
     }
 
     if (_selectedProductIds.isEmpty) {
       _showMessage('Please select at least one product.', isError: true);
+
       return;
     }
 
@@ -619,18 +780,10 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
           result.message ?? '${_formatAction(action)} applied successfully.',
         );
 
-        // ------------------------------------------------------
-        // Clear selection.
-        // ------------------------------------------------------
-
         setState(() {
           _selectedAction = null;
           _selectedProductIds.clear();
         });
-
-        // ------------------------------------------------------
-        // Refresh API + shimmer.
-        // ------------------------------------------------------
 
         await ref.read(myProductsControllerProvider.notifier).refresh();
       } else {
@@ -645,7 +798,9 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
       }
 
       _showMessage(error.message, isError: true);
-    } catch (_) {
+    } catch (error) {
+      debugPrint('[MyProductScreen] BULK ACTION ERROR: $error');
+
       if (!mounted) {
         return;
       }
@@ -665,9 +820,9 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
     }
   }
 
-  // ==========================================================
+  // ============================================================
   // Bulk Delete Confirmation
-  // ==========================================================
+  // ============================================================
 
   Future<bool> _showBulkDeleteConfirmation(int selectedCount) async {
     final result = await showDialog<bool>(
@@ -726,28 +881,39 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
     return result ?? false;
   }
 
-  // ==========================================================
+  // ============================================================
   // Action Label
-  // ==========================================================
+  // ============================================================
 
   String _formatAction(String action) {
     switch (action) {
       case 'activate':
         return 'Activate';
+
       case 'deactivate':
         return 'Deactivate';
+
       case 'delete':
         return 'Delete';
+
       default:
         return action;
     }
   }
 
-  // ==========================================================
+  // ============================================================
   // Delete Product
-  // ==========================================================
+  // ============================================================
 
   Future<void> _handleDeleteProduct(MyProductModel product) async {
+    final productId = product.id;
+
+    if (productId == null || productId <= 0) {
+      _showMessage('Invalid product ID.', isError: true);
+
+      return;
+    }
+
     final shouldDelete = await _showDeleteConfirmation(product);
 
     if (!shouldDelete || !mounted) {
@@ -759,12 +925,136 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
       return;
     }
 
-    _showMessage('Delete product API is not connected yet.', isError: true);
+    try {
+      debugPrint('');
+      debugPrint(
+        '============================================================',
+      );
+      debugPrint('[MyProductScreen] DELETE PRODUCT START');
+      debugPrint('[MyProductScreen] Product ID: $productId');
+      debugPrint(
+        '[MyProductScreen] Product Name: '
+        '${product.name ?? 'Unnamed Product'}',
+      );
+      debugPrint(
+        '============================================================',
+      );
+
+      final result = await ref
+          .read(deleteProductControllerProvider)
+          .deleteProduct(productId: productId);
+
+      if (!mounted) {
+        return;
+      }
+
+      if (result.success) {
+        debugPrint('');
+        debugPrint(
+          '============================================================',
+        );
+        debugPrint('[MyProductScreen] DELETE PRODUCT SUCCESS');
+        debugPrint('[MyProductScreen] Product ID: $productId');
+        debugPrint(
+          '[MyProductScreen] Message: '
+          '${result.message ?? 'Product deleted successfully.'}',
+        );
+        debugPrint(
+          '============================================================',
+        );
+
+        _showMessage(result.message ?? 'Product deleted successfully.');
+
+        if (_selectedProductIds.contains(productId)) {
+          setState(() {
+            _selectedProductIds.remove(productId);
+          });
+        }
+
+        try {
+          debugPrint('');
+          debugPrint('========== REFRESH PRODUCTS AFTER DELETE ==========');
+
+          await ref.read(myProductsControllerProvider.notifier).refresh();
+
+          if (!mounted) {
+            return;
+          }
+
+          _cleanupSelectedProductIds();
+
+          final state = ref.read(myProductsControllerProvider);
+
+          debugPrint(
+            '[MyProductScreen] Products: '
+            '${state.products.length}',
+          );
+
+          debugPrint('===================================================');
+        } on ApiException catch (error) {
+          if (!mounted) {
+            return;
+          }
+
+          _showMessage(
+            'Product deleted, but products could not be '
+            'refreshed: ${error.message}',
+            isError: true,
+          );
+        } catch (error) {
+          debugPrint('[MyProductScreen] DELETE REFRESH ERROR: $error');
+
+          if (!mounted) {
+            return;
+          }
+
+          _showMessage(
+            'Product deleted, but products could not be refreshed.',
+            isError: true,
+          );
+        }
+
+        return;
+      }
+
+      _showMessage(
+        result.message ?? 'Unable to delete product.',
+        isError: true,
+      );
+    } on ApiException catch (error) {
+      debugPrint('[MyProductScreen] DELETE PRODUCT API ERROR');
+
+      debugPrint('[MyProductScreen] Product ID: $productId');
+
+      debugPrint('[MyProductScreen] Code: ${error.code}');
+
+      debugPrint('[MyProductScreen] Message: ${error.message}');
+
+      if (!mounted) {
+        return;
+      }
+
+      _showMessage(
+        error.message.isNotEmpty ? error.message : 'Unable to delete product.',
+        isError: true,
+      );
+    } catch (error) {
+      debugPrint('[MyProductScreen] DELETE PRODUCT UNKNOWN ERROR: $error');
+
+      if (!mounted) {
+        return;
+      }
+
+      _showMessage(
+        'Unable to delete product. Please try again.',
+        isError: true,
+      );
+    }
   }
 
-  // ==========================================================
+  // ============================================================
   // Delete Confirmation
-  // ==========================================================
+  // ============================================================
 
   Future<bool> _showDeleteConfirmation(MyProductModel product) async {
     final productName = (product.name ?? 'Unnamed Product').trim();
@@ -824,9 +1114,9 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
     return result ?? false;
   }
 
-  // ==========================================================
+  // ============================================================
   // Stock Edit
-  // ==========================================================
+  // ============================================================
 
   Future<void> _handleStockEdit(MyProductModel product) async {
     if (widget.onStockEdit != null) {
@@ -862,21 +1152,13 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
     );
 
     try {
-      debugPrint('');
-      debugPrint('========== REFRESH PRODUCTS AFTER STOCK ==========');
-      debugPrint('Refreshing products from API...');
-      debugPrint('==================================================');
-
       await ref.read(myProductsControllerProvider.notifier).refresh();
 
       if (!mounted) {
         return;
       }
 
-      debugPrint('');
-      debugPrint('========== PRODUCTS REFRESHED ==========');
-      debugPrint('Stock changes are now synced with product list.');
-      debugPrint('========================================');
+      debugPrint('[MyProductScreen] STOCK REFRESH COMPLETE');
     } on ApiException catch (error) {
       if (!mounted) {
         return;
@@ -888,9 +1170,7 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
         isError: true,
       );
     } catch (error) {
-      debugPrint('========== PRODUCT REFRESH ERROR ==========');
-      debugPrint('ERROR: $error');
-      debugPrint('============================================');
+      debugPrint('[MyProductScreen] STOCK REFRESH ERROR: $error');
 
       if (!mounted) {
         return;
@@ -903,20 +1183,17 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
     }
   }
 
-  // ==========================================================
+  // ============================================================
   // Product Tap
-  // ==========================================================
+  // ============================================================
 
   void _handleProductTap(MyProductModel product) {
-    // --------------------------------------------------------
-    // Bulk selection mode
-    // --------------------------------------------------------
-
     if (_selectedAction != null) {
       final productId = product.id;
 
       if (productId == null || productId <= 0) {
         _showMessage('Invalid product ID.', isError: true);
+
         return;
       }
 
@@ -927,32 +1204,25 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
       return;
     }
 
-    // --------------------------------------------------------
-    // Parent callback
-    // --------------------------------------------------------
-
     if (widget.onProductTap != null) {
       widget.onProductTap!(product);
       return;
     }
 
-    // --------------------------------------------------------
-    // Product Detail
-    // --------------------------------------------------------
-
     final productId = product.id;
 
     if (productId == null || productId <= 0) {
       _showMessage('Invalid product ID.', isError: true);
+
       return;
     }
 
     context.push(AppRoutes.productDetail, extra: productId);
   }
 
-  // ==========================================================
+  // ============================================================
   // Edit Product
-  // ==========================================================
+  // ============================================================
 
   void _handleEditProduct(MyProductModel product) {
     if (widget.onEditProduct != null) {
@@ -963,9 +1233,9 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
     context.push(AppRoutes.editProduct, extra: product);
   }
 
-  // ==========================================================
+  // ============================================================
   // Add Product
-  // ==========================================================
+  // ============================================================
 
   void _handleAddProduct() {
     if (widget.onAddProduct != null) {
@@ -976,9 +1246,9 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
     context.push(AppRoutes.addProduct);
   }
 
-  // ==========================================================
+  // ============================================================
   // Export CSV
-  // ==========================================================
+  // ============================================================
 
   Future<void> _handleOnExportCsv() async {
     if (_isExportingCsv) {
@@ -1015,6 +1285,7 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
           '${DateTime.now().millisecondsSinceEpoch}.csv';
 
       debugPrint('CSV LENGTH: ${result.csvContent.length}');
+
       debugPrint('FILE NAME: $fileName');
 
       final file = await _fileDownloadService.saveTextFile(
@@ -1038,7 +1309,9 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
         );
     } on ApiException catch (error) {
       debugPrint('[MyProductScreen] EXPORT CSV API ERROR');
+
       debugPrint('CODE: ${error.code}');
+
       debugPrint('MESSAGE: ${error.message}');
 
       if (!mounted) {
@@ -1059,7 +1332,9 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
         );
     } on FileSystemException catch (error) {
       debugPrint('[MyProductScreen] FILE SAVE ERROR');
+
       debugPrint('MESSAGE: ${error.message}');
+
       debugPrint('PATH: ${error.path}');
 
       if (!mounted) {
@@ -1080,6 +1355,7 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
         );
     } catch (error) {
       debugPrint('[MyProductScreen] EXPORT CSV UNKNOWN ERROR');
+
       debugPrint('ERROR: $error');
 
       if (!mounted) {
@@ -1095,17 +1371,19 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
           ),
         );
     } finally {
-      if (mounted) {
-        setState(() {
-          _isExportingCsv = false;
-        });
+      if (!mounted) {
+        return;
       }
+
+      setState(() {
+        _isExportingCsv = false;
+      });
     }
   }
 
-  // ==========================================================
+  // ============================================================
   // Message
-  // ==========================================================
+  // ============================================================
 
   void _showMessage(String message, {bool isError = false}) {
     if (!mounted) {
@@ -1127,9 +1405,9 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
       );
   }
 
-  // ==========================================================
+  // ============================================================
   // Build
-  // ==========================================================
+  // ============================================================
 
   @override
   Widget build(BuildContext context) {
@@ -1140,64 +1418,148 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: RefreshIndicator(
-          color: AppColors.primary,
-          backgroundColor: AppColors.white,
-          onRefresh: refresh,
-          child: CustomScrollView(
-            controller: _scrollController,
-            physics: const AlwaysScrollableScrollPhysics(
-              parent: BouncingScrollPhysics(),
-            ),
-            slivers: [
-              // ==================================================
-              // HEADER
-              // ==================================================
-              SliverToBoxAdapter(child: _buildHeader()),
-
-              // ==================================================
-              // SEARCH + BULK ACTION
-              // ==================================================
-              SliverToBoxAdapter(child: _buildSearchSection()),
-
-              // ==================================================
-              // CONTENT
-              // ==================================================
-              if (state.isLoading)
-                SliverToBoxAdapter(child: _buildLoading())
-              else if (state.errorMessage != null && state.products.isEmpty)
-                SliverToBoxAdapter(child: _buildErrorState(state.errorMessage!))
-              else
-                _buildProductsContent(products: filteredProducts),
-
-              // ==================================================
-              // PAGINATION LOADER
-              // ==================================================
-              if (state.isLoadingMore)
-                const SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 22),
-                    child: Center(
-                      child: SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2.2),
-                      ),
-                    ),
-                  ),
-                ),
-
-              const SliverToBoxAdapter(child: SizedBox(height: 30)),
-            ],
-          ),
+        child: _buildScreenContent(
+          state: state,
+          filteredProducts: filteredProducts,
         ),
       ),
     );
   }
 
-  // ==========================================================
+  // ============================================================
+  // Screen Content
+  // ============================================================
+
+  Widget _buildScreenContent({
+    required MyProductsState state,
+    required List<MyProductModel> filteredProducts,
+  }) {
+    // ============================================================
+    // KYC LOADING
+    // ============================================================
+    //
+    // KYC status abhi API se aa raha hai.
+    // Is waqt products screen show nahi hogi.
+    // ============================================================
+
+    if (_isKycLoading) {
+      return const Center(
+        child: SizedBox(
+          width: 28,
+          height: 28,
+          child: CircularProgressIndicator(strokeWidth: 2.5),
+        ),
+      );
+    }
+
+    // ============================================================
+    // KYC PENDING / NOT COMPLETED
+    // ============================================================
+    //
+    // Agar KYC card show hona chahiye:
+    //
+    // ONLY KYC CARD
+    //
+    // Header
+    // Search
+    // Filter
+    // Products
+    // Empty State
+    // Pagination
+    //
+    // sab hide.
+    // ============================================================
+
+    if (_shouldShowKycCard) {
+      return Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: MyProductsKycCard(
+              status: _kycStatus,
+              statusLabel: _kycStatusLabel,
+              onPressed: _openKycScreen,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // ============================================================
+    // NORMAL PRODUCTS SCREEN
+    // ============================================================
+
+    return Column(
+      children: [
+        // ==================================================
+        // HEADER
+        // ==================================================
+        _buildHeader(),
+
+        // ==================================================
+        // SCROLLABLE CONTENT
+        // ==================================================
+        Expanded(
+          child: RefreshIndicator(
+            color: AppColors.primary,
+            backgroundColor: AppColors.white,
+            onRefresh: refresh,
+            child: CustomScrollView(
+              controller: _scrollController,
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
+              ),
+              slivers: [
+                // ==========================================
+                // SEARCH + BULK ACTION
+                // ==========================================
+                SliverToBoxAdapter(child: _buildSearchSection()),
+
+                // ==========================================
+                // CONTENT
+                // ==========================================
+                if (state.isLoading)
+                  SliverToBoxAdapter(child: _buildLoading())
+                else if (state.errorMessage != null && state.products.isEmpty)
+                  SliverToBoxAdapter(
+                    child: _buildErrorState(state.errorMessage!),
+                  )
+                else
+                  _buildProductsContent(products: filteredProducts),
+
+                // ==========================================
+                // PAGINATION LOADER
+                // ==========================================
+                if (state.isLoadingMore)
+                  const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 22),
+                      child: Center(
+                        child: SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2.2),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                // ==========================================
+                // BOTTOM SPACING
+                // ==========================================
+                const SliverToBoxAdapter(child: SizedBox(height: 30)),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ============================================================
   // Header
-  // ==========================================================
+  // ============================================================
 
   Widget _buildHeader() {
     return Padding(
@@ -1209,9 +1571,9 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
     );
   }
 
-  // ==========================================================
+  // ============================================================
   // Search + Bulk Action
-  // ==========================================================
+  // ============================================================
 
   Widget _buildSearchSection() {
     return Padding(
@@ -1243,9 +1605,9 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
     );
   }
 
-  // ==========================================================
+  // ============================================================
   // Selection Summary
-  // ==========================================================
+  // ============================================================
 
   Widget _buildSelectionSummary() {
     return Container(
@@ -1306,9 +1668,9 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
     );
   }
 
-  // ==========================================================
+  // ============================================================
   // Filter Products
-  // ==========================================================
+  // ============================================================
 
   List<MyProductModel> _getFilteredProducts(List<MyProductModel> products) {
     final query = _searchQuery;
@@ -1330,9 +1692,9 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
     }).toList();
   }
 
-  // ==========================================================
+  // ============================================================
   // Loading
-  // ==========================================================
+  // ============================================================
 
   Widget _buildLoading() {
     return const Padding(
@@ -1341,9 +1703,9 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
     );
   }
 
-  // ==========================================================
+  // ============================================================
   // Error
-  // ==========================================================
+  // ============================================================
 
   Widget _buildErrorState(String message) {
     return Padding(
@@ -1422,9 +1784,9 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
     );
   }
 
-  // ==========================================================
+  // ============================================================
   // Retry
-  // ==========================================================
+  // ============================================================
 
   Future<void> _retryProducts({required int limit}) async {
     try {
@@ -1437,7 +1799,9 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
       }
 
       _showMessage(error.message, isError: true);
-    } catch (_) {
+    } catch (error) {
+      debugPrint('[MyProductScreen] RETRY ERROR: $error');
+
       if (!mounted) {
         return;
       }
@@ -1446,9 +1810,9 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
     }
   }
 
-  // ==========================================================
+  // ============================================================
   // Products Content
-  // ==========================================================
+  // ============================================================
 
   Widget _buildProductsContent({required List<MyProductModel> products}) {
     if (products.isEmpty) {
@@ -1490,7 +1854,7 @@ class MyProductScreenState extends ConsumerState<MyProductScreen>
             },
 
             // --------------------------------------------------
-            // Product detail
+            // Product Detail
             // --------------------------------------------------
             onTap: () {
               _handleProductTap(product);
