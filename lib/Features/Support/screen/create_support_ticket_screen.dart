@@ -1,41 +1,70 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../Core/Custom Widgets/custom_button.dart';
 import '../../../Core/Custom Widgets/custom_textfield.dart';
+import '../../../Services/api_exception.dart';
 import '../../../Theme/app_colors.dart';
 import '../../../Theme/app_text_styles.dart';
-import '../Data/support_dummy_data.dart';
+
+import '../Create Support/Controller/support_controller.dart';
 import '../Reuse Widgets/support_ticket_priority_selector.dart';
 
-class CreateSupportTicketScreen extends StatefulWidget {
-  const CreateSupportTicketScreen({super.key, this.onBack, this.onSubmit});
+class CreateSupportTicketScreen extends ConsumerStatefulWidget {
+  const CreateSupportTicketScreen({super.key, this.onBack});
 
   final VoidCallback? onBack;
 
-  /// UI-only callback.
-  ///
-  /// Later this can be connected to:
-  /// Screen → Provider → Repository → API
-  final Future<void> Function({
-    required String subject,
-    required String message,
-    required String priority,
-  })?
-  onSubmit;
-
   @override
-  State<CreateSupportTicketScreen> createState() =>
+  ConsumerState<CreateSupportTicketScreen> createState() =>
       _CreateSupportTicketScreenState();
 }
 
-class _CreateSupportTicketScreenState extends State<CreateSupportTicketScreen> {
+class _CreateSupportTicketScreenState
+    extends ConsumerState<CreateSupportTicketScreen> {
+  // ============================================================
+  // Form
+  // ============================================================
+
   final _formKey = GlobalKey<FormState>();
 
   final _subjectController = TextEditingController();
   final _messageController = TextEditingController();
 
-  String _selectedPriority = SupportDummyData.defaultPriority;
+  // ============================================================
+  // Form Values
+  // ============================================================
+
+  String _selectedPriority = 'medium';
+
+  String _selectedCategory = 'general';
+
   bool _isSubmitting = false;
+
+  // ============================================================
+  // Constants
+  // ============================================================
+
+  static const int _minSubjectLength = 3;
+  static const int _maxSubjectLength = 100;
+
+  static const int _minMessageLength = 10;
+  static const int _maxMessageLength = 1000;
+
+  static const List<String> _categories = [
+    'general',
+    'order',
+    'product',
+    'payment',
+    'technical',
+  ];
+
+  static const List<String> _priorities = ['low', 'medium', 'high'];
+
+  // ============================================================
+  // Dispose
+  // ============================================================
 
   @override
   void dispose() {
@@ -44,6 +73,10 @@ class _CreateSupportTicketScreenState extends State<CreateSupportTicketScreen> {
     super.dispose();
   }
 
+  // ============================================================
+  // Submit
+  // ============================================================
+
   Future<void> _handleSubmit() async {
     FocusScope.of(context).unfocus();
 
@@ -51,8 +84,7 @@ class _CreateSupportTicketScreenState extends State<CreateSupportTicketScreen> {
       return;
     }
 
-    if (widget.onSubmit == null) {
-      _showDemoMessage();
+    if (_isSubmitting) {
       return;
     }
 
@@ -61,29 +93,111 @@ class _CreateSupportTicketScreenState extends State<CreateSupportTicketScreen> {
     });
 
     try {
-      await widget.onSubmit!(
-        subject: _subjectController.text.trim(),
-        message: _messageController.text.trim(),
-        priority: _selectedPriority.toLowerCase(),
-      );
-    } finally {
-      if (mounted) {
+      final result = await ref
+          .read(supportControllerProvider)
+          .createSupportRequest(
+            subject: _subjectController.text.trim(),
+            category: _selectedCategory,
+            priority: _selectedPriority,
+            message: _messageController.text.trim(),
+          );
+
+      if (!mounted) {
+        return;
+      }
+
+      // ============================================================
+      // API Success
+      // ============================================================
+
+      if (result.success == true) {
+        // Clear all fields after successful API response.
+        _subjectController.clear();
+        _messageController.clear();
+
         setState(() {
+          _selectedCategory = 'general';
+          _selectedPriority = 'medium';
           _isSubmitting = false;
         });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              result.message?.trim().isNotEmpty == true
+                  ? result.message!.trim()
+                  : 'Support request submitted successfully.',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+
+        // Give SnackBar a small moment before going back.
+        await Future<void>.delayed(const Duration(milliseconds: 350));
+
+        if (!mounted) {
+          return;
+        }
+
+        context.pop();
+        return;
       }
+
+      // ============================================================
+      // API returned success: false
+      // ============================================================
+
+      setState(() {
+        _isSubmitting = false;
+      });
+
+      _showErrorMessage(
+        result.message?.trim().isNotEmpty == true
+            ? result.message!.trim()
+            : 'Unable to submit support request.',
+      );
+    } on ApiException catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isSubmitting = false;
+      });
+
+      _showErrorMessage(
+        error.message.trim().isNotEmpty
+            ? error.message.trim()
+            : 'Something went wrong. Please try again.',
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isSubmitting = false;
+      });
+
+      _showErrorMessage('Something went wrong. Please try again.');
     }
   }
 
-  void _showDemoMessage() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Support ticket submission will be connected to the API later.',
-        ),
-      ),
-    );
+  // ============================================================
+  // Error Snackbar
+  // ============================================================
+
+  void _showErrorMessage(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+      );
   }
+
+  // ============================================================
+  // Subject Validator
+  // ============================================================
 
   String? _validateSubject(String? value) {
     final subject = value?.trim() ?? '';
@@ -92,18 +206,20 @@ class _CreateSupportTicketScreenState extends State<CreateSupportTicketScreen> {
       return 'Please enter a subject';
     }
 
-    if (subject.length < SupportDummyData.minSubjectLength) {
-      return 'Subject must be at least '
-          '${SupportDummyData.minSubjectLength} characters';
+    if (subject.length < _minSubjectLength) {
+      return 'Subject must be at least $_minSubjectLength characters';
     }
 
-    if (subject.length > SupportDummyData.maxSubjectLength) {
-      return 'Subject cannot exceed '
-          '${SupportDummyData.maxSubjectLength} characters';
+    if (subject.length > _maxSubjectLength) {
+      return 'Subject cannot exceed $_maxSubjectLength characters';
     }
 
     return null;
   }
+
+  // ============================================================
+  // Message Validator
+  // ============================================================
 
   String? _validateMessage(String? value) {
     final message = value?.trim() ?? '';
@@ -112,18 +228,20 @@ class _CreateSupportTicketScreenState extends State<CreateSupportTicketScreen> {
       return 'Please describe your issue';
     }
 
-    if (message.length < SupportDummyData.minMessageLength) {
-      return 'Message must be at least '
-          '${SupportDummyData.minMessageLength} characters';
+    if (message.length < _minMessageLength) {
+      return 'Message must be at least $_minMessageLength characters';
     }
 
-    if (message.length > SupportDummyData.maxMessageLength) {
-      return 'Message cannot exceed '
-          '${SupportDummyData.maxMessageLength} characters';
+    if (message.length > _maxMessageLength) {
+      return 'Message cannot exceed $_maxMessageLength characters';
     }
 
     return null;
   }
+
+  // ============================================================
+  // Build
+  // ============================================================
 
   @override
   Widget build(BuildContext context) {
@@ -155,26 +273,31 @@ class _CreateSupportTicketScreenState extends State<CreateSupportTicketScreen> {
     );
   }
 
+  // ============================================================
+  // Header
+  // ============================================================
+
   Widget _buildHeader() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
       child: Row(
         children: [
           _HeaderBackButton(
-            onPressed: widget.onBack ?? () => Navigator.of(context).maybePop(),
+            onPressed:
+                widget.onBack ??
+                () {
+                  context.pop();
+                },
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  SupportDummyData.createTicketTitle,
-                  style: AppTextStyles.labelMedium,
-                ),
+                Text('Create Support Ticket', style: AppTextStyles.labelMedium),
                 const SizedBox(height: 3),
                 Text(
-                  SupportDummyData.createTicketSubtitle,
+                  'Tell us how we can help you.',
                   style: AppTextStyles.bodySmall.copyWith(
                     color: AppColors.textSecondary,
                   ),
@@ -186,6 +309,10 @@ class _CreateSupportTicketScreenState extends State<CreateSupportTicketScreen> {
       ),
     );
   }
+
+  // ============================================================
+  // Intro Card
+  // ============================================================
 
   Widget _buildIntroCard() {
     return Container(
@@ -244,59 +371,97 @@ class _CreateSupportTicketScreenState extends State<CreateSupportTicketScreen> {
     );
   }
 
+  // ============================================================
+  // Form
+  // ============================================================
+
   Widget _buildForm() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Ticket Details', style: AppTextStyles.titleMedium),
+
         const SizedBox(height: 16),
 
-        Text(SupportDummyData.subjectLabel, style: AppTextStyles.formLabel),
+        // ========================================================
+        // Subject
+        // ========================================================
+        Text('Subject', style: AppTextStyles.formLabel),
+
         const SizedBox(height: 8),
+
         CustomTextField(
           controller: _subjectController,
-          hintText: SupportDummyData.subjectHint,
+          hintText: 'Enter ticket subject',
           keyboardType: TextInputType.text,
           textInputAction: TextInputAction.next,
           textCapitalization: TextCapitalization.sentences,
-          maxLength: SupportDummyData.maxSubjectLength,
+          maxLength: _maxSubjectLength,
           validator: _validateSubject,
         ),
 
         const SizedBox(height: 18),
 
-        Text(SupportDummyData.messageLabel, style: AppTextStyles.formLabel),
+        // ========================================================
+        // Category
+        // ========================================================
+        Text('Category', style: AppTextStyles.formLabel),
+
         const SizedBox(height: 8),
+
+        _buildCategoryDropdown(),
+
+        const SizedBox(height: 18),
+
+        // ========================================================
+        // Message
+        // ========================================================
+        Text('Message', style: AppTextStyles.formLabel),
+
+        const SizedBox(height: 8),
+
         CustomTextField(
           controller: _messageController,
-          hintText: SupportDummyData.messageHint,
+          hintText: 'Describe your issue or request',
           keyboardType: TextInputType.multiline,
           textInputAction: TextInputAction.newline,
           textCapitalization: TextCapitalization.sentences,
           minLines: 6,
           maxLines: 8,
-          maxLength: SupportDummyData.maxMessageLength,
+          maxLength: _maxMessageLength,
           validator: _validateMessage,
         ),
 
         const SizedBox(height: 20),
 
+        // ========================================================
+        // Priority
+        // ========================================================
+
+
         SupportTicketPrioritySelector(
           selectedPriority: _selectedPriority,
-          priorities: SupportDummyData.priorities,
+          priorities: _priorities,
           onChanged: (priority) {
+            if (_isSubmitting) {
+              return;
+            }
+
             setState(() {
-              _selectedPriority = priority;
+              _selectedPriority = priority.toLowerCase();
             });
           },
         ),
 
         const SizedBox(height: 28),
 
+        // ========================================================
+        // Submit Button
+        // ========================================================
         SizedBox(
           width: double.infinity,
           child: CustomButton(
-            text: SupportDummyData.submitTicketButton,
+            text: 'Submit Ticket',
             onPressed: _handleSubmit,
             isLoading: _isSubmitting,
             width: double.infinity,
@@ -322,7 +487,90 @@ class _CreateSupportTicketScreenState extends State<CreateSupportTicketScreen> {
       ],
     );
   }
+
+  // ============================================================
+  // Category Dropdown
+  // ============================================================
+
+  Widget _buildCategoryDropdown() {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _selectedCategory,
+          isExpanded: true,
+          borderRadius: BorderRadius.circular(14),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          icon: const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: AppColors.iconPrimary,
+          ),
+          dropdownColor: AppColors.white,
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: AppColors.textPrimary,
+          ),
+          items: _categories.map((category) {
+            return DropdownMenuItem<String>(
+              value: category,
+              child: Text(
+                _categoryLabel(category),
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            );
+          }).toList(),
+          onChanged: _isSubmitting
+              ? null
+              : (value) {
+                  if (value == null) {
+                    return;
+                  }
+
+                  setState(() {
+                    _selectedCategory = value;
+                  });
+                },
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // Category Label
+  // ============================================================
+
+  String _categoryLabel(String category) {
+    switch (category) {
+      case 'general':
+        return 'General';
+
+      case 'order':
+        return 'Order';
+
+      case 'product':
+        return 'Product';
+
+      case 'payment':
+        return 'Payment';
+
+      case 'technical':
+        return 'Technical';
+
+      default:
+        return category;
+    }
+  }
 }
+
+// ============================================================================
+// Header Back Button
+// ============================================================================
 
 class _HeaderBackButton extends StatelessWidget {
   const _HeaderBackButton({required this.onPressed});

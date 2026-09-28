@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
-import '../Models/campaign_model.dart';
+import '../Get Campaign/Models/campaign_model.dart';
 
 class CampaignCard extends StatelessWidget {
   const CampaignCard({super.key, required this.campaign, this.onTap});
@@ -22,6 +22,7 @@ class CampaignCard extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
+            color: AppColors.surface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: AppColors.border),
           ),
@@ -29,22 +30,13 @@ class CampaignCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildHeader(),
-              const SizedBox(height: 10),
-              Text(
-                campaign.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.titleMedium,
-              ),
-              const SizedBox(height: 5),
-              Text(
-                campaign.description,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.bodySmall,
-              ),
+              const SizedBox(height: 12),
+              _buildTitle(),
+              const SizedBox(height: 6),
+              _buildCampaignType(),
               const SizedBox(height: 14),
               _buildMeta(),
+              if (_hasNotes) ...[const SizedBox(height: 12), _buildNotes()],
             ],
           ),
         ),
@@ -52,49 +44,160 @@ class CampaignCard extends StatelessWidget {
     );
   }
 
+  // ============================================================
+  // Header
+  // ============================================================
+
   Widget _buildHeader() {
     return Row(
       children: [
         Container(
-          width: 38,
-          height: 38,
+          width: 40,
+          height: 40,
           decoration: BoxDecoration(
             color: AppColors.primaryLight,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(11),
           ),
           child: const Icon(
             Icons.campaign_rounded,
-            size: 20,
+            size: 21,
             color: AppColors.primary,
           ),
         ),
-        const Spacer(),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            campaign.campaignType ?? 'Campaign',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.captionMedium.copyWith(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
         _StatusBadge(status: campaign.status, label: campaign.statusLabel),
       ],
     );
   }
 
+  // ============================================================
+  // Title
+  // ============================================================
+
+  Widget _buildTitle() {
+    return Text(
+      campaign.name ?? 'Untitled campaign',
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: AppTextStyles.titleMedium,
+    );
+  }
+
+  // ============================================================
+  // Campaign Type
+  // ============================================================
+
+  Widget _buildCampaignType() {
+    final type = campaign.campaignType;
+
+    if (type == null || type.trim().isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Text(
+      _formatCampaignType(type),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: AppTextStyles.bodySmall.copyWith(
+        color: AppColors.primary,
+        fontWeight: FontWeight.w600,
+      ),
+    );
+  }
+
+  // ============================================================
+  // Meta
+  // ============================================================
+
   Widget _buildMeta() {
     return Wrap(
       spacing: 16,
-      runSpacing: 8,
+      runSpacing: 9,
       children: [
-        if (campaign.discount != null)
+        if (_discount != null)
           _MetaItem(
             icon: Icons.local_offer_outlined,
-            text: '${_formatDiscount(campaign.discount!)}% OFF',
+            text: '${_formatDiscount(_discount!)}% OFF',
           ),
+
         _MetaItem(
           icon: Icons.inventory_2_outlined,
-          text: '${campaign.productCount} products',
+          text: '${campaign.productIdList.length} products',
         ),
+
         if (campaign.startDate != null)
           _MetaItem(
             icon: Icons.calendar_today_outlined,
             text: _formatDate(campaign.startDate!),
           ),
+
+        if (campaign.endDate != null)
+          _MetaItem(
+            icon: Icons.event_outlined,
+            text: _formatDate(campaign.endDate!),
+          ),
       ],
     );
+  }
+
+  // ============================================================
+  // Notes
+  // ============================================================
+
+  bool get _hasNotes {
+    final vendorNotes = campaign.vendorNotes;
+
+    return vendorNotes != null && vendorNotes.trim().isNotEmpty;
+  }
+
+  Widget _buildNotes() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(11),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.notes_outlined,
+            size: 17,
+            color: AppColors.iconSecondary,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              campaign.vendorNotes!,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.bodySmall,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // Discount
+  // ============================================================
+
+  double? get _discount {
+    return campaign.discountPercentage ?? campaign.requestedDiscountPercentage;
   }
 
   String _formatDiscount(double value) {
@@ -105,7 +208,32 @@ class CampaignCard extends StatelessWidget {
     return value.toString();
   }
 
-  String _formatDate(DateTime date) {
+  // ============================================================
+  // Campaign Type Formatting
+  // ============================================================
+
+  String _formatCampaignType(String value) {
+    return value
+        .split('_')
+        .map(
+          (word) => word.isEmpty
+              ? word
+              : '${word[0].toUpperCase()}${word.substring(1)}',
+        )
+        .join(' ');
+  }
+
+  // ============================================================
+  // Date Formatting
+  // ============================================================
+
+  String _formatDate(String value) {
+    final parsed = DateTime.tryParse(value);
+
+    if (parsed == null) {
+      return value;
+    }
+
     const months = [
       'Jan',
       'Feb',
@@ -121,9 +249,15 @@ class CampaignCard extends StatelessWidget {
       'Dec',
     ];
 
-    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+    return '${months[parsed.month - 1]} '
+        '${parsed.day}, '
+        '${parsed.year}';
   }
 }
+
+// ============================================================
+// Meta Item
+// ============================================================
 
 class _MetaItem extends StatelessWidget {
   const _MetaItem({required this.icon, required this.text});
@@ -144,11 +278,15 @@ class _MetaItem extends StatelessWidget {
   }
 }
 
+// ============================================================
+// Status Badge
+// ============================================================
+
 class _StatusBadge extends StatelessWidget {
   const _StatusBadge({required this.status, required this.label});
 
-  final CampaignStatus status;
-  final String label;
+  final String? status;
+  final String? label;
 
   @override
   Widget build(BuildContext context) {
@@ -162,51 +300,146 @@ class _StatusBadge extends StatelessWidget {
         border: Border.all(color: colors.border),
       ),
       child: Text(
-        label,
+        _displayLabel,
         style: AppTextStyles.statusBadge.copyWith(color: colors.foreground),
       ),
     );
   }
 
-  _StatusColors _statusColors(CampaignStatus status) {
-    switch (status) {
-      case CampaignStatus.active:
-        return const _StatusColors(
-          background: AppColors.successLight,
-          foreground: AppColors.successDark,
-          border: AppColors.successBorder,
-        );
+  // ============================================================
+  // Display Label
+  // ============================================================
 
-      case CampaignStatus.scheduled:
+  String get _displayLabel {
+    if (label != null && label!.trim().isNotEmpty) {
+      return label!.trim();
+    }
+
+    return _formatStatus(status);
+  }
+
+  // ============================================================
+  // Fixed Status Colors
+  // ============================================================
+
+  _StatusColors _statusColors(String? status) {
+    switch (status?.trim().toLowerCase()) {
+      // ----------------------------------------------------------
+      // Pending
+      // ----------------------------------------------------------
+      case 'pending':
         return const _StatusColors(
           background: AppColors.infoLight,
           foreground: AppColors.infoDark,
           border: AppColors.infoBorder,
         );
 
-      case CampaignStatus.completed:
+      // ----------------------------------------------------------
+      // Approved
+      // ----------------------------------------------------------
+      case 'approved':
         return const _StatusColors(
-          background: AppColors.primaryLight,
-          foreground: AppColors.primary,
-          border: AppColors.borderPrimary,
+          background: AppColors.successLight,
+          foreground: AppColors.successDark,
+          border: AppColors.successBorder,
         );
 
-      case CampaignStatus.cancelled:
+      // ----------------------------------------------------------
+      // Active
+      // ----------------------------------------------------------
+      case 'active':
+        return const _StatusColors(
+          background: AppColors.successLight,
+          foreground: AppColors.successDark,
+          border: AppColors.successBorder,
+        );
+
+      // ----------------------------------------------------------
+      // Rejected
+      // ----------------------------------------------------------
+      case 'rejected':
         return const _StatusColors(
           background: AppColors.errorLight,
           foreground: AppColors.errorDark,
           border: AppColors.errorBorder,
         );
 
-      case CampaignStatus.draft:
+      // ----------------------------------------------------------
+      // Expired
+      // ----------------------------------------------------------
+      case 'expired':
         return const _StatusColors(
           background: AppColors.draftLight,
-          foreground: AppColors.draft,
+          foreground: AppColors.textSecondary,
+          border: AppColors.border,
+        );
+
+      // ----------------------------------------------------------
+      // Cancelled
+      // ----------------------------------------------------------
+      case 'cancelled':
+        return const _StatusColors(
+          background: AppColors.errorLight,
+          foreground: AppColors.errorDark,
+          border: AppColors.errorBorder,
+        );
+
+      // ----------------------------------------------------------
+      // Unknown / Null
+      // ----------------------------------------------------------
+      default:
+        return const _StatusColors(
+          background: AppColors.draftLight,
+          foreground: AppColors.textSecondary,
           border: AppColors.border,
         );
     }
   }
+
+  // ============================================================
+  // Status Text
+  // ============================================================
+
+  String _formatStatus(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Unknown';
+    }
+
+    switch (value.trim().toLowerCase()) {
+      case 'pending':
+        return 'Pending';
+
+      case 'approved':
+        return 'Approved';
+
+      case 'active':
+        return 'Active';
+
+      case 'rejected':
+        return 'Rejected';
+
+      case 'expired':
+        return 'Expired';
+
+      case 'cancelled':
+        return 'Cancelled';
+
+      default:
+        return value
+            .split('_')
+            .map(
+              (word) => word.isEmpty
+                  ? word
+                  : '${word[0].toUpperCase()}${word.substring(1)}',
+            )
+            .join(' ');
+    }
+  }
 }
+
+// ============================================================
+// Status Colors
+// ============================================================
 
 class _StatusColors {
   const _StatusColors({

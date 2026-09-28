@@ -44,6 +44,9 @@ class SupportContactCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ============================================================
+            // HEADER
+            // ============================================================
             Row(
               children: [
                 Container(
@@ -77,28 +80,48 @@ class SupportContactCard extends StatelessWidget {
                 ),
               ],
             ),
+
             const SizedBox(height: 18),
+
+            // ============================================================
+            // EMAIL
+            // ============================================================
             _ContactRow(
               icon: Icons.email_outlined,
               label: 'Email',
               value: email,
               onTap: onEmailTap,
             ),
+
             const SizedBox(height: 10),
+
+            // ============================================================
+            // PHONE
+            // ============================================================
             _ContactRow(
               icon: Icons.phone_outlined,
               label: 'Phone',
               value: phone,
               onTap: onPhoneTap,
             ),
+
             const SizedBox(height: 10),
+
+            // ============================================================
+            // WHATSAPP
+            // ============================================================
             _ContactRow(
               icon: Icons.chat_outlined,
               label: 'WhatsApp',
               value: whatsapp,
               onTap: onWhatsAppTap,
             ),
+
             const SizedBox(height: 16),
+
+            // ============================================================
+            // SUPPORT HOURS
+            // ============================================================
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
@@ -116,7 +139,9 @@ class SupportContactCard extends StatelessWidget {
                   const SizedBox(width: 9),
                   Expanded(
                     child: Text(
-                      supportHours,
+                      supportHours.isNotEmpty
+                          ? supportHours
+                          : 'Support hours not available.',
                       style: AppTextStyles.caption.copyWith(
                         color: AppColors.textSecondary,
                         fontWeight: FontWeight.w600,
@@ -132,6 +157,10 @@ class SupportContactCard extends StatelessWidget {
     );
   }
 }
+
+// ============================================================================
+// CONTACT ROW
+// ============================================================================
 
 class _ContactRow extends StatelessWidget {
   const _ContactRow({
@@ -176,7 +205,7 @@ class _ContactRow extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      value,
+                      value.isNotEmpty ? value : 'Not available',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.labelMedium.copyWith(

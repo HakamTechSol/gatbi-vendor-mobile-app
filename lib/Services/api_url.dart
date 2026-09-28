@@ -122,7 +122,15 @@ class ApiUrls {
 
   static const String reviewsSummary = 'vendor/reviews/summary';
 
-  static String review(int id) => 'vendor/reviews/$id';
+  static String reviewReply(int id) => 'vendor/reviews/$id/reply';
+
+  //Question & Answer
+  static const String question = 'vendor/questions';
+
+  static String answer(int questionId) => 'vendor/questions/$questionId/answer';
+
+  //Support
+  static const String createSupport = 'vendor/support';
 
   // Payouts
   static const String payouts = 'vendor/payouts';

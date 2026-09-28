@@ -11,6 +11,8 @@ class OrderStatusFields extends StatelessWidget {
     this.noteController,
     this.showTrackingFields = false,
     this.enabled = true,
+    this.trackingValidator,
+    this.carrierValidator,
   });
 
   final TextEditingController? trackingController;
@@ -19,6 +21,9 @@ class OrderStatusFields extends StatelessWidget {
 
   final bool showTrackingFields;
   final bool enabled;
+
+  final String? Function(String?)? trackingValidator;
+  final String? Function(String?)? carrierValidator;
 
   @override
   Widget build(BuildContext context) {
@@ -37,6 +42,7 @@ class OrderStatusFields extends StatelessWidget {
                   enabled: enabled,
                   borderRadius: 10,
                   prefixIconColor: AppColors.iconSecondary,
+                  validator: trackingValidator,
                 ),
               ),
 
@@ -51,6 +57,7 @@ class OrderStatusFields extends StatelessWidget {
                   enabled: enabled,
                   borderRadius: 10,
                   prefixIconColor: AppColors.iconSecondary,
+                  validator: carrierValidator,
                 ),
               ),
             ],

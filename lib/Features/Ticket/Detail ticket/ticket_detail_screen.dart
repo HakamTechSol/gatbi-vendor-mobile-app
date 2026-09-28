@@ -409,48 +409,6 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // LOADING
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  Widget _buildLoading() {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: AppColors.primaryLight,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Center(
-              child: SizedBox(
-                width: 23,
-                height: 23,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  color: AppColors.primary,
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 14),
-
-          Text(
-            'Loading conversation...',
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
   // ERROR
   // ═══════════════════════════════════════════════════════════════════════════
 

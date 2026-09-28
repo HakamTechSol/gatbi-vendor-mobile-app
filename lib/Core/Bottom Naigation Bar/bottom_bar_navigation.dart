@@ -231,6 +231,18 @@ class _BottomMainScreenState extends State<BottomMainScreen> {
     context.push(AppRoutes.kyc);
   }
 
+  void _openReviews() {
+    context.push(AppRoutes.reviews);
+  }
+
+  void _openQuestionsAndAnswers() {
+    context.push(AppRoutes.questions);
+  }
+
+  void _openPayouts() {
+    context.push(AppRoutes.payouts);
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // BUILD
   // ═══════════════════════════════════════════════════════════════════════════
@@ -271,6 +283,9 @@ class _BottomMainScreenState extends State<BottomMainScreen> {
             onSupport: _openSupport,
             onChangePassword: _openChangePassword,
             onKycVerification: _onKycVerification,
+            onReviews: _openReviews,
+            onQuestionsAndAnswers: _openQuestionsAndAnswers,
+            onPayouts: _openPayouts,
           ),
         ],
       ),

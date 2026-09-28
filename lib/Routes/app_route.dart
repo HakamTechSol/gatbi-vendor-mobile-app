@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../Core/Bottom Naigation Bar/bottom_bar_screen.dart';
 import '../Core/Bottom Naigation Bar/bottom_bar_navigation.dart';
+import '../Features/Payouts/Get Payouts/Screens/payout_list_screen.dart';
+import '../Features/Payouts/Payout Detail/Screens/payout_detail_screen.dart';
 import '../Features/Product Section/Add Product/Screens/add_product_screen.dart';
 import '../Features/Authentication/Email Verification OTP/email_otp_verification_screen.dart';
 import '../Features/Authentication/Forget Password/Screens/forget_password_Screen.dart';
@@ -25,6 +27,8 @@ import '../Features/Onboarding/onboarding_screen.dart';
 import '../Features/Order/Order Detail/screens/order_detail_screen.dart';
 import '../Features/Order/Order List/screens/orders_screen.dart';
 import '../Features/Product Section/Product Detail/Screens/product_detail_screen.dart';
+import '../Features/Question & Answer/Screens/question_list_screen.dart';
+import '../Features/Review/Screens/review_list_screen.dart';
 import '../Features/Splash/splash_screen.dart';
 import '../Features/Support/screen/create_support_ticket_screen.dart';
 import '../Features/Support/screen/support_screen.dart';
@@ -92,6 +96,14 @@ abstract final class AppRoutes {
   static const String ticketDetail = '/support-tickets/detail';
 
   static const String createTicket = '/support-tickets/create';
+
+  static const String reviews = '/reviews';
+
+  static const String questions = '/questions';
+
+  static const String payouts = '/payouts';
+
+  static const String payoutDetail = '/payouts/detail';
 
   static const String support = '/support';
 
@@ -590,24 +602,15 @@ final GoRouter appRouter = GoRouter(
           },
 
           onCustomerChatTap: () {
-            context.push(AppRoutes.chatList);
+            context.push(AppRoutes.bottombar, extra: BottomTab.chat);
           },
 
           onCampaignsTap: () {
             context.push(AppRoutes.campaigns);
           },
 
-          onKycTap: () {
-            // KYC route will be connected here.
-            debugPrint('KYC tapped');
-          },
-
           onOrdersTap: () {
             context.push(AppRoutes.orders);
-          },
-
-          onPaymentsTap: () {
-            debugPrint('Payments & payouts tapped');
           },
 
           onCampaignRequestTap: () {
@@ -619,31 +622,11 @@ final GoRouter appRouter = GoRouter(
           },
 
           onProductsTap: () {
-            context.push(AppRoutes.products);
-          },
-
-          onSettingsTap: () {
-            // Settings route will be connected here.
-            debugPrint('Settings tapped');
+            context.push(AppRoutes.bottombar, extra: BottomTab.products);
           },
 
           onCreateTicketTap: () {
             context.push(AppRoutes.createSupportTicket);
-          },
-
-          onEmailTap: () {
-            debugPrint('Support email tapped');
-            // mailto will be connected here.
-          },
-
-          onPhoneTap: () {
-            debugPrint('Support phone tapped');
-            // tel will be connected here.
-          },
-
-          onWhatsAppTap: () {
-            debugPrint('WhatsApp support tapped');
-            // WhatsApp deep link will be connected here.
           },
         );
       },
@@ -657,19 +640,85 @@ final GoRouter appRouter = GoRouter(
           onBack: () {
             context.pop();
           },
+        );
+      },
+    ),
 
-          onSubmit:
-              ({
-                required String subject,
-                required String message,
-                required String priority,
-              }) async {
-                // API will be connected later.
-                debugPrint('Create Support Ticket');
-                debugPrint('Subject: $subject');
-                debugPrint('Message: $message');
-                debugPrint('Priority: $priority');
-              },
+    // ═══════════════════════════════════════════════════════════════════════════
+    // QUESTIONS & ANSWERS
+    // ═══════════════════════════════════════════════════════════════════════════
+    GoRoute(
+      path: AppRoutes.questions,
+      name: 'questions',
+      builder: (context, state) {
+        return QuestionListScreen();
+      },
+    ),
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PAYOUTS
+    // ═══════════════════════════════════════════════════════════════════════════
+    GoRoute(
+      path: AppRoutes.payouts,
+      name: 'payouts',
+      builder: (context, state) {
+        return PayoutListScreen(
+          onBack: () {
+            context.pop();
+          },
+
+          onDetail: (payout) async {
+            final payoutId = payout.id;
+
+            if (payoutId == null || payoutId <= 0) {
+              debugPrint('Payout ID is missing.');
+              return;
+            }
+
+            await context.push(AppRoutes.payoutDetail, extra: payoutId);
+          },
+        );
+      },
+    ),
+
+    GoRoute(
+      path: AppRoutes.payoutDetail,
+      name: 'payout-detail',
+      builder: (context, state) {
+        final extra = state.extra;
+
+        // ============================================================
+        // VALIDATE PAYOUT ID
+        // ============================================================
+
+        if (extra is! int || extra <= 0) {
+          return const Scaffold(
+            body: Center(
+              child: Text(
+                'Payout ID is missing.',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+          );
+        }
+
+        // ============================================================
+        // PAYOUT DETAIL SCREEN
+        // ============================================================
+
+        return PayoutDetailScreen(payoutId: extra);
+      },
+    ),
+    // ═══════════════════════════════════════════════════════════════════════════
+    // REVIEWS
+    // ═══════════════════════════════════════════════════════════════════════════
+    GoRoute(
+      path: AppRoutes.reviews,
+      name: 'reviews',
+      builder: (context, state) {
+        return ReviewListScreen(
+          onBack: () {
+            context.pop();
+          },
         );
       },
     ),
@@ -705,6 +754,16 @@ final GoRouter appRouter = GoRouter(
 
           onChangePassword: () {
             context.push(AppRoutes.changePassword);
+          },
+
+          onReviews: () {
+            context.push(AppRoutes.reviews);
+          },
+          onQuestionsAndAnswers: () {
+            context.push(AppRoutes.questions);
+          },
+          onPayouts: () {
+            context.push(AppRoutes.payouts);
           },
         );
       },

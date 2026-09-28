@@ -1,40 +1,35 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
-import '../Campain Type/campain_type_controller.dart';
-import '../Campain Type/campain_type_model.dart';
+
+import '../Get Campaign/Models/campaign_type_model.dart';
 import 'campaign_idea_card.dart';
 
-class CampaignsSuggestedIdeas extends ConsumerWidget {
-  const CampaignsSuggestedIdeas({super.key, this.onIdeaTap});
+class CampaignsSuggestedIdeas extends StatelessWidget {
+  const CampaignsSuggestedIdeas({
+    super.key,
+    required this.campaignTypes,
+    this.isLoading = false,
+  });
 
-  final ValueChanged<CampaignTypeModel>? onIdeaTap;
+  final List<CampaignTypeModel> campaignTypes;
+  final bool isLoading;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final campaignsAsync = ref.watch(campaignsSuggestedIdeasProvider);
+  Widget build(BuildContext context) {
+    if (isLoading) {
+      return const _SuggestedIdeasLoading();
+    }
 
-    return campaignsAsync.when(
-      loading: () => const _SuggestedIdeasLoading(),
-      error: (error, stackTrace) {
-        return const SizedBox.shrink();
-      },
-      data: (campaigns) {
-        if (campaigns.isEmpty) {
-          return const SizedBox.shrink();
-        }
+    if (campaignTypes.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
-        return _buildContent(context, campaigns);
-      },
-    );
+    return _buildContent();
   }
 
-  Widget _buildContent(
-    BuildContext context,
-    List<CampaignTypeModel> campaigns,
-  ) {
+  Widget _buildContent() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -65,7 +60,7 @@ class CampaignsSuggestedIdeas extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                '${campaigns.length} ideas',
+                '${campaignTypes.length} ideas',
                 style: AppTextStyles.captionMedium.copyWith(
                   color: AppColors.primary,
                   fontWeight: FontWeight.w700,
@@ -80,14 +75,15 @@ class CampaignsSuggestedIdeas extends ConsumerWidget {
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
-            itemCount: campaigns.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemCount: campaignTypes.length,
+            separatorBuilder: (_, __) {
+              return const SizedBox(width: 12);
+            },
             itemBuilder: (context, index) {
-              final campaign = campaigns[index];
+              final campaignType = campaignTypes[index];
 
               return CampaignIdeaCard(
-                campaign: campaign,
-                onTap: () => onIdeaTap?.call(campaign),
+                campaign: campaignType,
               );
             },
           ),
@@ -97,19 +93,9 @@ class CampaignsSuggestedIdeas extends ConsumerWidget {
   }
 }
 
-/// Provider only for the Suggested Ideas section.
-///
-/// It reuses the existing Campaigns API controller.
-/// No new API call / Dio client / repository is created.
-final campaignsSuggestedIdeasProvider = FutureProvider<List<CampaignTypeModel>>(
-  (ref) async {
-    final controller = ref.watch(campaignsControllerProvider);
-
-    final response = await controller.getCampaigns();
-
-    return response.campaignTypes;
-  },
-);
+// ============================================================
+// Loading
+// ============================================================
 
 class _SuggestedIdeasLoading extends StatelessWidget {
   const _SuggestedIdeasLoading();
@@ -146,10 +132,12 @@ class _SuggestedIdeasLoading extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
             itemCount: 3,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            separatorBuilder: (_, __) {
+              return const SizedBox(width: 12);
+            },
             itemBuilder: (_, __) {
               return Container(
-                width: 220,
+                width: 230,
                 decoration: BoxDecoration(
                   color: AppColors.white,
                   borderRadius: BorderRadius.circular(16),

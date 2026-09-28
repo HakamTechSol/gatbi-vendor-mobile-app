@@ -1815,14 +1815,25 @@ class MyProductScreenState extends ConsumerState<MyProductScreen> {
   // ============================================================
 
   Widget _buildProductsContent({required List<MyProductModel> products}) {
+    // ============================================================
+    // EMPTY STATE
+    // ============================================================
+
     if (products.isEmpty) {
-      return SliverToBoxAdapter(
+      return SliverFillRemaining(
+        hasScrollBody: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-          child: MyProductsEmptyState(onAddProduct: _handleAddProduct),
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+          child: Center(
+            child: MyProductsEmptyState(onAddProduct: _handleAddProduct),
+          ),
         ),
       );
     }
+
+    // ============================================================
+    // PRODUCTS LIST
+    // ============================================================
 
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1885,4 +1896,5 @@ class MyProductScreenState extends ConsumerState<MyProductScreen> {
       ),
     );
   }
+
 }

@@ -27,7 +27,8 @@ class MoreScreen extends ConsumerStatefulWidget {
 
     // Support
     this.onTickets,
-    this.onReviewsAndQuestions,
+    this.onReviews,
+    this.onQuestionsAndAnswers,
     this.onSupport,
 
     // Growth
@@ -61,7 +62,8 @@ class MoreScreen extends ConsumerStatefulWidget {
   // ═══════════════════════════════════════════════════════════════════════════
 
   final VoidCallback? onTickets;
-  final VoidCallback? onReviewsAndQuestions;
+  final VoidCallback? onReviews;
+  final VoidCallback? onQuestionsAndAnswers;
   final VoidCallback? onSupport;
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -105,7 +107,6 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
       if (!mounted) return;
 
       if (result.success == true) {
-        // Replace current navigation stack with Login.
         context.go(AppRoutes.login);
       }
     } on ApiException catch (error) {
@@ -308,9 +309,6 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
 
             SliverToBoxAdapter(child: _buildGrowthSection()),
 
-            // ==============================================================
-            // LOGOUT
-            // ==============================================================
             SliverToBoxAdapter(child: _buildLogoutSection()),
 
             const SliverToBoxAdapter(child: SizedBox(height: 28)),
@@ -394,7 +392,9 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
                 size: 25,
               ),
             ),
+
             const SizedBox(width: 13),
+
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -408,7 +408,9 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
                       fontWeight: FontWeight.w800,
                     ),
                   ),
+
                   const SizedBox(height: 4),
+
                   Text(
                     'Everything you need to manage your store',
                     maxLines: 2,
@@ -522,12 +524,27 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
           subtitle: 'Create and track support tickets',
           onTap: widget.onTickets,
         ),
+
+        // ================================================================
+        // REVIEWS
+        // ================================================================
         _buildMenuItem(
           icon: Icons.rate_review_outlined,
-          title: 'Reviews & Q&A',
-          subtitle: 'Manage product reviews and questions',
-          onTap: widget.onReviewsAndQuestions,
+          title: 'Reviews',
+          subtitle: 'Manage customer reviews for your products',
+          onTap: widget.onReviews,
         ),
+
+        // ================================================================
+        // QUESTIONS & ANSWERS
+        // ================================================================
+        _buildMenuItem(
+          icon: Icons.question_answer_outlined,
+          title: 'Questions & Answers',
+          subtitle: 'Manage customer questions and answers',
+          onTap: widget.onQuestionsAndAnswers,
+        ),
+
         _buildMenuItem(
           icon: Icons.headset_mic_outlined,
           title: 'Support',
@@ -589,7 +606,9 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
                   color: AppColors.error,
                 ),
               ),
+
               const SizedBox(width: 10),
+
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -601,7 +620,9 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
+
                     const SizedBox(height: 2),
+
                     Text(
                       'Sign out of your vendor account',
                       maxLines: 1,

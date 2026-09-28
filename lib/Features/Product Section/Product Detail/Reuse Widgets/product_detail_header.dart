@@ -100,44 +100,4 @@ class ProductDetailHeader extends StatelessWidget {
       ],
     );
   }
-
-  // ============================================================
-  // EDIT BUTTON
-  // ============================================================
-
-  Widget _buildEditButton() {
-    return Material(
-      color: AppColors.primary,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onEdit,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          height: 44,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            gradient: LinearGradient(
-              colors: [AppColors.primary, AppColors.primaryDark],
-            ),
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.edit_rounded, size: 17, color: Colors.white),
-              SizedBox(width: 7),
-              Text(
-                'Edit',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
