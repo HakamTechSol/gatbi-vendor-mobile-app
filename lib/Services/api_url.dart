@@ -36,6 +36,12 @@ class ApiUrls {
   // campaigns
   static const String campaigns = 'vendor/campaigns';
 
+  static const String createCampaign = 'vendor/campaigns';
+
+  static const String campaignDetail = 'vendor/campaigns';
+
+  static const String campaignTypes = 'vendor/campaign-types';
+
   // Products
   static const String products = 'vendor/products';
 

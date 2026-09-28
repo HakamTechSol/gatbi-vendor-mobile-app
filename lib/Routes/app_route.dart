@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../Core/Bottom Naigation Bar/bottom_bar_screen.dart';
 import '../Core/Bottom Naigation Bar/bottom_bar_navigation.dart';
+import '../Features/Campaign/Campaign Detail/Screens/campaign_detail_screen.dart';
+import '../Features/Campaign/Create Campaign/Screens/create_campaign_screen.dart';
 import '../Features/Payouts/Get Payouts/Screens/payout_list_screen.dart';
 import '../Features/Payouts/Payout Detail/Screens/payout_detail_screen.dart';
 import '../Features/Product Section/Add Product/Screens/add_product_screen.dart';
@@ -110,6 +112,10 @@ abstract final class AppRoutes {
   static const String createSupportTicket = '/support/create';
 
   static const String campaigns = '/campaigns';
+
+  static const String createCampaigns = '/create/campaigns';
+
+  static const String campaignDetail = '/campaigns/detail';
 
   static const String analytics = '/analytics';
 
@@ -545,6 +551,51 @@ final GoRouter appRouter = GoRouter(
       name: 'campaigns',
       builder: (context, state) {
         return const CampaignsScreen();
+      },
+    ),
+
+    GoRoute(
+      path: AppRoutes.createCampaigns,
+      name: 'create-campaigns',
+      builder: (context, state) {
+        return const CreateCampaignScreen();
+      },
+    ),
+
+    GoRoute(
+      path: AppRoutes.campaignDetail,
+      name: 'campaign-detail',
+      builder: (context, state) {
+        final extra = state.extra;
+
+        // ============================================================
+        // VALIDATE CAMPAIGN ID
+        // ============================================================
+
+        if (extra is! int || extra <= 0) {
+          return const Scaffold(
+            body: Center(
+              child: Text(
+                'Campaign ID is missing.',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+          );
+        }
+
+        // ============================================================
+        // CAMPAIGN DETAIL SCREEN
+        // ============================================================
+
+        return CampaignDetailScreen(
+          campaignId: extra,
+          onBack: () {
+            context.pop();
+          },
+          onRefresh: () {
+            debugPrint('Refreshing Campaign ID: $extra');
+          },
+        );
       },
     ),
 

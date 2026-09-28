@@ -8,6 +8,7 @@ class CustomTextField extends StatefulWidget {
   const CustomTextField({
     super.key,
     required this.controller,
+    this.showCounter = true,
     this.label,
     this.hintText,
     this.prefixIcon,
@@ -47,6 +48,8 @@ class CustomTextField extends StatefulWidget {
 
   /// Main text controller.
   final TextEditingController controller;
+
+  final bool showCounter;
 
   /// Optional field label.
   ///

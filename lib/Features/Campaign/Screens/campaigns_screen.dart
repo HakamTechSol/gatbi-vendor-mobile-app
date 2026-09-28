@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import 'package:task_project/Core/Bottom%20Naigation%20Bar/bottom_bar_screen.dart';
+
+import '../../../Routes/app_route.dart';
 import '../../../Theme/app_colors.dart';
 import '../../../Theme/app_text_styles.dart';
 
@@ -16,6 +20,8 @@ import '../Reuse widgets/campaigns_header.dart';
 import '../Reuse widgets/campaigns_how_it_works.dart';
 import '../Reuse widgets/campaigns_suggested_ideas.dart';
 
+import '../Reuse widgets/campaigns_loading.dart';
+
 class CampaignsScreen extends ConsumerStatefulWidget {
   const CampaignsScreen({super.key});
 
@@ -30,7 +36,6 @@ class _CampaignsScreenState extends ConsumerState<CampaignsScreen> {
 
   static const int _perPage = 50;
 
-  /// Fixed campaign statuses supported by the API/UI.
   static const List<String> _fixedStatuses = [
     'pending',
     'approved',
@@ -47,7 +52,6 @@ class _CampaignsScreenState extends ConsumerState<CampaignsScreen> {
   GetCampaignsModel? _campaignsData;
 
   bool _isLoading = true;
-  bool _isRefreshing = false;
   bool _isLoadingNextPage = false;
 
   String? _errorMessage;
@@ -64,7 +68,7 @@ class _CampaignsScreenState extends ConsumerState<CampaignsScreen> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadCampaigns();
+      _loadCampaigns(showShimmer: true);
     });
   }
 
@@ -74,11 +78,20 @@ class _CampaignsScreenState extends ConsumerState<CampaignsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // ============================================================
+    // Full Screen Shimmer
+    // ============================================================
+
+    if (_isLoading && _campaignsData == null) {
+      return const CampaignsLoading(itemCount: 3);
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: RefreshIndicator(
           color: AppColors.primary,
+          backgroundColor: AppColors.white,
           onRefresh: _handleRefresh,
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(
@@ -89,10 +102,16 @@ class _CampaignsScreenState extends ConsumerState<CampaignsScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
+                    // ======================================================
+                    // Header
+                    // ======================================================
                     const CampaignsHeader(),
 
                     const SizedBox(height: 18),
 
+                    // ======================================================
+                    // Action Buttons
+                    // ======================================================
                     CampaignsActionButtons(
                       onPickProducts: _handlePickProducts,
                       onRequestCampaign: _handleRequestCampaign,
@@ -100,18 +119,30 @@ class _CampaignsScreenState extends ConsumerState<CampaignsScreen> {
 
                     const SizedBox(height: 26),
 
+                    // ======================================================
+                    // Campaigns Section
+                    // ======================================================
                     _buildCampaignsSection(),
 
                     const SizedBox(height: 26),
 
+                    // ======================================================
+                    // How It Works
+                    // ======================================================
                     const CampaignsHowItWorks(),
 
                     const SizedBox(height: 26),
 
+                    // ======================================================
+                    // Suggested Ideas
+                    // ======================================================
                     _buildSuggestedIdeas(),
 
                     const SizedBox(height: 26),
 
+                    // ======================================================
+                    // Pagination
+                    // ======================================================
                     _buildPagination(),
                   ]),
                 ),
@@ -128,10 +159,6 @@ class _CampaignsScreenState extends ConsumerState<CampaignsScreen> {
   // ============================================================
 
   Widget _buildCampaignsSection() {
-    if (_isLoading && _campaignsData == null) {
-      return _buildInitialLoading();
-    }
-
     if (_errorMessage != null && _campaignsData == null) {
       return _buildErrorState();
     }
@@ -153,7 +180,7 @@ class _CampaignsScreenState extends ConsumerState<CampaignsScreen> {
         const SizedBox(height: 14),
 
         if (campaigns.isEmpty)
-          CampaignsEmptyState(onContactSupport: _handleContactSupport)
+          CampaignsEmptyState(onContactSupport: _handleRequestCampaign)
         else
           _buildCampaignList(campaigns),
       ],
@@ -240,6 +267,7 @@ class _CampaignsScreenState extends ConsumerState<CampaignsScreen> {
       ),
     );
   }
+
   // ============================================================
   // Filtered Campaigns
   // ============================================================
@@ -247,17 +275,9 @@ class _CampaignsScreenState extends ConsumerState<CampaignsScreen> {
   List<CampaignModel> get _filteredCampaigns {
     final campaigns = _campaignsData?.campaigns ?? [];
 
-    // ----------------------------------------------------------
-    // All
-    // ----------------------------------------------------------
-
     if (_selectedStatus == null) {
       return campaigns;
     }
-
-    // ----------------------------------------------------------
-    // Selected Status
-    // ----------------------------------------------------------
 
     final selectedStatus = _selectedStatus!.trim().toLowerCase();
 
@@ -298,7 +318,7 @@ class _CampaignsScreenState extends ConsumerState<CampaignsScreen> {
 
     return CampaignsSuggestedIdeas(
       campaignTypes: campaignTypes,
-      isLoading: _isLoading && _campaignsData == null,
+      isLoading: false,
     );
   }
 
@@ -359,26 +379,7 @@ class _CampaignsScreenState extends ConsumerState<CampaignsScreen> {
   }
 
   // ============================================================
-  // Initial Loading
-  // ============================================================
-
-  Widget _buildInitialLoading() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Your campaigns', style: AppTextStyles.titleLarge),
-        const SizedBox(height: 4),
-        Text('Loading your campaigns...', style: AppTextStyles.bodySmall),
-        const SizedBox(height: 14),
-        const _CampaignLoadingCard(),
-        const SizedBox(height: 12),
-        const _CampaignLoadingCard(),
-      ],
-    );
-  }
-
-  // ============================================================
-  // Error
+  // Error State
   // ============================================================
 
   Widget _buildErrorState() {
@@ -420,7 +421,9 @@ class _CampaignsScreenState extends ConsumerState<CampaignsScreen> {
           const SizedBox(height: 14),
 
           ElevatedButton(
-            onPressed: _loadCampaigns,
+            onPressed: () {
+              _loadCampaigns(showShimmer: true);
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: AppColors.white,
@@ -437,16 +440,32 @@ class _CampaignsScreenState extends ConsumerState<CampaignsScreen> {
   }
 
   // ============================================================
-  // API - Initial Load
+  // API - Initial / Full Refresh
   // ============================================================
 
-  Future<void> _loadCampaigns() async {
+  Future<void> _loadCampaigns({bool showShimmer = true}) async {
     if (!mounted) return;
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    if (showShimmer) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+        _campaignsData = null;
+      });
+    } else {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+    }
+
+    debugPrint('');
+    debugPrint('==============================================');
+    debugPrint('CAMPAIGNS API LOAD');
+    debugPrint('SHOW SHIMMER: $showShimmer');
+    debugPrint('PAGE: 1');
+    debugPrint('PER PAGE: $_perPage');
+    debugPrint('==============================================');
 
     try {
       final controller = ref.read(getCampaignsControllerProvider);
@@ -455,12 +474,30 @@ class _CampaignsScreenState extends ConsumerState<CampaignsScreen> {
 
       if (!mounted) return;
 
+      debugPrint('');
+      debugPrint('========== CAMPAIGNS API SUCCESS ==========');
+      debugPrint('SUCCESS: ${result.success}');
+      debugPrint('CAMPAIGNS COUNT: ${result.campaigns.length}');
+      debugPrint('TOTAL: ${result.total}');
+      debugPrint('HAS NEXT PAGE: ${result.hasNextPage}');
+      debugPrint('HAS PREVIOUS PAGE: ${result.hasPreviousPage}');
+      debugPrint('===========================================');
+      debugPrint('');
+
       setState(() {
         _campaignsData = result;
         _isLoading = false;
+        _errorMessage = null;
       });
-    } catch (error) {
+    } catch (error, stackTrace) {
       if (!mounted) return;
+
+      debugPrint('');
+      debugPrint('========== CAMPAIGNS API ERROR ==========');
+      debugPrint('ERROR: $error');
+      debugPrint('STACK TRACE: $stackTrace');
+      debugPrint('=========================================');
+      debugPrint('');
 
       setState(() {
         _isLoading = false;
@@ -470,38 +507,19 @@ class _CampaignsScreenState extends ConsumerState<CampaignsScreen> {
   }
 
   // ============================================================
-  // API - Refresh
+  // Pull To Refresh
   // ============================================================
 
   Future<void> _handleRefresh() async {
-    if (_isRefreshing) return;
-
-    setState(() {
-      _isRefreshing = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final controller = ref.read(getCampaignsControllerProvider);
-
-      final result = await controller.getCampaigns(page: 1, perPage: _perPage);
-
-      if (!mounted) return;
-
-      setState(() {
-        _campaignsData = result;
-        _isRefreshing = false;
-      });
-    } catch (error) {
-      if (!mounted) return;
-
-      setState(() {
-        _isRefreshing = false;
-        _errorMessage = _extractErrorMessage(error);
-      });
-
-      _showErrorMessage(_extractErrorMessage(error));
+    if (_isLoading) {
+      return;
     }
+
+    // ----------------------------------------------------------
+    // Full shimmer show hoga.
+    // ----------------------------------------------------------
+
+    await _loadCampaigns(showShimmer: true);
   }
 
   // ============================================================
@@ -518,6 +536,14 @@ class _CampaignsScreenState extends ConsumerState<CampaignsScreen> {
     setState(() {
       _isLoadingNextPage = true;
     });
+
+    debugPrint('');
+    debugPrint('========== CAMPAIGNS NEXT PAGE ==========');
+    debugPrint(
+      'CURRENT PAGE: '
+      '${currentData.pagination?.currentPage ?? 'N/A'}',
+    );
+    debugPrint('=========================================');
 
     try {
       final controller = ref.read(getCampaignsControllerProvider);
@@ -590,23 +616,89 @@ class _CampaignsScreenState extends ConsumerState<CampaignsScreen> {
   // Actions
   // ============================================================
 
-  void _handlePickProducts() {
-    _showComingSoonMessage('Product selection will be connected here.');
+  Future<void> _handlePickProducts() async {
+    await context.push(AppRoutes.bottombar, extra: BottomTab.products);
+
+    // ----------------------------------------------------------
+    // User Products screen se back aya.
+    // Campaigns API refresh + shimmer.
+    // ----------------------------------------------------------
+
+    if (!mounted) return;
+
+    await _loadCampaigns(showShimmer: true);
   }
 
-  void _handleRequestCampaign() {
-    _showComingSoonMessage('Campaign request flow will be connected here.');
+  // ============================================================
+  // Request Campaign
+  // ============================================================
+
+  Future<void> _handleRequestCampaign() async {
+    await context.push(AppRoutes.createCampaigns);
+
+    // ----------------------------------------------------------
+    // User Create Campaign screen se back aya.
+    // Campaigns API refresh + shimmer.
+    // ----------------------------------------------------------
+
+    if (!mounted) return;
+
+    await _loadCampaigns(showShimmer: true);
   }
 
-  void _handleContactSupport() {
-    _showComingSoonMessage('Support contact flow will be connected here.');
-  }
+  // ============================================================
+  // Campaign Detail
+  // ============================================================
 
-  void _handleCampaignTap(CampaignModel campaign) {
-    _showComingSoonMessage(
-      '${campaign.name ?? 'Campaign'} details '
-      'will be connected here.',
-    );
+  Future<void> _handleCampaignTap(CampaignModel campaign) async {
+    final campaignId = campaign.id;
+
+    // ============================================================
+    // Validate Campaign ID
+    // ============================================================
+
+    if (campaignId == null || campaignId <= 0) {
+      debugPrint('');
+      debugPrint('========== CAMPAIGN DETAIL NAVIGATION ==========');
+      debugPrint('ERROR: Campaign ID is missing.');
+      debugPrint('CAMPAIGN NAME: ${campaign.name ?? 'N/A'}');
+      debugPrint('CAMPAIGN ID: ${campaignId ?? 'N/A'}');
+      debugPrint('=================================================');
+      debugPrint('');
+
+      _showComingSoonMessage(
+        'Campaign details are unavailable because '
+        'the campaign ID is missing.',
+      );
+
+      return;
+    }
+
+    // ============================================================
+    // Debug
+    // ============================================================
+
+    debugPrint('');
+    debugPrint('========== CAMPAIGN DETAIL NAVIGATION ==========');
+    debugPrint('CAMPAIGN ID: $campaignId');
+    debugPrint('CAMPAIGN NAME: ${campaign.name ?? 'N/A'}');
+    debugPrint('STATUS: ${campaign.status ?? 'N/A'}');
+    debugPrint('=================================================');
+    debugPrint('');
+
+    // ============================================================
+    // Open Detail
+    // ============================================================
+
+    await context.push(AppRoutes.campaignDetail, extra: campaignId);
+
+    // ============================================================
+    // Detail se Back -> Refresh Campaigns
+    // ============================================================
+
+    if (!mounted) return;
+
+    await _loadCampaigns(showShimmer: true);
   }
 
   // ============================================================
@@ -688,6 +780,7 @@ class _CampaignFilter {
   final String label;
   final String? status;
 }
+
 // ============================================================
 // Pagination Button
 // ============================================================
@@ -714,34 +807,6 @@ class _PaginationButton extends StatelessWidget {
             size: 21,
             color: onTap == null ? AppColors.iconSecondary : AppColors.primary,
           ),
-        ),
-      ),
-    );
-  }
-}
-
-// ============================================================
-// Loading Card
-// ============================================================
-
-class _CampaignLoadingCard extends StatelessWidget {
-  const _CampaignLoadingCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      height: 145,
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: const Center(
-        child: SizedBox(
-          width: 24,
-          height: 24,
-          child: CircularProgressIndicator(strokeWidth: 2),
         ),
       ),
     );
