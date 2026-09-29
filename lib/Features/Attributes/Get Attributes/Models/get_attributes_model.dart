@@ -72,6 +72,7 @@ class GetAttributeModel {
     this.adminLabel,
     this.slug,
     this.inputType,
+    this.isActive = false,
     this.isOwn = false,
     this.values = const [],
   });
@@ -81,7 +82,13 @@ class GetAttributeModel {
   final String? adminLabel;
   final String? slug;
   final String? inputType;
+
+  /// Attribute active/inactive status.
+  final bool isActive;
+
+  /// Whether attribute was created by the vendor.
   final bool isOwn;
+
   final List<GetAttributeValueModel> values;
 
   // ============================================================
@@ -99,6 +106,7 @@ class GetAttributeModel {
       adminLabel: _parseString(json['admin_label']),
       slug: _parseString(json['slug']),
       inputType: _parseString(json['input_type']),
+      isActive: _parseBool(json['is_active']),
       isOwn: _parseBool(json['is_own']),
       values: _parseList(json['values'], GetAttributeValueModel.fromJson),
     );
@@ -115,6 +123,7 @@ class GetAttributeModel {
       'admin_label': adminLabel,
       'slug': slug,
       'input_type': inputType,
+      'is_active': isActive,
       'is_own': isOwn,
       'values': values.map((e) => e.toJson()).toList(),
     };

@@ -38,10 +38,7 @@ class _CampaignsScreenState extends ConsumerState<CampaignsScreen> {
 
   static const List<String> _fixedStatuses = [
     'pending',
-    'approved',
     'active',
-    'rejected',
-    'expired',
     'cancelled',
   ];
 

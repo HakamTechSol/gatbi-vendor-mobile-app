@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../Core/Bottom Naigation Bar/bottom_bar_screen.dart';
 import '../Core/Bottom Naigation Bar/bottom_bar_navigation.dart';
+import '../Features/Attributes/Add Attributes/Screens/add_attribute_screen.dart';
+import '../Features/Attributes/Get Attributes/Screens/get_attributes_screen.dart';
 import '../Features/Campaign/Campaign Detail/Screens/campaign_detail_screen.dart';
 import '../Features/Campaign/Create Campaign/Screens/create_campaign_screen.dart';
 import '../Features/Payouts/Get Payouts/Screens/payout_list_screen.dart';
@@ -31,6 +33,9 @@ import '../Features/Order/Order List/screens/orders_screen.dart';
 import '../Features/Product Section/Product Detail/Screens/product_detail_screen.dart';
 import '../Features/Question & Answer/Screens/question_list_screen.dart';
 import '../Features/Review/Screens/review_list_screen.dart';
+import '../Features/Sale Event/Event Detail/Screens/event_detail_screen.dart';
+import '../Features/Sale Event/Get Event/Screens/events_screen.dart';
+import '../Features/Sale Event/Join Event/Screens/join_event_screen.dart';
 import '../Features/Splash/splash_screen.dart';
 import '../Features/Support/screen/create_support_ticket_screen.dart';
 import '../Features/Support/screen/support_screen.dart';
@@ -81,6 +86,10 @@ abstract final class AppRoutes {
 
   static const String profile = '/profile';
 
+  static const String attributes = '/attributes';
+
+  static const String addAttributes = '/add/attributes';
+
   static const String chatList = '/chat-list';
 
   static const String chatDetail = '/chat-detail';
@@ -116,6 +125,12 @@ abstract final class AppRoutes {
   static const String createCampaigns = '/create/campaigns';
 
   static const String campaignDetail = '/campaigns/detail';
+
+  static const String saleEvent = '/sale-event';
+
+  static const String eventDetail = '/sale-event/detail';
+
+  static const String joinEvent = '/sale-event/join';
 
   static const String analytics = '/analytics';
 
@@ -360,6 +375,26 @@ final GoRouter appRouter = GoRouter(
       },
     ),
 
+    GoRoute(
+      path: AppRoutes.attributes,
+      name: 'attributes',
+      builder: (context, state) {
+        return GetAttributesScreen(
+          onAddAttribute: () {
+            context.push(AppRoutes.addAttributes);
+          },
+        );
+      },
+    ),
+
+    GoRoute(
+      path: AppRoutes.addAttributes,
+      name: 'add-attributes',
+      builder: (context, state) {
+        return AddAttributeScreen();
+      },
+    ),
+
     // Products
     GoRoute(
       path: AppRoutes.products,
@@ -600,6 +635,132 @@ final GoRouter appRouter = GoRouter(
     ),
 
     GoRoute(
+      path: AppRoutes.saleEvent,
+      name: 'sale-event',
+      builder: (context, state) {
+        return const EventsScreen();
+      },
+    ),
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // EVENT DETAIL
+    // ═══════════════════════════════════════════════════════════════════════
+    GoRoute(
+      path: AppRoutes.eventDetail,
+      name: 'event-detail',
+      builder: (context, state) {
+        final extra = state.extra;
+
+        // ============================================================
+        // VALIDATE EVENT ID
+        // ============================================================
+
+        if (extra is! int || extra <= 0) {
+          return const Scaffold(
+            body: Center(
+              child: Text(
+                'Event ID is missing.',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+          );
+        }
+
+        // ============================================================
+        // EVENT DETAIL SCREEN
+        // ============================================================
+
+        return EventDetailScreen(eventId: extra);
+      },
+    ),
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // JOIN EVENT
+    // ═══════════════════════════════════════════════════════════════════════════
+    GoRoute(
+      path: AppRoutes.joinEvent,
+      name: 'join-event',
+      builder: (context, state) {
+        final extra = state.extra;
+
+        int eventId;
+        String eventName;
+        String startDate;
+        String endDate;
+
+        // ============================================================
+        // MAP DATA
+        // ============================================================
+
+        if (extra is Map) {
+          final map = Map<String, dynamic>.from(extra);
+
+          final rawEventId = map['eventId'];
+          final rawEventName = map['eventName'];
+          final rawStartDate = map['startDate'];
+          final rawEndDate = map['endDate'];
+
+          eventId = rawEventId is int ? rawEventId : 0;
+
+          eventName = rawEventName is String && rawEventName.trim().isNotEmpty
+              ? rawEventName
+              : 'Event';
+
+          startDate = rawStartDate is String ? rawStartDate : '';
+
+          endDate = rawEndDate is String ? rawEndDate : '';
+        }
+        // ============================================================
+        // BACKWARD COMPATIBILITY
+        // ============================================================
+        else if (extra is int && extra > 0) {
+          eventId = extra;
+          eventName = 'Event';
+          startDate = '';
+          endDate = '';
+        }
+        // ============================================================
+        // INVALID DATA
+        // ============================================================
+        else {
+          return const Scaffold(
+            body: Center(
+              child: Text(
+                'Event ID is missing.',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+          );
+        }
+
+        // ============================================================
+        // VALIDATE EVENT ID
+        // ============================================================
+
+        if (eventId <= 0) {
+          return const Scaffold(
+            body: Center(
+              child: Text(
+                'Event ID is missing.',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+          );
+        }
+
+        // ============================================================
+        // JOIN EVENT SCREEN
+        // ============================================================
+
+        return JoinEventScreen(
+          eventId: eventId,
+          eventName: eventName,
+          startDate: startDate,
+          endDate: endDate,
+        );
+      },
+    ),
+    GoRoute(
       path: AppRoutes.chatList,
       name: 'chat-list',
       builder: (context, state) {
@@ -815,6 +976,15 @@ final GoRouter appRouter = GoRouter(
           },
           onPayouts: () {
             context.push(AppRoutes.payouts);
+          },
+          onSaleEvent: () {
+            context.push(AppRoutes.saleEvent);
+          },
+          onKycVerification: () {
+            context.push(AppRoutes.kyc);
+          },
+          onAttributes: () {
+            context.push(AppRoutes.attributes);
           },
         );
       },

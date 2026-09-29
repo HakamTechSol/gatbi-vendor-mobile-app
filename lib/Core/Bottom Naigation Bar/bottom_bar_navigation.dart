@@ -211,6 +211,10 @@ class _BottomMainScreenState extends State<BottomMainScreen> {
     context.push(AppRoutes.campaigns);
   }
 
+  void _openSaleEvent() {
+    context.push(AppRoutes.saleEvent);
+  }
+
   void _openAnalytics() {
     context.push(AppRoutes.analytics);
   }
@@ -241,6 +245,10 @@ class _BottomMainScreenState extends State<BottomMainScreen> {
 
   void _openPayouts() {
     context.push(AppRoutes.payouts);
+  }
+
+  void _openOnAttributes() {
+    context.push(AppRoutes.attributes);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -278,6 +286,7 @@ class _BottomMainScreenState extends State<BottomMainScreen> {
             onBulkProducts: _openBulkProducts,
             onTickets: _openSupportTickets,
             onCampaigns: _openCampaigns,
+            onSaleEvent: _openSaleEvent,
             onAnalytics: _openAnalytics,
             onOrders: _openOrders,
             onSupport: _openSupport,
@@ -286,6 +295,7 @@ class _BottomMainScreenState extends State<BottomMainScreen> {
             onReviews: _openReviews,
             onQuestionsAndAnswers: _openQuestionsAndAnswers,
             onPayouts: _openPayouts,
+            onAttributes: _openOnAttributes,
           ),
         ],
       ),

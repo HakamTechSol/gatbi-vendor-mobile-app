@@ -19,6 +19,7 @@ class MoreScreen extends ConsumerStatefulWidget {
 
     // Products
     this.onBulkProducts,
+    this.onAttributes,
 
     // Account
     this.onChangePassword,
@@ -34,6 +35,7 @@ class MoreScreen extends ConsumerStatefulWidget {
     // Growth
     this.onAnalytics,
     this.onCampaigns,
+    this.onSaleEvent,
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -48,6 +50,7 @@ class MoreScreen extends ConsumerStatefulWidget {
   // ═══════════════════════════════════════════════════════════════════════════
 
   final VoidCallback? onBulkProducts;
+  final VoidCallback? onAttributes;
 
   // ═══════════════════════════════════════════════════════════════════════════
   // ACCOUNT
@@ -72,6 +75,7 @@ class MoreScreen extends ConsumerStatefulWidget {
 
   final VoidCallback? onAnalytics;
   final VoidCallback? onCampaigns;
+  final VoidCallback? onSaleEvent;
 
   @override
   ConsumerState<MoreScreen> createState() => _MoreScreenState();
@@ -471,6 +475,12 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
           subtitle: 'Import or manage products in bulk',
           onTap: widget.onBulkProducts,
         ),
+        _buildMenuItem(
+          icon: Icons.attribution_outlined,
+          title: 'Attributes',
+          subtitle: 'Import or manage product Attributes',
+          onTap: widget.onAttributes,
+        ),
       ],
     );
   }
@@ -576,6 +586,12 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
           title: 'Campaigns',
           subtitle: 'Create and manage promotional campaigns',
           onTap: widget.onCampaigns,
+        ),
+        _buildMenuItem(
+          icon: Icons.event_available_rounded,
+          title: 'Sale Event',
+          subtitle: 'Join and manage promotional Event',
+          onTap: widget.onSaleEvent,
         ),
       ],
     );

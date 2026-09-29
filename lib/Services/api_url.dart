@@ -42,6 +42,9 @@ class ApiUrls {
 
   static const String campaignTypes = 'vendor/campaign-types';
 
+  //Sale Event
+  static const String getEvents = 'vendor/events';
+
   // Products
   static const String products = 'vendor/products';
 

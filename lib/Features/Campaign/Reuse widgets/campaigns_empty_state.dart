@@ -56,7 +56,7 @@ class CampaignsEmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           CustomButton(
-            text: 'Contact Support',
+            text: 'Request Campaign',
             icon: Icons.support_agent_outlined,
             iconPosition: CustomButtonIconPosition.leading,
             onPressed: onContactSupport,
