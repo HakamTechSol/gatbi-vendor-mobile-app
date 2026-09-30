@@ -171,19 +171,21 @@ class _AttributeCardState extends State<AttributeCard> {
                 ],
               ),
 
-              const SizedBox(height: 5),
+              if (_hasAdminLabel) ...[
+                const SizedBox(height: 5),
 
-              // --------------------------------------------------
-              // ADMIN LABEL
-              // --------------------------------------------------
-              Text(
-                _adminLabel,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: AppColors.textSecondary,
+                Text(
+                  _adminLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
                 ),
-              ),
+
+                const SizedBox(height: 10),
+              ] else
+                const SizedBox(height: 10),
 
               const SizedBox(height: 10),
 
@@ -677,14 +679,14 @@ class _AttributeCardState extends State<AttributeCard> {
     return name;
   }
 
-  String get _adminLabel {
+  bool get _hasAdminLabel {
     final label = attribute.adminLabel?.trim();
 
-    if (label == null || label.isEmpty) {
-      return 'No admin label';
-    }
+    return label != null && label.isNotEmpty;
+  }
 
-    return label;
+  String get _adminLabel {
+    return attribute.adminLabel!.trim();
   }
 
   String _formatInputType(String? value) {

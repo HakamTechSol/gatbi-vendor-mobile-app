@@ -54,10 +54,12 @@ class EventsModel {
   // ============================================================
 
   static bool _parseBool(dynamic value) {
-    if (value is bool) return value;
+    if (value is bool) {
+      return value;
+    }
 
     if (value is String) {
-      final normalized = value.toLowerCase();
+      final normalized = value.toLowerCase().trim();
 
       return normalized == 'true' || normalized == '1' || normalized == 'yes';
     }
@@ -70,7 +72,9 @@ class EventsModel {
   }
 
   static String? _parseString(dynamic value) {
-    if (value == null) return null;
+    if (value == null) {
+      return null;
+    }
 
     if (value is String) {
       return value;
@@ -83,7 +87,9 @@ class EventsModel {
     dynamic value,
     T Function(Map<String, dynamic>) fromJson,
   ) {
-    if (value is! List) return const [];
+    if (value is! List) {
+      return const [];
+    }
 
     return value
         .whereType<Map>()
@@ -125,7 +131,17 @@ class EventItemModel {
   final String? endDate;
   final num? minDiscountPercentage;
   final String? status;
-  final dynamic myParticipation;
+
+  /// Null when vendor has not participated.
+  ///
+  /// Example:
+  /// {
+  ///   "campaign_id": 33,
+  ///   "status": "pending",
+  ///   "requested_discount_percentage": 15,
+  ///   "discount_percentage": null
+  /// }
+  final MyParticipationModel? myParticipation;
 
   // ============================================================
   // From JSON
@@ -147,7 +163,7 @@ class EventItemModel {
       endDate: _parseString(json['end_date']),
       minDiscountPercentage: _parseNum(json['min_discount_percentage']),
       status: _parseString(json['status']),
-      myParticipation: json['my_participation'],
+      myParticipation: _parseParticipation(json['my_participation']),
     );
   }
 
@@ -167,7 +183,7 @@ class EventItemModel {
       'end_date': endDate,
       'min_discount_percentage': minDiscountPercentage,
       'status': status,
-      'my_participation': myParticipation,
+      'my_participation': myParticipation?.toJson(),
     };
   }
 
@@ -176,7 +192,9 @@ class EventItemModel {
   // ============================================================
 
   static int? _parseInt(dynamic value) {
-    if (value is int) return value;
+    if (value is int) {
+      return value;
+    }
 
     if (value is num) {
       return value.toInt();
@@ -190,7 +208,9 @@ class EventItemModel {
   }
 
   static num? _parseNum(dynamic value) {
-    if (value is num) return value;
+    if (value is num) {
+      return value;
+    }
 
     if (value is String) {
       return num.tryParse(value);
@@ -200,7 +220,119 @@ class EventItemModel {
   }
 
   static String? _parseString(dynamic value) {
-    if (value == null) return null;
+    if (value == null) {
+      return null;
+    }
+
+    if (value is String) {
+      return value;
+    }
+
+    return value.toString();
+  }
+
+  static MyParticipationModel? _parseParticipation(dynamic value) {
+    if (value == null) {
+      return null;
+    }
+
+    if (value is Map) {
+      return MyParticipationModel.fromJson(Map<String, dynamic>.from(value));
+    }
+
+    return null;
+  }
+}
+
+// ============================================================
+// My Participation Model
+// ============================================================
+
+class MyParticipationModel {
+  const MyParticipationModel({
+    this.campaignId,
+    this.status,
+    this.requestedDiscountPercentage,
+    this.discountPercentage,
+  });
+
+  // ============================================================
+  // Fields
+  // ============================================================
+
+  final int? campaignId;
+  final String? status;
+  final num? requestedDiscountPercentage;
+  final num? discountPercentage;
+
+  // ============================================================
+  // From JSON
+  // ============================================================
+
+  factory MyParticipationModel.fromJson(Map<String, dynamic>? json) {
+    if (json == null) {
+      return const MyParticipationModel();
+    }
+
+    return MyParticipationModel(
+      campaignId: _parseInt(json['campaign_id']),
+      status: _parseString(json['status']),
+      requestedDiscountPercentage: _parseNum(
+        json['requested_discount_percentage'],
+      ),
+      discountPercentage: _parseNum(json['discount_percentage']),
+    );
+  }
+
+  // ============================================================
+  // To JSON
+  // ============================================================
+
+  Map<String, dynamic> toJson() {
+    return {
+      'campaign_id': campaignId,
+      'status': status,
+      'requested_discount_percentage': requestedDiscountPercentage,
+      'discount_percentage': discountPercentage,
+    };
+  }
+
+  // ============================================================
+  // Parsers
+  // ============================================================
+
+  static int? _parseInt(dynamic value) {
+    if (value is int) {
+      return value;
+    }
+
+    if (value is num) {
+      return value.toInt();
+    }
+
+    if (value is String) {
+      return int.tryParse(value);
+    }
+
+    return null;
+  }
+
+  static num? _parseNum(dynamic value) {
+    if (value is num) {
+      return value;
+    }
+
+    if (value is String) {
+      return num.tryParse(value);
+    }
+
+    return null;
+  }
+
+  static String? _parseString(dynamic value) {
+    if (value == null) {
+      return null;
+    }
 
     if (value is String) {
       return value;

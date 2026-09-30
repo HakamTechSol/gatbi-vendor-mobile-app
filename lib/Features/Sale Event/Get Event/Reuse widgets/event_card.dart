@@ -7,11 +7,20 @@ import '../Models/get_events_model.dart';
 import 'event_status_badge.dart';
 
 class EventCard extends StatelessWidget {
-  const EventCard({super.key, required this.event, this.onTap, this.onJoin});
+  const EventCard({
+    super.key,
+    required this.event,
+    this.onTap,
+    this.onJoin,
+    this.onUpdateParticipation,
+    this.onDeleteParticipation,
+  });
 
   final EventItemModel event;
   final VoidCallback? onTap;
   final VoidCallback? onJoin;
+  final VoidCallback? onUpdateParticipation;
+  final VoidCallback? onDeleteParticipation;
 
   @override
   Widget build(BuildContext context) {
@@ -43,30 +52,22 @@ class EventCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildBanner(),
-
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 15, 16, 16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildHeader(),
-
                       const SizedBox(height: 12),
-
                       _buildTitle(),
-
                       if (_hasDescription) ...[
                         const SizedBox(height: 6),
                         _buildDescription(),
                       ],
-
                       const SizedBox(height: 15),
-
                       _buildInfoRow(),
-
                       const SizedBox(height: 16),
-
-                      _buildJoinButton(enabled: canJoin),
+                      _buildActionButtons(enabled: canJoin),
                     ],
                   ),
                 ),
@@ -125,7 +126,6 @@ class EventCard extends StatelessWidget {
               return _buildBannerPlaceholder(showLoading: true);
             },
           ),
-
           DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -138,7 +138,6 @@ class EventCard extends StatelessWidget {
               ),
             ),
           ),
-
           Positioned(
             left: 14,
             top: 14,
@@ -276,9 +275,117 @@ class EventCard extends StatelessWidget {
         _InfoItem(icon: Icons.calendar_month_outlined, label: _dateRange),
         _InfoItem(
           icon: Icons.local_offer_outlined,
-          label: 'Min ${_formatDiscount}% discount',
+          label: 'Min $_formatDiscount discount',
           highlight: true,
         ),
+      ],
+    );
+  }
+
+  // ============================================================
+  // Action Buttons
+  // ============================================================
+
+  Widget _buildActionButtons({required bool enabled}) {
+    final participation = event.myParticipation;
+
+    // ==========================================================
+    // No Participation
+    //
+    // my_participation: null
+    //
+    // SHOW:
+    // Join Event
+    // ==========================================================
+
+    if (participation == null) {
+      debugPrint('');
+      debugPrint('========== EVENT ACTION STATE ==========');
+      debugPrint('EVENT: ${event.name}');
+      debugPrint('EVENT ID: ${event.id}');
+      debugPrint('PARTICIPATION: NONE');
+      debugPrint('ACTION: JOIN EVENT');
+      debugPrint('========================================');
+
+      return _buildJoinButton(enabled: enabled);
+    }
+
+    // ==========================================================
+    // Participation Status
+    // ==========================================================
+
+    final participationStatus = participation.status?.trim().toLowerCase();
+
+    final isCancelled = participationStatus == 'cancelled';
+
+    debugPrint('');
+    debugPrint('========== EVENT ACTION STATE ==========');
+    debugPrint('EVENT: ${event.name}');
+    debugPrint('EVENT ID: ${event.id}');
+    debugPrint('PARTICIPATION STATUS: $participationStatus');
+    debugPrint('CAMPAIGN ID: ${participation.campaignId}');
+    debugPrint(
+      'REQUESTED DISCOUNT: '
+      '${participation.requestedDiscountPercentage}',
+    );
+    debugPrint(
+      'APPROVED DISCOUNT: '
+      '${participation.discountPercentage}',
+    );
+    debugPrint('IS CANCELLED: $isCancelled');
+
+    // ==========================================================
+    // Cancelled Participation
+    //
+    // API:
+    //
+    // "my_participation": {
+    //   "campaign_id": 38,
+    //   "status": "cancelled"
+    // }
+    //
+    // SHOW:
+    // Join Event
+    //
+    // HIDE:
+    // Update Participation
+    // Cancel Participation
+    // ==========================================================
+
+    if (isCancelled) {
+      debugPrint('ACTION: JOIN EVENT (CANCELLED PARTICIPATION)');
+      debugPrint('UPDATE PARTICIPATION: HIDDEN');
+      debugPrint('CANCEL PARTICIPATION: HIDDEN');
+      debugPrint('========================================');
+
+      return _buildJoinButton(enabled: enabled);
+    }
+
+    // ==========================================================
+    // Pending / Other Participation
+    //
+    // Example:
+    //
+    // "my_participation": {
+    //   "campaign_id": 33,
+    //   "status": "pending"
+    // }
+    //
+    // SHOW:
+    // Update Participation
+    // Cancel Participation
+    // ==========================================================
+
+    debugPrint('ACTION: UPDATE + CANCEL');
+    debugPrint('UPDATE PARTICIPATION: VISIBLE');
+    debugPrint('CANCEL PARTICIPATION: VISIBLE');
+    debugPrint('========================================');
+
+    return Row(
+      children: [
+        Expanded(child: _buildUpdateButton(enabled: enabled)),
+        const SizedBox(width: 10),
+        Expanded(child: _buildDeleteButton(enabled: enabled)),
       ],
     );
   }
@@ -288,32 +395,6 @@ class EventCard extends StatelessWidget {
   // ============================================================
 
   Widget _buildJoinButton({required bool enabled}) {
-    final hasParticipation = event.myParticipation != null;
-
-    if (hasParticipation) {
-      return Container(
-        width: double.infinity,
-        height: 48,
-        decoration: BoxDecoration(
-          color: AppColors.successLight,
-          borderRadius: BorderRadius.circular(11),
-          border: Border.all(color: AppColors.successBorder),
-        ),
-        child: const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.check_circle_rounded,
-              size: 19,
-              color: AppColors.successDark,
-            ),
-            SizedBox(width: 7),
-            Text('Already Joined', style: AppTextStyles.buttonOutlined),
-          ],
-        ),
-      );
-    }
-
     return SizedBox(
       width: double.infinity,
       height: 48,
@@ -361,6 +442,95 @@ class EventCard extends StatelessWidget {
   }
 
   // ============================================================
+  // Update Participation
+  // ============================================================
+
+  Widget _buildUpdateButton({required bool enabled}) {
+    return SizedBox(
+      height: 48,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: enabled ? AppColors.primaryGradient : null,
+          color: enabled ? null : AppColors.disabled,
+          borderRadius: BorderRadius.circular(11),
+          boxShadow: enabled
+              ? const [
+                  BoxShadow(
+                    color: AppColors.primaryShadow,
+                    blurRadius: 10,
+                    offset: Offset(0, 5),
+                  ),
+                ]
+              : null,
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: enabled ? onUpdateParticipation : null,
+            borderRadius: BorderRadius.circular(11),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Flexible(
+                  child: Text(
+                    'Update Participation',
+                    style: AppTextStyles.buttonSmall.copyWith(
+                      color: enabled ? AppColors.white : AppColors.disabledText,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // Delete / Cancel Participation
+  // ============================================================
+
+  Widget _buildDeleteButton({required bool enabled}) {
+    return SizedBox(
+      height: 48,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: enabled ? AppColors.surface : AppColors.disabled,
+          borderRadius: BorderRadius.circular(11),
+          border: Border.all(
+            color: enabled ? AppColors.errorDark : AppColors.border,
+          ),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: enabled ? onDeleteParticipation : null,
+            borderRadius: BorderRadius.circular(11),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Flexible(
+                  child: Text(
+                    'Cancel Participation',
+                    style: AppTextStyles.buttonSmall.copyWith(
+                      color: enabled
+                          ? AppColors.errorDark
+                          : AppColors.disabledText,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
   // Helpers
   // ============================================================
 
@@ -387,12 +557,10 @@ class EventCard extends StatelessWidget {
   }
 
   String _buildFullImageUrl(String path) {
-    // Already complete URL
     if (path.startsWith('http://') || path.startsWith('https://')) {
       return path;
     }
 
-    // Remove leading slash to avoid //
     final cleanPath = path.startsWith('/') ? path.substring(1) : path;
 
     return 'https://gatbi.ae/$cleanPath';

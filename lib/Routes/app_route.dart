@@ -2,8 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../Core/Bottom Naigation Bar/bottom_bar_screen.dart';
 import '../Core/Bottom Naigation Bar/bottom_bar_navigation.dart';
+import '../Features/Account Setting/Get Profile/Screens/vendor_profile_screen.dart';
 import '../Features/Attributes/Add Attributes/Screens/add_attribute_screen.dart';
+import '../Features/Attributes/Edit Attributes/Screens/edit_attribute_screen.dart';
+import '../Features/Attributes/Get Attributes/Models/get_attributes_model.dart';
 import '../Features/Attributes/Get Attributes/Screens/get_attributes_screen.dart';
+import '../Features/Attributes/Varient/Add Varient/Screens/add_variant_screen.dart';
+import '../Features/Attributes/Varient/Edit Varient/Screens/edit_variant_screen.dart';
 import '../Features/Campaign/Campaign Detail/Screens/campaign_detail_screen.dart';
 import '../Features/Campaign/Create Campaign/Screens/create_campaign_screen.dart';
 import '../Features/Payouts/Get Payouts/Screens/payout_list_screen.dart';
@@ -33,6 +38,7 @@ import '../Features/Order/Order List/screens/orders_screen.dart';
 import '../Features/Product Section/Product Detail/Screens/product_detail_screen.dart';
 import '../Features/Question & Answer/Screens/question_list_screen.dart';
 import '../Features/Review/Screens/review_list_screen.dart';
+import '../Features/Sale Event/Edit Event/Screens/edit_event_screen.dart';
 import '../Features/Sale Event/Event Detail/Screens/event_detail_screen.dart';
 import '../Features/Sale Event/Get Event/Screens/events_screen.dart';
 import '../Features/Sale Event/Join Event/Screens/join_event_screen.dart';
@@ -90,6 +96,8 @@ abstract final class AppRoutes {
 
   static const String addAttributes = '/add/attributes';
 
+  static const String editAttributes = '/edit/attributes';
+
   static const String chatList = '/chat-list';
 
   static const String chatDetail = '/chat-detail';
@@ -132,11 +140,17 @@ abstract final class AppRoutes {
 
   static const String joinEvent = '/sale-event/join';
 
+  static const String editEvent = '/sale-event/edit';
+
   static const String analytics = '/analytics';
 
   static const String kyc = '/kyc';
 
   static const String more = '/more';
+
+  static const String addVariant = '/add/variant';
+
+  static const String editVariant = '/edit/variant';
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -379,11 +393,7 @@ final GoRouter appRouter = GoRouter(
       path: AppRoutes.attributes,
       name: 'attributes',
       builder: (context, state) {
-        return GetAttributesScreen(
-          onAddAttribute: () {
-            context.push(AppRoutes.addAttributes);
-          },
-        );
+        return GetAttributesScreen();
       },
     ),
 
@@ -392,6 +402,66 @@ final GoRouter appRouter = GoRouter(
       name: 'add-attributes',
       builder: (context, state) {
         return AddAttributeScreen();
+      },
+    ),
+
+    GoRoute(
+      path: AppRoutes.editAttributes,
+      name: 'edit-attributes',
+      builder: (context, state) {
+        final extra = state.extra;
+
+        // ============================================================
+        // VALIDATE ROUTE DATA
+        // ============================================================
+
+        if (extra is! Map) {
+          return const Scaffold(
+            body: Center(
+              child: Text(
+                'Attribute data is missing.',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+          );
+        }
+
+        final data = Map<String, dynamic>.from(extra);
+
+        final attributeId = data['attributeId'];
+        final initialName = data['initialName'];
+        final initialInputType = data['initialInputType'];
+        final initialIsActive = data['initialIsActive'];
+        final initialSlug = data['initialSlug'];
+
+        // ============================================================
+        // VALIDATE ATTRIBUTE ID
+        // ============================================================
+
+        if (attributeId is! int || attributeId <= 0) {
+          return const Scaffold(
+            body: Center(
+              child: Text(
+                'Attribute ID is missing.',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+          );
+        }
+
+        // ============================================================
+        // EDIT ATTRIBUTE SCREEN
+        // ============================================================
+
+        return EditAttributeScreen(
+          attributeId: attributeId,
+          initialName: initialName is String ? initialName : '',
+          initialInputType: initialInputType is String
+              ? initialInputType
+              : 'text',
+          initialIsActive: initialIsActive is bool ? initialIsActive : false,
+          initialSlug: initialSlug is String ? initialSlug : null,
+        );
       },
     ),
 
@@ -760,6 +830,213 @@ final GoRouter appRouter = GoRouter(
         );
       },
     ),
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // EDIT EVENT
+    // ═══════════════════════════════════════════════════════════════════════════
+    GoRoute(
+      path: AppRoutes.editEvent,
+      name: 'edit-event',
+      builder: (context, state) {
+        final extra = state.extra;
+
+        // ============================================================
+        // VALIDATE EVENT ID
+        // ============================================================
+
+        if (extra is! int || extra <= 0) {
+          return const Scaffold(
+            body: Center(
+              child: Text(
+                'Event ID is missing.',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+          );
+        }
+
+        // ============================================================
+        // EDIT EVENT SCREEN
+        // ============================================================
+
+        return EditEventScreen(eventId: extra);
+      },
+    ),
+
+    GoRoute(
+      path: AppRoutes.addVariant,
+      name: 'add-variant',
+      builder: (context, state) {
+        final extra = state.extra;
+
+        // ============================================================
+        // VALIDATE ATTRIBUTE DATA
+        // ============================================================
+
+        if (extra is! GetAttributeModel) {
+          return const Scaffold(
+            body: Center(
+              child: Text(
+                'Attribute data is missing.',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+          );
+        }
+
+        // ============================================================
+        // VALIDATE ATTRIBUTE ID
+        // ============================================================
+
+        final attributeId = extra.id;
+
+        if (attributeId == null || attributeId <= 0) {
+          return const Scaffold(
+            body: Center(
+              child: Text(
+                'Attribute ID is missing.',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+          );
+        }
+
+        // ============================================================
+        // VALIDATE OWN ATTRIBUTE
+        // ============================================================
+
+        if (!extra.isOwn) {
+          return const Scaffold(
+            body: Center(
+              child: Text(
+                'System attributes cannot be modified.',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+          );
+        }
+
+        // ============================================================
+        // ADD VARIANT SCREEN
+        // ============================================================
+
+        return AddVariantScreen(attribute: extra);
+      },
+    ),
+
+    GoRoute(
+      path: AppRoutes.editVariant,
+      name: 'edit-variant',
+      builder: (context, state) {
+        final extra = state.extra;
+
+        // ============================================================
+        // VALIDATE ROUTE DATA
+        // ============================================================
+
+        if (extra is! Map) {
+          return const Scaffold(
+            body: Center(
+              child: Text(
+                'Variant data is missing.',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+          );
+        }
+
+        final data = Map<String, dynamic>.from(extra);
+
+        final attribute = data['attribute'];
+        final variant = data['variant'];
+
+        // ============================================================
+        // VALIDATE ATTRIBUTE
+        // ============================================================
+
+        if (attribute is! GetAttributeModel) {
+          return const Scaffold(
+            body: Center(
+              child: Text(
+                'Attribute data is missing.',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+          );
+        }
+
+        // ============================================================
+        // VALIDATE VARIANT
+        // ============================================================
+
+        if (variant is! GetAttributeValueModel) {
+          return const Scaffold(
+            body: Center(
+              child: Text(
+                'Variant data is missing.',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+          );
+        }
+
+        // ============================================================
+        // VALIDATE ATTRIBUTE ID
+        // ============================================================
+
+        final attributeId = attribute.id;
+
+        if (attributeId == null || attributeId <= 0) {
+          return const Scaffold(
+            body: Center(
+              child: Text(
+                'Attribute ID is missing.',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+          );
+        }
+
+        // ============================================================
+        // VALIDATE VARIANT ID
+        // ============================================================
+
+        final variantId = variant.id;
+
+        if (variantId == null || variantId <= 0) {
+          return const Scaffold(
+            body: Center(
+              child: Text(
+                'Variant ID is missing.',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+          );
+        }
+
+        // ============================================================
+        // VALIDATE OWN ATTRIBUTE
+        // ============================================================
+
+        if (!attribute.isOwn) {
+          return const Scaffold(
+            body: Center(
+              child: Text(
+                'System attributes cannot be modified.',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+          );
+        }
+
+        // ============================================================
+        // EDIT VARIANT SCREEN
+        // ============================================================
+
+        return EditVariantScreen(attribute: attribute, variant: variant);
+      },
+    ),
+
     GoRoute(
       path: AppRoutes.chatList,
       name: 'chat-list',
@@ -986,6 +1263,9 @@ final GoRouter appRouter = GoRouter(
           onAttributes: () {
             context.push(AppRoutes.attributes);
           },
+          onProfile: () {
+            context.push(AppRoutes.profile);
+          },
         );
       },
     ),
@@ -1037,14 +1317,26 @@ final GoRouter appRouter = GoRouter(
         );
       },
     ),
-    // Profile
-    // GoRoute(
-    //   path: AppRoutes.profile,
-    //   name: 'profile',
-    //   builder: (context, state) {
-    //     return const ProfileScreen();
-    //   },
-    // ),
+    // ═══════════════════════════════════════════════════════════════════════════
+    // VENDOR PROFILE
+    // ═══════════════════════════════════════════════════════════════════════════
+    GoRoute(
+      path: AppRoutes.profile,
+      name: 'profile',
+      builder: (context, state) {
+        return VendorProfileScreen(
+          onEdit: () {
+            debugPrint('');
+            debugPrint('========== VENDOR PROFILE EDIT ==========');
+            debugPrint('Opening merchant profile edit screen...');
+            debugPrint('=========================================');
+            debugPrint('');
+
+            // Edit Profile API / Screen later connect karenge.
+          },
+        );
+      },
+    ),
   ],
 
   // ═════════════════════════════════════════════════════════════════════════

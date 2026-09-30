@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../Routes/app_route.dart';
 import '../../../../Services/api_exception.dart';
 import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
 
 import '../../Delete Attributes/Controller/delete_attributes_controller.dart';
-import '../../Edit Attributes/Screens/edit_attribute_screen.dart';
+
+import '../../Varient/Add Varient/Models/add_variant_model.dart';
+
+import '../../Varient/Delete Varient/Controller/delete_variant_controller.dart';
+
 import '../Controllers/get_attributes_controller.dart';
 import '../Models/get_attributes_model.dart';
 import '../Reuse Widgets/attribute_card.dart';
@@ -17,13 +23,7 @@ import '../Reuse Widgets/attributes_loading.dart';
 import '../Reuse widgets/attributes_header.dart';
 
 class GetAttributesScreen extends ConsumerStatefulWidget {
-  const GetAttributesScreen({super.key, required this.onAddAttribute});
-
-  // ============================================================
-  // Future CRUD Hook
-  // ============================================================
-
-  final VoidCallback onAddAttribute;
+  const GetAttributesScreen({super.key});
 
   @override
   ConsumerState<GetAttributesScreen> createState() =>
@@ -32,7 +32,7 @@ class GetAttributesScreen extends ConsumerStatefulWidget {
 
 class _GetAttributesScreenState extends ConsumerState<GetAttributesScreen> {
   // ============================================================
-  // State
+  // STATE
   // ============================================================
 
   GetAttributesModel? _attributesResponse;
@@ -41,13 +41,19 @@ class _GetAttributesScreenState extends ConsumerState<GetAttributesScreen> {
   String? _errorMessage;
 
   // ============================================================
-  // Delete State
+  // ATTRIBUTE DELETE STATE
   // ============================================================
 
   int? _deletingAttributeId;
 
   // ============================================================
-  // Lifecycle
+  // VARIANT DELETE STATE
+  // ============================================================
+
+  int? _deletingVariantId;
+
+  // ============================================================
+  // LIFECYCLE
   // ============================================================
 
   @override
@@ -64,7 +70,9 @@ class _GetAttributesScreenState extends ConsumerState<GetAttributesScreen> {
   // ============================================================
 
   Future<void> _loadAttributes({bool showFullLoading = true}) async {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     setState(() {
       if (showFullLoading) {
@@ -79,7 +87,9 @@ class _GetAttributesScreenState extends ConsumerState<GetAttributesScreen> {
 
       final response = await controller.getAttributes();
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _attributesResponse = response;
@@ -87,12 +97,66 @@ class _GetAttributesScreenState extends ConsumerState<GetAttributesScreen> {
         _errorMessage = null;
       });
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _isLoading = false;
         _errorMessage = _extractErrorMessage(error);
       });
+    }
+  }
+
+  // ============================================================
+  // ADD ATTRIBUTE
+  // ============================================================
+
+  Future<void> _handleOnAddAttribute() async {
+    if (_deletingAttributeId != null || _deletingVariantId != null) {
+      return;
+    }
+
+    // ----------------------------------------------------------
+    // Open Add Attribute Route
+    // ----------------------------------------------------------
+
+    final result = await context.push(AppRoutes.addAttributes);
+
+    // ----------------------------------------------------------
+    // Screen Closed
+    // ----------------------------------------------------------
+
+    if (!mounted) {
+      return;
+    }
+
+    // ----------------------------------------------------------
+    // ALWAYS REFRESH WITH FULL SHIMMER
+    // ----------------------------------------------------------
+
+    await _loadAttributes(showFullLoading: true);
+
+    // ----------------------------------------------------------
+    // SUCCESS MESSAGE
+    // ----------------------------------------------------------
+
+    if (!mounted) {
+      return;
+    }
+
+    if (result != null) {
+      try {
+        final dynamic response = result;
+
+        if (response.success == true) {
+          _showSuccessSnackBar(
+            response.message ?? 'Attribute created successfully.',
+          );
+        }
+      } catch (_) {
+        // Ignore invalid route result.
+      }
     }
   }
 
@@ -116,38 +180,50 @@ class _GetAttributesScreenState extends ConsumerState<GetAttributesScreen> {
 
     final attributeId = attribute.id;
 
-    if (attributeId == null) {
+    if (attributeId == null || attributeId <= 0) {
       _showErrorSnackBar('Unable to edit attribute. Attribute ID is missing.');
       return;
     }
 
     // ----------------------------------------------------------
-    // Open Edit Screen
+    // DEBUG
     // ----------------------------------------------------------
 
-    final result = await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => EditAttributeScreen(
-          attributeId: attributeId,
-          initialName: attribute.name ?? '',
-          initialInputType: attribute.inputType ?? 'text',
-          initialIsActive: attribute.isActive,
-          initialSlug: attribute.slug,
-        ),
-      ),
+    debugPrint('');
+    debugPrint('========== EDIT ATTRIBUTE NAVIGATION ==========');
+    debugPrint('ATTRIBUTE ID: $attributeId');
+    debugPrint('ATTRIBUTE NAME: ${attribute.name ?? 'N/A'}');
+    debugPrint('ATTRIBUTE INPUT TYPE: ${attribute.inputType ?? 'N/A'}');
+    debugPrint('ATTRIBUTE IS ACTIVE: ${attribute.isActive}');
+    debugPrint('ATTRIBUTE SLUG: ${attribute.slug ?? 'N/A'}');
+    debugPrint('================================================');
+    debugPrint('');
+
+    // ----------------------------------------------------------
+    // OPEN EDIT ATTRIBUTE ROUTE
+    // ----------------------------------------------------------
+
+    await context.push(
+      AppRoutes.editAttributes,
+      extra: {
+        'attributeId': attributeId,
+        'initialName': attribute.name ?? '',
+        'initialInputType': attribute.inputType ?? 'text',
+        'initialIsActive': attribute.isActive,
+        'initialSlug': attribute.slug,
+      },
     );
 
     // ----------------------------------------------------------
-    // Refresh List After Successful Update
+    // Screen Closed
+    // Always Refresh With Full Shimmer
     // ----------------------------------------------------------
 
     if (!mounted) {
       return;
     }
 
-    if (result != null) {
-      await _loadAttributes(showFullLoading: false);
-    }
+    await _loadAttributes(showFullLoading: true);
   }
 
   // ============================================================
@@ -170,7 +246,7 @@ class _GetAttributesScreenState extends ConsumerState<GetAttributesScreen> {
 
     final attributeId = attribute.id;
 
-    if (attributeId == null) {
+    if (attributeId == null || attributeId <= 0) {
       _showErrorSnackBar(
         'Unable to delete attribute. Attribute ID is missing.',
       );
@@ -181,16 +257,23 @@ class _GetAttributesScreenState extends ConsumerState<GetAttributesScreen> {
     // Prevent Duplicate Delete
     // ----------------------------------------------------------
 
-    if (_deletingAttributeId != null) {
+    if (_deletingAttributeId != null || _deletingVariantId != null) {
       return;
     }
 
     // ----------------------------------------------------------
-    // Show Confirmation Dialog
+    // Confirmation
     // ----------------------------------------------------------
 
     final shouldDelete = await _showDeleteConfirmation(
-      attributeName: attribute.name ?? 'this attribute',
+      title: 'Delete Attribute',
+      itemName: attribute.name ?? 'this attribute',
+      message:
+          'Are you sure you want to delete '
+          '"${attribute.name ?? 'this attribute'}"?\n\n'
+          'All values associated with this attribute may also be '
+          'affected.\n\n'
+          'This action cannot be undone.',
     );
 
     if (!mounted || !shouldDelete) {
@@ -198,7 +281,7 @@ class _GetAttributesScreenState extends ConsumerState<GetAttributesScreen> {
     }
 
     // ----------------------------------------------------------
-    // Start Delete Loading
+    // Start Loading
     // ----------------------------------------------------------
 
     setState(() {
@@ -219,7 +302,7 @@ class _GetAttributesScreenState extends ConsumerState<GetAttributesScreen> {
       }
 
       // --------------------------------------------------------
-      // API SUCCESS
+      // SUCCESS
       // --------------------------------------------------------
 
       if (response.success) {
@@ -232,15 +315,11 @@ class _GetAttributesScreenState extends ConsumerState<GetAttributesScreen> {
         });
 
         // ------------------------------------------------------
-        // Refresh Attributes
+        // Refresh With Shimmer
         // ------------------------------------------------------
 
-        await _loadAttributes(showFullLoading: false);
+        await _loadAttributes(showFullLoading: true);
       } else {
-        // ------------------------------------------------------
-        // API returned success = false
-        // ------------------------------------------------------
-
         setState(() {
           _deletingAttributeId = null;
         });
@@ -275,10 +354,380 @@ class _GetAttributesScreenState extends ConsumerState<GetAttributesScreen> {
   }
 
   // ============================================================
-  // DELETE CONFIRMATION
+  // ADD VARIANT
   // ============================================================
 
-  Future<bool> _showDeleteConfirmation({required String attributeName}) async {
+  Future<void> _handleOnAddValue(GetAttributeModel attribute) async {
+    // ----------------------------------------------------------
+    // Validate Attribute ID
+    // ----------------------------------------------------------
+
+    if (attribute.id == null || attribute.id! <= 0) {
+      _showErrorMessage('Attribute ID is missing.');
+      return;
+    }
+
+    // ----------------------------------------------------------
+    // Only Own Attributes
+    // ----------------------------------------------------------
+
+    if (!attribute.isOwn) {
+      _showErrorMessage('System attributes cannot be modified.');
+      return;
+    }
+
+    // ----------------------------------------------------------
+    // Prevent Navigation During Delete
+    // ----------------------------------------------------------
+
+    if (_deletingAttributeId != null || _deletingVariantId != null) {
+      return;
+    }
+
+    // ----------------------------------------------------------
+    // Open Add Variant
+    // ----------------------------------------------------------
+
+    final result = await context.push(AppRoutes.addVariant, extra: attribute);
+
+    // ----------------------------------------------------------
+    // Screen Closed
+    // ----------------------------------------------------------
+
+    if (!mounted) {
+      return;
+    }
+
+    // ----------------------------------------------------------
+    // Always Refresh After Returning
+    // ----------------------------------------------------------
+
+    await _loadAttributes(showFullLoading: true);
+
+    // ----------------------------------------------------------
+    // Success Feedback
+    // ----------------------------------------------------------
+
+    if (!mounted) {
+      return;
+    }
+
+    if (result is AddVariantModel && result.success) {
+      _showSuccessSnackBar(result.message ?? 'Variant added successfully.');
+    }
+  }
+
+  // ============================================================
+  // EDIT VARIANT
+  // ============================================================
+
+  Future<void> _handleOnEditValue(
+    GetAttributeModel attribute,
+    GetAttributeValueModel variant,
+  ) async {
+    // ============================================================
+    // VALIDATE ATTRIBUTE
+    // ============================================================
+
+    if (!attribute.isOwn) {
+      _showErrorMessage('System attributes cannot be modified.');
+      return;
+    }
+
+    // ============================================================
+    // VALIDATE ATTRIBUTE ID
+    // ============================================================
+
+    final attributeId = attribute.id;
+
+    if (attributeId == null || attributeId <= 0) {
+      _showErrorMessage('Attribute ID is missing.');
+      return;
+    }
+
+    // ============================================================
+    // VALIDATE VARIANT ID
+    // ============================================================
+
+    final variantId = variant.id;
+
+    if (variantId == null || variantId <= 0) {
+      _showErrorMessage('Variant ID is missing.');
+      return;
+    }
+
+    // ============================================================
+    // PREVENT DUPLICATE ACTION
+    // ============================================================
+
+    if (_deletingAttributeId != null || _deletingVariantId != null) {
+      return;
+    }
+
+    // ============================================================
+    // DEBUG
+    // ============================================================
+
+    debugPrint('');
+    debugPrint('========== EDIT VARIANT NAVIGATION ==========');
+    debugPrint('ATTRIBUTE ID: $attributeId');
+    debugPrint('ATTRIBUTE NAME: ${attribute.name ?? 'N/A'}');
+    debugPrint('ATTRIBUTE IS OWN: ${attribute.isOwn}');
+    debugPrint('');
+    debugPrint('VARIANT ID: $variantId');
+    debugPrint('VARIANT VALUE: ${variant.value ?? 'N/A'}');
+    debugPrint('VARIANT CODE: ${variant.code ?? 'N/A'}');
+    debugPrint('VARIANT SORT ORDER: ${variant.sortOrder ?? 'N/A'}');
+    debugPrint('VARIANT IS ACTIVE: ${variant.isActive}');
+    debugPrint('=============================================');
+    debugPrint('');
+
+    // ============================================================
+    // NAVIGATE
+    // ============================================================
+
+    final result = await context.push(
+      AppRoutes.editVariant,
+      extra: {'attribute': attribute, 'variant': variant},
+    );
+
+    // ============================================================
+    // SCREEN CLOSED
+    // ============================================================
+
+    if (!mounted) {
+      return;
+    }
+
+    // ============================================================
+    // ALWAYS REFRESH WITH SHIMMER
+    // ============================================================
+
+    await _loadAttributes(showFullLoading: true);
+
+    // ============================================================
+    // SUCCESS MESSAGE
+    // ============================================================
+
+    if (!mounted) {
+      return;
+    }
+
+    if (result != null) {
+      try {
+        final dynamic response = result;
+
+        if (response.success == true) {
+          _showSuccessSnackBar(
+            response.message ?? 'Variant updated successfully.',
+          );
+        }
+      } catch (_) {
+        // Ignore invalid route result.
+      }
+    }
+  }
+
+  // ============================================================
+  // DELETE VARIANT
+  // ============================================================
+
+  Future<void> _handleOnDeleteValue(
+    GetAttributeModel attribute,
+    GetAttributeValueModel variant,
+  ) async {
+    // ============================================================
+    // ONLY OWN ATTRIBUTES
+    // ============================================================
+
+    if (!attribute.isOwn) {
+      _showErrorMessage('System attributes cannot be modified.');
+      return;
+    }
+
+    // ============================================================
+    // VALIDATE ATTRIBUTE ID
+    // ============================================================
+
+    final attributeId = attribute.id;
+
+    if (attributeId == null || attributeId <= 0) {
+      _showErrorMessage('Attribute ID is missing.');
+      return;
+    }
+
+    // ============================================================
+    // VALIDATE VARIANT ID
+    // ============================================================
+
+    final variantId = variant.id;
+
+    if (variantId == null || variantId <= 0) {
+      _showErrorMessage('Variant ID is missing.');
+      return;
+    }
+
+    // ============================================================
+    // PREVENT DUPLICATE DELETE
+    // ============================================================
+
+    if (_deletingVariantId != null || _deletingAttributeId != null) {
+      return;
+    }
+
+    // ============================================================
+    // CONFIRMATION POPUP
+    // ============================================================
+
+    final variantName = variant.value?.trim().isNotEmpty == true
+        ? variant.value!.trim()
+        : 'this variant';
+
+    final shouldDelete = await _showDeleteConfirmation(
+      title: 'Delete Variant',
+      itemName: variantName,
+      message:
+          'Are you sure you want to delete '
+          '"$variantName"?\n\n'
+          'This variant will be permanently removed from '
+          '"${attribute.name ?? 'this attribute'}".\n\n'
+          'This action cannot be undone.',
+    );
+
+    // ============================================================
+    // CANCELLED
+    // ============================================================
+
+    if (!mounted || !shouldDelete) {
+      return;
+    }
+
+    // ============================================================
+    // DEBUG
+    // ============================================================
+
+    debugPrint('');
+    debugPrint('========== DELETE VARIANT START ==========');
+    debugPrint('ATTRIBUTE ID: $attributeId');
+    debugPrint('ATTRIBUTE NAME: ${attribute.name ?? 'N/A'}');
+    debugPrint('VARIANT ID: $variantId');
+    debugPrint('VARIANT VALUE: ${variant.value ?? 'N/A'}');
+    debugPrint('==========================================');
+    debugPrint('');
+
+    // ============================================================
+    // START DELETE LOADING
+    // ============================================================
+
+    setState(() {
+      _deletingVariantId = variantId;
+    });
+
+    try {
+      // ==========================================================
+      // CONTROLLER
+      // ==========================================================
+
+      final controller = ref.read(deleteVariantControllerProvider);
+
+      // ==========================================================
+      // API CALL
+      // ==========================================================
+
+      final response = await controller.deleteVariant(valueId: variantId);
+
+      if (!mounted) {
+        return;
+      }
+
+      // ==========================================================
+      // API SUCCESS
+      // ==========================================================
+
+      if (response.success) {
+        // --------------------------------------------------------
+        // Clear Delete State
+        // --------------------------------------------------------
+
+        setState(() {
+          _deletingVariantId = null;
+        });
+
+        // --------------------------------------------------------
+        // SUCCESS MESSAGE
+        // --------------------------------------------------------
+
+        _showSuccessSnackBar(
+          response.message ?? 'Variant deleted successfully.',
+        );
+
+        // --------------------------------------------------------
+        // Refresh Get Attributes
+        // Full shimmer will be shown.
+        // --------------------------------------------------------
+
+        await _loadAttributes(showFullLoading: true);
+      } else {
+        // --------------------------------------------------------
+        // API Returned success = false
+        // --------------------------------------------------------
+
+        setState(() {
+          _deletingVariantId = null;
+        });
+
+        _showErrorSnackBar(response.message ?? 'Unable to delete variant.');
+      }
+    } on ApiException catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      // ----------------------------------------------------------
+      // Clear Loading
+      // ----------------------------------------------------------
+
+      setState(() {
+        _deletingVariantId = null;
+      });
+
+      // ----------------------------------------------------------
+      // API ERROR
+      // ----------------------------------------------------------
+
+      _showErrorSnackBar(
+        error.message.isNotEmpty ? error.message : 'Unable to delete variant.',
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      // ----------------------------------------------------------
+      // Clear Loading
+      // ----------------------------------------------------------
+
+      setState(() {
+        _deletingVariantId = null;
+      });
+
+      // ----------------------------------------------------------
+      // UNKNOWN ERROR
+      // ----------------------------------------------------------
+
+      _showErrorSnackBar(_extractErrorMessage(error));
+    }
+  }
+
+  // ============================================================
+  // DELETE CONFIRMATION DIALOG
+  // ============================================================
+
+  Future<bool> _showDeleteConfirmation({
+    required String title,
+    required String itemName,
+    required String message,
+  }) async {
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -310,7 +759,7 @@ class _GetAttributesScreenState extends ConsumerState<GetAttributesScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Delete Attribute',
+                  title,
                   style: AppTextStyles.titleLarge.copyWith(
                     color: AppColors.textPrimary,
                   ),
@@ -319,9 +768,7 @@ class _GetAttributesScreenState extends ConsumerState<GetAttributesScreen> {
             ],
           ),
           content: Text(
-            'Are you sure you want to delete '
-            '"$attributeName"?\n\n'
-            'This action cannot be undone.',
+            message,
             style: AppTextStyles.bodyMedium.copyWith(
               color: AppColors.textSecondary,
               height: 1.5,
@@ -372,10 +819,51 @@ class _GetAttributesScreenState extends ConsumerState<GetAttributesScreen> {
   }
 
   // ============================================================
+  // ERROR MESSAGE
+  // ============================================================
+
+  void _showErrorMessage(String message) {
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline, color: AppColors.white),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  message,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+  }
+
+  // ============================================================
   // SUCCESS SNACKBAR
   // ============================================================
 
   void _showSuccessSnackBar(String message) {
+    if (!mounted) {
+      return;
+    }
+
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
@@ -415,6 +903,10 @@ class _GetAttributesScreenState extends ConsumerState<GetAttributesScreen> {
   // ============================================================
 
   void _showErrorSnackBar(String message) {
+    if (!mounted) {
+      return;
+    }
+
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
@@ -450,7 +942,7 @@ class _GetAttributesScreenState extends ConsumerState<GetAttributesScreen> {
   }
 
   // ============================================================
-  // ERROR MESSAGE
+  // ERROR MESSAGE EXTRACTOR
   // ============================================================
 
   String _extractErrorMessage(Object error) {
@@ -514,7 +1006,7 @@ class _GetAttributesScreenState extends ConsumerState<GetAttributesScreen> {
           color: AppColors.primary,
           backgroundColor: AppColors.white,
           onRefresh: () {
-            return _loadAttributes(showFullLoading: false);
+            return _loadAttributes(showFullLoading: true);
           },
           child: _buildBody(),
         ),
@@ -528,10 +1020,12 @@ class _GetAttributesScreenState extends ConsumerState<GetAttributesScreen> {
 
   Widget _buildBody() {
     // ----------------------------------------------------------
-    // Initial Loading
+    // IMPORTANT:
+    // Whenever full loading is requested, show shimmer even if
+    // previous API data already exists.
     // ----------------------------------------------------------
 
-    if (_isLoading && _attributesResponse == null) {
+    if (_isLoading) {
       return _buildLoadingView();
     }
 
@@ -544,7 +1038,7 @@ class _GetAttributesScreenState extends ConsumerState<GetAttributesScreen> {
     }
 
     // ----------------------------------------------------------
-    // Loaded Content
+    // Content
     // ----------------------------------------------------------
 
     return _buildContent();
@@ -562,81 +1056,8 @@ class _GetAttributesScreenState extends ConsumerState<GetAttributesScreen> {
           padding: const EdgeInsets.all(20),
           child: ConstrainedBox(
             constraints: BoxConstraints(minHeight: constraints.maxHeight - 40),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeaderSkeleton(),
-
-                const SizedBox(height: 20),
-
-                _buildStatsSkeleton(),
-
-                const SizedBox(height: 20),
-
-                const AttributesLoading(),
-              ],
-            ),
+            child: const AttributesLoading(),
           ),
-        );
-      },
-    );
-  }
-
-  // ============================================================
-  // HEADER SKELETON
-  // ============================================================
-
-  Widget _buildHeaderSkeleton() {
-    return Container(
-      height: 60,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: AppColors.shimmerCard,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-    );
-  }
-
-  // ============================================================
-  // STATS SKELETON
-  // ============================================================
-
-  Widget _buildStatsSkeleton() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
-
-        int columns;
-
-        if (width >= 1100) {
-          columns = 4;
-        } else if (width >= 650) {
-          columns = 2;
-        } else {
-          columns = 1;
-        }
-
-        const spacing = 14.0;
-
-        final itemWidth = columns == 1
-            ? width
-            : (width - ((columns - 1) * spacing)) / columns;
-
-        return Wrap(
-          spacing: spacing,
-          runSpacing: spacing,
-          children: List.generate(4, (_) {
-            return Container(
-              width: itemWidth,
-              height: 126,
-              decoration: BoxDecoration(
-                color: AppColors.shimmerCard,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.border),
-              ),
-            );
-          }),
         );
       },
     );
@@ -658,7 +1079,9 @@ class _GetAttributesScreenState extends ConsumerState<GetAttributesScreen> {
               message:
                   _errorMessage ??
                   'Something went wrong while loading attributes.',
-              onRetry: _loadAttributes,
+              onRetry: () {
+                _loadAttributes(showFullLoading: true);
+              },
             ),
           ),
         );
@@ -688,7 +1111,7 @@ class _GetAttributesScreenState extends ConsumerState<GetAttributesScreen> {
                 // ==================================================
                 // HEADER
                 // ==================================================
-                AttributesHeader(onAddAttribute: widget.onAddAttribute),
+                AttributesHeader(onAddAttribute: _handleOnAddAttribute),
 
                 const SizedBox(height: 20),
 
@@ -784,9 +1207,9 @@ class _GetAttributesScreenState extends ConsumerState<GetAttributesScreen> {
   // ============================================================
 
   Widget _buildEmptyState() {
-    return SizedBox(
+    return const SizedBox(
       width: double.infinity,
-      child: const AttributesEmptyState(),
+      child: AttributesEmptyState(),
     );
   }
 
@@ -818,18 +1241,6 @@ class _GetAttributesScreenState extends ConsumerState<GetAttributesScreen> {
           itemBuilder: (context, index) {
             final attribute = attributes[index];
 
-            // ----------------------------------------------------
-            // IMPORTANT
-            //
-            // isOwn = true
-            //   -> Vendor/custom attribute
-            //   -> Edit/Delete available
-            //
-            // isOwn = false
-            //   -> System/platform attribute
-            //   -> Edit/Delete hidden
-            // ----------------------------------------------------
-
             final canEdit = attribute.isOwn;
 
             return AttributeCard(
@@ -846,25 +1257,27 @@ class _GetAttributesScreenState extends ConsumerState<GetAttributesScreen> {
               onDelete: canEdit ? () => _handleOnDelete(attribute) : null,
 
               // ==================================================
-              // ATTRIBUTE VALUE / VARIANT ACTIONS
+              // ADD VARIANT
               // ==================================================
-              //
-              // Currently no value CRUD handlers are implemented
-              // on this screen.
-              //
-              // Once Add/Edit/Delete Value APIs are implemented,
-              // use:
-              //
-              // onAddValue: canEdit ? handler : null
-              // onEditValue: canEdit ? handler : null
-              // onDeleteValue: canEdit ? handler : null
-              //
-              // This ensures system attributes can never modify
-              // their variants/values.
+              onAddValue: canEdit ? () => _handleOnAddValue(attribute) : null,
+
               // ==================================================
-              onAddValue: null,
-              onEditValue: null,
-              onDeleteValue: null,
+              // EDIT VARIANT
+              // ==================================================
+              onEditValue: canEdit
+                  ? (variant) {
+                      _handleOnEditValue(attribute, variant);
+                    }
+                  : null,
+
+              // ==================================================
+              // DELETE VARIANT
+              // ==================================================
+              onDeleteValue: canEdit
+                  ? (variant) {
+                      _handleOnDeleteValue(attribute, variant);
+                    }
+                  : null,
             );
           },
         ),

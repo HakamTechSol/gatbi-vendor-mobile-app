@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../Routes/app_route.dart';
+import '../../../../Routes/route_observer.dart';
 import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
 
+import '../../Cancel Participation/Controller/cancel_participation_controller.dart';
 import '../Controller/get_events_controller.dart';
 import '../Models/get_events_model.dart';
 import '../Reuse widgets/event_card.dart';
@@ -22,7 +24,7 @@ class EventsScreen extends ConsumerStatefulWidget {
   ConsumerState<EventsScreen> createState() => _EventsScreenState();
 }
 
-class _EventsScreenState extends ConsumerState<EventsScreen> {
+class _EventsScreenState extends ConsumerState<EventsScreen> with RouteAware {
   // ============================================================
   // State
   // ============================================================
@@ -47,6 +49,42 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadEvents(showShimmer: true);
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    final route = ModalRoute.of(context);
+
+    if (route is PageRoute) {
+      routeObserver.subscribe(this, route);
+    }
+  }
+
+  @override
+  void dispose() {
+    routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  // ============================================================
+  // Route Observer
+  // ============================================================
+
+  /// Jab Join Event / Edit Event / kisi bhi pushed screen se
+  /// EventsScreen par wapas aayenge to ye method call hoga.
+  @override
+  void didPopNext() {
+    debugPrint('');
+    debugPrint('==========================================');
+    debugPrint('EVENTS SCREEN VISIBLE AGAIN');
+    debugPrint('REFRESH EVENTS API');
+    debugPrint('SHOW SHIMMER: TRUE');
+    debugPrint('==========================================');
+    debugPrint('');
+
+    _loadEvents(showShimmer: true);
   }
 
   // ============================================================
@@ -239,7 +277,9 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('Available events', style: AppTextStyles.titleLarge),
+
               const SizedBox(height: 4),
+
               Text(
                 total == 0
                     ? 'No events available right now.'
@@ -284,12 +324,32 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
           EventCard(
             event: events[index],
 
+            // --------------------------------------------------
+            // Event Detail
+            // --------------------------------------------------
             onTap: () {
               _handleEventTap(events[index]);
             },
 
+            // --------------------------------------------------
+            // Join Event
+            // --------------------------------------------------
             onJoin: () {
               _handleJoinEvent(events[index]);
+            },
+
+            // --------------------------------------------------
+            // Update Participation
+            // --------------------------------------------------
+            onUpdateParticipation: () {
+              _handleEditEvent(events[index]);
+            },
+
+            // --------------------------------------------------
+            // Cancel Participation
+            // --------------------------------------------------
+            onDeleteParticipation: () {
+              _handleCancelParticipation(events[index]);
             },
           ),
 
@@ -433,7 +493,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
     }
 
     // ============================================================
-    // NAVIGATE TO EVENT DETAIL
+    // NAVIGATE
     // ============================================================
 
     context.push(AppRoutes.eventDetail, extra: eventId);
@@ -443,8 +503,12 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
   // Join Event
   // ============================================================
 
-  void _handleJoinEvent(EventItemModel event) {
+  Future<void> _handleJoinEvent(EventItemModel event) async {
     final eventId = event.id;
+
+    // ============================================================
+    // VALIDATE EVENT ID
+    // ============================================================
 
     if (eventId == null || eventId <= 0) {
       _showErrorMessage('Unable to join this event. Event ID is missing.');
@@ -469,9 +533,9 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
     debugPrint('================================');
     debugPrint('');
 
-    // ----------------------------------------------------------
-    // Open Join Event / Select Products screen.
-    // ----------------------------------------------------------
+    // ============================================================
+    // NAVIGATE TO JOIN
+    // ============================================================
 
     context.push(
       AppRoutes.joinEvent,
@@ -481,6 +545,308 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
         'startDate': event.startDate ?? '',
         'endDate': event.endDate ?? '',
         'eventStatus': event.status,
+      },
+    );
+  }
+
+  // ============================================================
+  // Edit Event
+  // ============================================================
+
+  void _handleEditEvent(EventItemModel event) {
+    final eventId = event.id;
+
+    // ============================================================
+    // VALIDATE EVENT ID
+    // ============================================================
+
+    if (eventId == null || eventId <= 0) {
+      _showErrorMessage('Unable to edit this event. Event ID is missing.');
+      return;
+    }
+
+    // ============================================================
+    // DEBUG LOG
+    // ============================================================
+
+    debugPrint('');
+    debugPrint('========== EDIT EVENT ==========');
+    debugPrint('EVENT ID: $eventId');
+    debugPrint('EVENT NAME: ${event.name ?? 'N/A'}');
+    debugPrint('START DATE: ${event.startDate ?? 'N/A'}');
+    debugPrint('END DATE: ${event.endDate ?? 'N/A'}');
+    debugPrint('STATUS: ${event.status ?? 'N/A'}');
+    debugPrint('================================');
+    debugPrint('');
+
+    // ============================================================
+    // NAVIGATE TO EDIT
+    // ============================================================
+
+    context.push(AppRoutes.editEvent, extra: eventId);
+  }
+
+  // ============================================================
+  // Cancel Participation
+  // ============================================================
+
+  Future<void> _handleCancelParticipation(EventItemModel event) async {
+    final eventId = event.id;
+
+    // ============================================================
+    // VALIDATE EVENT ID
+    // ============================================================
+
+    if (eventId == null || eventId <= 0) {
+      _showErrorMessage('Unable to cancel participation. Event ID is missing.');
+      return;
+    }
+
+    // ============================================================
+    // CONFIRMATION POPUP
+    // ============================================================
+
+    final confirmed = await _showCancelConfirmationDialog(event);
+
+    if (!confirmed) {
+      return;
+    }
+
+    if (!mounted) return;
+
+    // ============================================================
+    // CALL CANCEL API
+    // ============================================================
+
+    await _cancelParticipation(eventId);
+  }
+
+  // ============================================================
+  // Cancel Confirmation Dialog
+  // ============================================================
+
+  Future<bool> _showCancelConfirmationDialog(EventItemModel event) async {
+    if (!mounted) return false;
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: AppColors.white,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          titlePadding: const EdgeInsets.fromLTRB(22, 22, 22, 8),
+          contentPadding: const EdgeInsets.fromLTRB(22, 8, 22, 18),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          title: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: AppColors.errorLight,
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: const Icon(
+                  Icons.event_busy_rounded,
+                  color: AppColors.errorDark,
+                  size: 23,
+                ),
+              ),
+
+              const SizedBox(width: 12),
+
+              Expanded(
+                child: Text(
+                  'Cancel participation?',
+                  style: AppTextStyles.titleMedium,
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            'Are you sure you want to cancel your participation '
+            'in "${event.name ?? 'this event'}"?\n\n'
+            'Your participation will be withdrawn and its status '
+            'will become cancelled.',
+            style: AppTextStyles.bodySmall.copyWith(
+              color: AppColors.textSecondary,
+              height: 1.5,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop(false);
+              },
+              child: Text(
+                'Keep Participation',
+                style: AppTextStyles.labelMedium.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+
+            const SizedBox(width: 4),
+
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop(true);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.errorDark,
+                foregroundColor: AppColors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(11),
+                ),
+              ),
+              child: const Text('Cancel Participation'),
+            ),
+          ],
+        );
+      },
+    );
+
+    return result ?? false;
+  }
+
+  // ============================================================
+  // Cancel Participation API
+  // ============================================================
+
+  Future<void> _cancelParticipation(int eventId) async {
+    if (!mounted) return;
+
+    setState(() {});
+
+    debugPrint('');
+    debugPrint('==========================================');
+    debugPrint('CANCEL PARTICIPATION API');
+    debugPrint('EVENT ID: $eventId');
+    debugPrint('==========================================');
+
+    // ============================================================
+    // SHOW LOADING POPUP
+    // ============================================================
+
+    _showCancelLoadingDialog();
+
+    try {
+      final controller = ref.read(cancelParticipationControllerProvider);
+
+      final result = await controller.cancelParticipation(eventId: eventId);
+
+      if (!mounted) return;
+
+      debugPrint('');
+      debugPrint('========== CANCEL PARTICIPATION SUCCESS ==========');
+      debugPrint('SUCCESS: ${result.success}');
+      debugPrint('MESSAGE: ${result.message ?? 'N/A'}');
+      debugPrint('EVENT ID: ${result.eventId ?? 'N/A'}');
+      debugPrint('CAMPAIGN ID: ${result.campaignId ?? 'N/A'}');
+      debugPrint('STATUS: ${result.status ?? 'N/A'}');
+      debugPrint('===================================================');
+      debugPrint('');
+
+      // ==========================================================
+      // CLOSE LOADING POPUP
+      // ==========================================================
+
+      Navigator.of(context, rootNavigator: true).pop();
+
+      setState(() {});
+
+      // ==========================================================
+      // SUCCESS SNACKBAR
+      // ==========================================================
+
+      _showSuccessMessage(
+        result.message ?? 'Participation withdrawn successfully.',
+      );
+
+      // ==========================================================
+      // REFRESH EVENTS
+      // ==========================================================
+
+      await _loadEvents(showShimmer: true);
+    } catch (error, stackTrace) {
+      if (!mounted) return;
+
+      debugPrint('');
+      debugPrint('========== CANCEL PARTICIPATION ERROR ==========');
+      debugPrint('ERROR: $error');
+      debugPrint('STACK TRACE: $stackTrace');
+      debugPrint('================================================');
+      debugPrint('');
+
+      // ==========================================================
+      // CLOSE LOADING POPUP
+      // ==========================================================
+
+      Navigator.of(context, rootNavigator: true).pop();
+
+      setState(() {});
+
+      // ==========================================================
+      // ERROR SNACKBAR
+      // ==========================================================
+
+      _showErrorMessage(_extractErrorMessage(error));
+    }
+  }
+
+  // ============================================================
+  // Cancel Loading Dialog
+  // ============================================================
+
+  void _showCancelLoadingDialog() {
+    if (!mounted) return;
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return PopScope(
+          canPop: false,
+          child: AlertDialog(
+            backgroundColor: AppColors.white,
+            surfaceTintColor: Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+            ),
+            content: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                children: [
+                  const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2.5),
+                  ),
+
+                  const SizedBox(width: 16),
+
+                  Expanded(
+                    child: Text(
+                      'Cancelling participation...',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
       },
     );
   }
@@ -521,6 +887,48 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
           behavior: SnackBarBehavior.floating,
           backgroundColor: AppColors.errorDark,
           margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+  }
+
+  // ============================================================
+  // Success SnackBar
+  // ============================================================
+
+  void _showSuccessMessage(String message) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(
+                Icons.check_circle_rounded,
+                color: AppColors.white,
+                size: 20,
+              ),
+
+              const SizedBox(width: 10),
+
+              Expanded(
+                child: Text(
+                  message,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.successDark,
+          margin: const EdgeInsets.all(16),
+          duration: const Duration(seconds: 3),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),

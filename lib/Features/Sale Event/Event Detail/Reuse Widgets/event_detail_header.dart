@@ -14,88 +14,113 @@ class EventDetailHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.white,
-        border: Border(bottom: BorderSide(color: AppColors.border, width: 1)),
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _buildBackButton(),
-              const SizedBox(width: 12),
-              Expanded(child: _buildTitleSection()),
-              const SizedBox(width: 12),
-              EventStatusBadge(status: event.status),
-            ],
-          ),
-        ),
+    final eventName = event.name?.trim() ?? '';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // ============================================================
+          // Back Button
+          // ============================================================
+          _buildBackButton(context),
+
+          const SizedBox(width: 12),
+
+          // ============================================================
+          // Title Section
+          // ============================================================
+          Expanded(child: _buildTitleSection(eventName)),
+
+          // ============================================================
+          // Event Status
+          // ============================================================
+          const SizedBox(width: 10),
+
+          EventStatusBadge(status: event.status),
+        ],
       ),
     );
   }
 
-  Widget _buildBackButton() {
+  // ---------------------------------------------------------------------------
+  // Back Button
+  // ---------------------------------------------------------------------------
+
+  Widget _buildBackButton(BuildContext context) {
     return Material(
-      color: AppColors.primarySurface,
+      color: AppColors.white,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
-        onTap: onBack,
+        onTap: onBack ?? () => Navigator.of(context).maybePop(),
         borderRadius: BorderRadius.circular(12),
-        child: const SizedBox(
-          width: 42,
-          height: 42,
-          child: Icon(
-            Icons.arrow_back_rounded,
-            size: 21,
-            color: AppColors.iconPrimary,
+        child: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border, width: 1),
+          ),
+          child: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            size: 18,
+            color: AppColors.navy,
           ),
         ),
       ),
     );
   }
 
-  Widget _buildTitleSection() {
-    final name = event.name?.trim();
+  // ---------------------------------------------------------------------------
+  // Title Section
+  // ---------------------------------------------------------------------------
+
+  Widget _buildTitleSection(String eventName) {
+    final slug = event.slug?.trim() ?? '';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          name?.isNotEmpty == true ? name! : 'Event Details',
-          maxLines: 2,
+          eventName.isNotEmpty ? eventName : 'Event Details',
+          maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: AppTextStyles.headlineSmall.copyWith(
-            color: AppColors.textPrimary,
-            fontWeight: FontWeight.w700,
+          style: AppTextStyles.titleMedium.copyWith(
+            color: AppColors.navy,
+            fontWeight: FontWeight.w800,
+            height: 1.15,
           ),
         ),
-        const SizedBox(height: 4),
-        Row(
-          children: [
-            const Icon(
-              Icons.event_outlined,
-              size: 14,
-              color: AppColors.textTertiary,
-            ),
-            const SizedBox(width: 5),
-            Flexible(
-              child: Text(
-                event.slug?.trim().isNotEmpty == true
-                    ? event.slug!.trim()
-                    : 'Event',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: AppColors.textSecondary,
+
+        // ============================================================
+        // Event Slug
+        // ============================================================
+        if (slug.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              const Icon(
+                Icons.event_outlined,
+                size: 14,
+                color: AppColors.textTertiary,
+              ),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Text(
+                  slug,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
+        ],
       ],
     );
   }

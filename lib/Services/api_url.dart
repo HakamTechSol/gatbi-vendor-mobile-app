@@ -45,6 +45,14 @@ class ApiUrls {
   //Sale Event
   static const String getEvents = 'vendor/events';
 
+  static String updateEvent(int eventId) {
+    return '$getEvents/$eventId/update';
+  }
+
+  static String cancelParticipation(int eventId) {
+    return '$getEvents/$eventId/withdraw';
+  }
+
   // Products
   static const String products = 'vendor/products';
 
@@ -170,4 +178,6 @@ class ApiUrls {
   // ============================================================
 
   static const String vendorAttributes = '/vendor/attributes';
+
+  static const String vendorAttributeValues = '/vendor/attribute-values';
 }

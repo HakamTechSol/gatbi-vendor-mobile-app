@@ -22,6 +22,7 @@ class MoreScreen extends ConsumerStatefulWidget {
     this.onAttributes,
 
     // Account
+    this.onProfile,
     this.onChangePassword,
     this.onSettings,
     this.onKycVerification,
@@ -56,6 +57,7 @@ class MoreScreen extends ConsumerStatefulWidget {
   // ACCOUNT
   // ═══════════════════════════════════════════════════════════════════════════
 
+  final VoidCallback? onProfile;
   final VoidCallback? onChangePassword;
   final VoidCallback? onSettings;
   final VoidCallback? onKycVerification;
@@ -495,6 +497,12 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
       subtitle: 'Store and verification settings',
       icon: Icons.manage_accounts_outlined,
       children: [
+        _buildMenuItem(
+          icon: Icons.person_outline,
+          title: 'Profile',
+          subtitle: 'Check & Update your account',
+          onTap: widget.onProfile,
+        ),
         _buildMenuItem(
           icon: Icons.lock_outlined,
           title: 'Change Password',

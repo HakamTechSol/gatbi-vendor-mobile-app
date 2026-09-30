@@ -35,7 +35,9 @@ class GetAttributesModel {
   // ============================================================
 
   static bool _parseBool(dynamic value) {
-    if (value is bool) return value;
+    if (value is bool) {
+      return value;
+    }
 
     if (value is String) {
       return value.toLowerCase() == 'true' || value == '1';
@@ -52,7 +54,9 @@ class GetAttributesModel {
     dynamic value,
     T Function(Map<String, dynamic>) fromJson,
   ) {
-    if (value is! List) return const [];
+    if (value is! List) {
+      return const [];
+    }
 
     return value
         .whereType<Map>()
@@ -89,6 +93,7 @@ class GetAttributeModel {
   /// Whether attribute was created by the vendor.
   final bool isOwn;
 
+  /// Attribute values / variants.
   final List<GetAttributeValueModel> values;
 
   // ============================================================
@@ -134,7 +139,9 @@ class GetAttributeModel {
   // ============================================================
 
   static bool _parseBool(dynamic value) {
-    if (value is bool) return value;
+    if (value is bool) {
+      return value;
+    }
 
     if (value is String) {
       return value.toLowerCase() == 'true' || value == '1';
@@ -148,7 +155,9 @@ class GetAttributeModel {
   }
 
   static int? _parseInt(dynamic value) {
-    if (value is int) return value;
+    if (value is int) {
+      return value;
+    }
 
     if (value is num) {
       return value.toInt();
@@ -162,7 +171,9 @@ class GetAttributeModel {
   }
 
   static String? _parseString(dynamic value) {
-    if (value == null) return null;
+    if (value == null) {
+      return null;
+    }
 
     if (value is String) {
       return value;
@@ -175,7 +186,9 @@ class GetAttributeModel {
     dynamic value,
     T Function(Map<String, dynamic>) fromJson,
   ) {
-    if (value is! List) return const [];
+    if (value is! List) {
+      return const [];
+    }
 
     return value
         .whereType<Map>()
@@ -194,12 +207,16 @@ class GetAttributeValueModel {
     this.value,
     this.code,
     this.sortOrder,
+    this.isActive = false,
   });
 
   final int? id;
   final String? value;
   final String? code;
   final int? sortOrder;
+
+  /// Variant/value active or inactive status.
+  final bool isActive;
 
   // ============================================================
   // From JSON
@@ -215,6 +232,7 @@ class GetAttributeValueModel {
       value: _parseString(json['value']),
       code: _parseString(json['code']),
       sortOrder: _parseInt(json['sort_order']),
+      isActive: _parseBool(json['is_active']),
     );
   }
 
@@ -223,7 +241,13 @@ class GetAttributeValueModel {
   // ============================================================
 
   Map<String, dynamic> toJson() {
-    return {'id': id, 'value': value, 'code': code, 'sort_order': sortOrder};
+    return {
+      'id': id,
+      'value': value,
+      'code': code,
+      'sort_order': sortOrder,
+      'is_active': isActive,
+    };
   }
 
   // ============================================================
@@ -231,7 +255,9 @@ class GetAttributeValueModel {
   // ============================================================
 
   static int? _parseInt(dynamic value) {
-    if (value is int) return value;
+    if (value is int) {
+      return value;
+    }
 
     if (value is num) {
       return value.toInt();
@@ -244,8 +270,26 @@ class GetAttributeValueModel {
     return null;
   }
 
+  static bool _parseBool(dynamic value) {
+    if (value is bool) {
+      return value;
+    }
+
+    if (value is String) {
+      return value.toLowerCase() == 'true' || value == '1';
+    }
+
+    if (value is num) {
+      return value != 0;
+    }
+
+    return false;
+  }
+
   static String? _parseString(dynamic value) {
-    if (value == null) return null;
+    if (value == null) {
+      return null;
+    }
 
     if (value is String) {
       return value;

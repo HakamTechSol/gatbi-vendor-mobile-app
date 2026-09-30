@@ -85,8 +85,6 @@ class EventDateCard extends StatelessWidget {
                 backgroundColor: AppColors.primarySurface,
               ),
               const SizedBox(height: 10),
-              _buildArrow(),
-              const SizedBox(height: 10),
               _DateTile(
                 icon: Icons.stop_circle_outlined,
                 label: 'End Date',

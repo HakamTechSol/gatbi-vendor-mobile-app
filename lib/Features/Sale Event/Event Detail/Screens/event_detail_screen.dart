@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../Services/api_exception.dart';
 import '../../../../Theme/app_colors.dart';
-import '../../../../Theme/app_text_styles.dart';
 
 import '../Controller/event_detail_controller.dart';
 import '../Models/event_detail_model.dart';
@@ -185,9 +184,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
               EventDetailHeader(
                 event: _eventDetail!.event!,
                 onBack: _handleBack,
-              )
-            else
-              _buildFallbackHeader(),
+              ),
             Expanded(child: _buildBody()),
           ],
         ),
@@ -304,68 +301,4 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
     return description != null && description.isNotEmpty;
   }
 
-  // ============================================================
-  // Fallback Header
-  // ============================================================
-
-  Widget _buildFallbackHeader() {
-    return Container(
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        color: AppColors.white,
-        border: Border(bottom: BorderSide(color: AppColors.border)),
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-          child: Row(
-            children: [
-              _BackButton(onTap: _handleBack),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Event Details',
-                  style: AppTextStyles.headlineSmall.copyWith(
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ============================================================
-// Back Button
-// ============================================================
-
-class _BackButton extends StatelessWidget {
-  const _BackButton({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.primarySurface,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: const SizedBox(
-          width: 42,
-          height: 42,
-          child: Icon(
-            Icons.arrow_back_rounded,
-            size: 21,
-            color: AppColors.primary,
-          ),
-        ),
-      ),
-    );
-  }
 }

@@ -251,6 +251,10 @@ class _BottomMainScreenState extends State<BottomMainScreen> {
     context.push(AppRoutes.attributes);
   }
 
+  void _openOnProfile() {
+    context.push(AppRoutes.profile);
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // BUILD
   // ═══════════════════════════════════════════════════════════════════════════
@@ -296,6 +300,7 @@ class _BottomMainScreenState extends State<BottomMainScreen> {
             onQuestionsAndAnswers: _openQuestionsAndAnswers,
             onPayouts: _openPayouts,
             onAttributes: _openOnAttributes,
+            onProfile: _openOnProfile,
           ),
         ],
       ),
