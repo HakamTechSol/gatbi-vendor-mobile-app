@@ -1,15 +1,125 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
 
+import '../../../Authentication/Registration/Category/category_controller.dart';
+import '../../../Authentication/Registration/Category/category_model.dart';
+
 import '../Models/get_profile_model.dart';
 import 'vendor_profile_info_tile.dart';
 
-class VendorProfileInfoCard extends StatelessWidget {
+class VendorProfileInfoCard extends ConsumerStatefulWidget {
   const VendorProfileInfoCard({super.key, required this.merchant});
 
   final VendorSettingsMerchantModel merchant;
+
+  @override
+  ConsumerState<VendorProfileInfoCard> createState() =>
+      _VendorProfileInfoCardState();
+}
+
+class _VendorProfileInfoCardState extends ConsumerState<VendorProfileInfoCard> {
+  // ============================================================
+  // CATEGORY STATE
+  // ============================================================
+
+  CategoryItemModel? _selectedCategory;
+
+  bool _isCategoryLoading = true;
+
+  String? _categoryError;
+
+  // ============================================================
+  // INIT
+  // ============================================================
+
+  @override
+  void initState() {
+    super.initState();
+
+    _loadCategory();
+  }
+
+  // ============================================================
+  // LOAD CATEGORY
+  // ============================================================
+
+  Future<void> _loadCategory() async {
+    final categoryId = widget.merchant.primaryCategoryId;
+
+    debugPrint('');
+    debugPrint('==========================================');
+    debugPrint('VENDOR PROFILE - CATEGORY');
+    debugPrint('==========================================');
+    debugPrint('Primary Category ID: $categoryId');
+
+    if (categoryId == null) {
+      debugPrint('Category ID is null.');
+
+      if (mounted) {
+        setState(() {
+          _isCategoryLoading = false;
+          _categoryError = null;
+        });
+      }
+
+      return;
+    }
+
+    try {
+      final result = await ref
+          .read(categoryControllerProvider)
+          .getCategories(includeChildren: true);
+
+      CategoryItemModel? matchedCategory;
+
+      for (final category in result.categories) {
+        if (category.id == categoryId) {
+          matchedCategory = category;
+          break;
+        }
+      }
+
+      if (matchedCategory != null) {
+        debugPrint('Category Found: ${matchedCategory.name}');
+        debugPrint('Category ID: ${matchedCategory.id}');
+      } else {
+        debugPrint('No category found for ID: $categoryId');
+      }
+
+      debugPrint('==========================================');
+      debugPrint('');
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _selectedCategory = matchedCategory;
+        _isCategoryLoading = false;
+      });
+    } catch (error) {
+      debugPrint('Category API Error: $error');
+
+      debugPrint('==========================================');
+      debugPrint('');
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isCategoryLoading = false;
+        _categoryError = 'Unable to load category.';
+      });
+    }
+  }
+
+  // ============================================================
+  // BUILD
+  // ============================================================
 
   @override
   Widget build(BuildContext context) {
@@ -17,9 +127,9 @@ class VendorProfileInfoCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ==========================================================
+          // ======================================================
           // CARD HEADER
-          // ==========================================================
+          // ======================================================
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 16, 16, 12),
             child: _SectionHeader(
@@ -29,43 +139,79 @@ class VendorProfileInfoCard extends StatelessWidget {
             ),
           ),
 
-          // ==========================================================
+          // ======================================================
           // EMAIL
-          // ==========================================================
+          // ======================================================
           VendorProfileInfoTile(
             icon: Icons.email_outlined,
             title: 'Email Address',
-            value: _value(merchant.email, fallback: 'Not provided'),
+            value: _value(widget.merchant.email, fallback: 'Not provided'),
             showDivider: true,
           ),
 
-          // ==========================================================
+          // ======================================================
           // PHONE
-          // ==========================================================
+          // ======================================================
           VendorProfileInfoTile(
             icon: Icons.phone_outlined,
             title: 'Phone Number',
-            value: _value(merchant.phone, fallback: 'Not provided'),
+            value: _value(widget.merchant.phone, fallback: 'Not provided'),
             iconColor: AppColors.success,
             iconBackground: AppColors.successLight,
             showDivider: true,
           ),
 
-          // ==========================================================
+          // ======================================================
+          // CATEGORY
+          // ======================================================
+          _buildCategoryTile(),
+
+          // ======================================================
           // STATUS
-          // ==========================================================
+          // ======================================================
           VendorProfileInfoTile(
             icon: Icons.verified_outlined,
             title: 'Account Status',
-            value: _formatStatus(merchant.status),
-            iconColor: _statusColor(merchant.status),
-            iconBackground: _statusBackground(merchant.status),
+            value: _formatStatus(widget.merchant.status),
+            iconColor: _statusColor(widget.merchant.status),
+            iconBackground: _statusBackground(widget.merchant.status),
             showDivider: false,
           ),
         ],
       ),
     );
   }
+
+  // ============================================================
+  // CATEGORY TILE
+  // ============================================================
+
+  Widget _buildCategoryTile() {
+    String categoryName;
+
+    if (_isCategoryLoading) {
+      categoryName = 'Loading category...';
+    } else if (_categoryError != null) {
+      categoryName = _categoryError!;
+    } else if (_selectedCategory != null) {
+      categoryName = _value(_selectedCategory!.name, fallback: 'Not provided');
+    } else {
+      categoryName = 'Not provided';
+    }
+
+    return VendorProfileInfoTile(
+      icon: Icons.category_outlined,
+      title: 'Primary Category',
+      value: categoryName,
+      iconColor: AppColors.primary,
+      iconBackground: AppColors.primaryLight,
+      showDivider: true,
+    );
+  }
+
+  // ============================================================
+  // VALUE
+  // ============================================================
 
   String _value(String? value, {required String fallback}) {
     if (value == null || value.trim().isEmpty) {
@@ -74,6 +220,10 @@ class VendorProfileInfoCard extends StatelessWidget {
 
     return value.trim();
   }
+
+  // ============================================================
+  // STATUS FORMAT
+  // ============================================================
 
   String _formatStatus(String? status) {
     if (status == null || status.trim().isEmpty) {
@@ -84,6 +234,10 @@ class VendorProfileInfoCard extends StatelessWidget {
 
     return value[0].toUpperCase() + value.substring(1);
   }
+
+  // ============================================================
+  // STATUS COLOR
+  // ============================================================
 
   Color _statusColor(String? status) {
     switch (status?.trim().toLowerCase()) {
@@ -102,6 +256,10 @@ class VendorProfileInfoCard extends StatelessWidget {
         return AppColors.primary;
     }
   }
+
+  // ============================================================
+  // STATUS BACKGROUND
+  // ============================================================
 
   Color _statusBackground(String? status) {
     switch (status?.trim().toLowerCase()) {
@@ -122,9 +280,9 @@ class VendorProfileInfoCard extends StatelessWidget {
   }
 }
 
-// ================================================================
+// ============================================================================
 // PROFILE CARD
-// ================================================================
+// ============================================================================
 
 class _ProfileCard extends StatelessWidget {
   const _ProfileCard({required this.child});
@@ -152,9 +310,9 @@ class _ProfileCard extends StatelessWidget {
   }
 }
 
-// ================================================================
+// ============================================================================
 // SECTION HEADER
-// ================================================================
+// ============================================================================
 
 class _SectionHeader extends StatelessWidget {
   const _SectionHeader({
@@ -179,11 +337,7 @@ class _SectionHeader extends StatelessWidget {
             color: AppColors.primaryLight,
             borderRadius: BorderRadius.circular(11),
           ),
-          child: const Icon(
-            Icons.business_center_outlined,
-            size: 19,
-            color: AppColors.primary,
-          ),
+          child: Icon(icon, size: 19, color: AppColors.primary),
         ),
 
         const SizedBox(width: 12),
@@ -193,7 +347,9 @@ class _SectionHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(title, style: AppTextStyles.titleMedium),
+
               const SizedBox(height: 2),
+
               Text(
                 subtitle,
                 maxLines: 1,

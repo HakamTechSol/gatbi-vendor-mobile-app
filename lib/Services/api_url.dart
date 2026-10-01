@@ -24,11 +24,25 @@ class ApiUrls {
   // Vendor
   static const String me = 'vendor/me';
 
+  //edit Profile
+  static const String editProfile = 'vendor/settings/profile';
+
+  // Bank Info
+  static const String vendorBankInfo = 'vendor/settings/bank';
+
+  // Notifications
+  static const String getNotifications = 'vendor/notifications';
+
+  static const String markReadNotification = 'vendor/notifications/mark-read';
+
+  static const String markAllReadNotifications =
+      'vendor/notifications/mark-all-read';
+
   // Dashboard
   static const String dashboard = 'vendor/dashboard';
 
   // Categery
-  static const String categoryOptions = '/vendor/registration-options';
+  static const String categoryOptions = 'vendor/registration-options';
 
   // analytics
   static const String analytics = 'vendor/analytics';

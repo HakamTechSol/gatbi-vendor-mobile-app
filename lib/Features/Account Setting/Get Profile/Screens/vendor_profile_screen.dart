@@ -20,7 +20,7 @@ import '../Reuse Widgets/vendor_profile_warehouse_card.dart';
 class VendorProfileScreen extends ConsumerStatefulWidget {
   const VendorProfileScreen({super.key, this.onEdit});
 
-  final VoidCallback? onEdit;
+  final Future<dynamic> Function()? onEdit;
 
   @override
   ConsumerState<VendorProfileScreen> createState() =>
@@ -34,6 +34,8 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
 
   late Future<VendorSettingsModel> _profileFuture;
 
+  bool _isRefreshing = false;
+
   // ============================================================
   // Lifecycle
   // ============================================================
@@ -46,30 +48,176 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
   }
 
   // ============================================================
-  // API
+  // GET PROFILE API
   // ============================================================
 
-  Future<VendorSettingsModel> _getProfile() {
-    return ref.read(vendorSettingsControllerProvider).getVendorSettings();
+  Future<VendorSettingsModel> _getProfile() async {
+    debugPrint('');
+    debugPrint('==================================================');
+    debugPrint('VENDOR PROFILE - GET PROFILE API');
+    debugPrint('==================================================');
+    debugPrint('API CALL STARTED');
+    debugPrint('==================================================');
+    debugPrint('');
+
+    try {
+      final result = await ref
+          .read(vendorSettingsControllerProvider)
+          .getVendorSettings();
+
+      debugPrint('');
+      debugPrint('==================================================');
+      debugPrint('VENDOR PROFILE - GET PROFILE SUCCESS');
+      debugPrint('==================================================');
+      debugPrint('SUCCESS: ${result.success}');
+      debugPrint('MERCHANT ID: ${result.merchant?.id ?? 'N/A'}');
+      debugPrint('MERCHANT NAME: ${result.merchant?.name ?? 'N/A'}');
+      debugPrint('PHONE: ${result.merchant?.phone ?? 'N/A'}');
+      debugPrint('LOGO: ${result.merchant?.logo ?? 'N/A'}');
+      debugPrint(
+        'CATEGORY ID: '
+        '${result.merchant?.primaryCategoryId ?? 'N/A'}',
+      );
+      debugPrint(
+        'WAREHOUSE: '
+        '${result.merchant?.warehouseAddress ?? 'N/A'}',
+      );
+      debugPrint('==================================================');
+      debugPrint('');
+
+      return result;
+    } catch (error, stackTrace) {
+      debugPrint('');
+      debugPrint('==================================================');
+      debugPrint('VENDOR PROFILE - GET PROFILE ERROR');
+      debugPrint('==================================================');
+      debugPrint('ERROR: $error');
+      debugPrint('STACK TRACE: $stackTrace');
+      debugPrint('==================================================');
+      debugPrint('');
+
+      rethrow;
+    }
   }
 
+  // ============================================================
+  // REFRESH PROFILE
+  // ============================================================
+
   Future<void> _refreshProfile() async {
+    if (_isRefreshing) {
+      debugPrint('VENDOR PROFILE - Refresh already in progress.');
+      return;
+    }
+
+    debugPrint('');
+    debugPrint('==================================================');
+    debugPrint('VENDOR PROFILE - FORCE REFRESH');
+    debugPrint('==================================================');
+    debugPrint('OLD PROFILE WILL BE REPLACED');
+    debugPrint('SHIMMER WILL BE SHOWN');
+    debugPrint('==================================================');
+    debugPrint('');
+
     final future = _getProfile();
 
+    if (!mounted) {
+      return;
+    }
+
     setState(() {
+      _isRefreshing = true;
       _profileFuture = future;
     });
 
     try {
       await future;
-    } catch (_) {
-      // FutureBuilder already handles and displays the error.
-      // Swallowing here prevents RefreshIndicator from throwing.
+
+      debugPrint('');
+      debugPrint('==================================================');
+      debugPrint('VENDOR PROFILE - REFRESH SUCCESS');
+      debugPrint('==================================================');
+      debugPrint('Fresh profile data received.');
+      debugPrint('==================================================');
+      debugPrint('');
+    } catch (error) {
+      debugPrint('');
+      debugPrint('==================================================');
+      debugPrint('VENDOR PROFILE - REFRESH ERROR');
+      debugPrint('==================================================');
+      debugPrint('ERROR: $error');
+      debugPrint('==================================================');
+      debugPrint('');
+    } finally {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isRefreshing = false;
+      });
+
+      debugPrint('VENDOR PROFILE - REFRESH LOADING FINISHED');
     }
   }
 
   // ============================================================
-  // Navigation
+  // EDIT PROFILE
+  // ============================================================
+
+  Future<void> _handleEdit() async {
+    if (widget.onEdit == null || _isRefreshing) {
+      return;
+    }
+
+    debugPrint('');
+    debugPrint('==================================================');
+    debugPrint('VENDOR PROFILE - EDIT PROFILE');
+    debugPrint('==================================================');
+    debugPrint('Opening Edit Profile...');
+    debugPrint('==================================================');
+    debugPrint('');
+
+    try {
+      final result = await widget.onEdit!();
+
+      if (!mounted) {
+        return;
+      }
+
+      debugPrint('');
+      debugPrint('==================================================');
+      debugPrint('VENDOR PROFILE - RETURNED FROM EDIT');
+      debugPrint('==================================================');
+      debugPrint('RESULT: $result');
+      debugPrint('RESULT TYPE: ${result.runtimeType}');
+      debugPrint('==================================================');
+      debugPrint('');
+
+      // ----------------------------------------------------------
+      // IMPORTANT:
+      //
+      // Edit Profile success ke baad result aayega.
+      //
+      // Lekin agar user simply Back bhi kare,
+      // hum profile refresh karenge.
+      // ----------------------------------------------------------
+
+      await _refreshProfile();
+    } catch (error, stackTrace) {
+      debugPrint('');
+      debugPrint('==================================================');
+      debugPrint('VENDOR PROFILE - EDIT NAVIGATION ERROR');
+      debugPrint('==================================================');
+      debugPrint('ERROR: $error');
+      debugPrint('STACK TRACE: $stackTrace');
+      debugPrint('==================================================');
+      debugPrint('');
+    }
+  }
+
+  // ============================================================
+  // BACK
   // ============================================================
 
   void _handleBack() {
@@ -80,16 +228,8 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
     Navigator.of(context).pop();
   }
 
-  void _handleEdit() {
-    if (widget.onEdit == null) {
-      return;
-    }
-
-    widget.onEdit!();
-  }
-
   // ============================================================
-  // Build
+  // BUILD
   // ============================================================
 
   @override
@@ -99,67 +239,23 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
       body: SafeArea(
         child: Column(
           children: [
+            // ======================================================
+            // HEADER
+            // ======================================================
             Padding(
-              padding: EdgeInsets.fromLTRB(16, 0, 16, 0),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
               child: VendorProfileHeader(
                 onBack: _handleBack,
                 onEdit: widget.onEdit == null ? null : _handleEdit,
               ),
             ),
+
             const SizedBox(height: 8),
-            Expanded(
-              child: FutureBuilder<VendorSettingsModel>(
-                future: _profileFuture,
-                builder: (context, snapshot) {
-                  // ------------------------------------------------
-                  // Loading
-                  // ------------------------------------------------
 
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Padding(
-                      padding: EdgeInsets.fromLTRB(16, 8, 16, 24),
-                      child: VendorProfileLoading(),
-                    );
-                  }
-
-                  // ------------------------------------------------
-                  // Error
-                  // ------------------------------------------------
-
-                  if (snapshot.hasError) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: VendorProfileError(
-                        message: _getErrorMessage(snapshot.error),
-                        onRetry: _refreshProfile,
-                      ),
-                    );
-                  }
-
-                  // ------------------------------------------------
-                  // No Data
-                  // ------------------------------------------------
-
-                  final profile = snapshot.data;
-
-                  if (profile == null || profile.merchant == null) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: VendorProfileEmpty(onRefresh: _refreshProfile),
-                    );
-                  }
-
-                  // ------------------------------------------------
-                  // Success
-                  // ------------------------------------------------
-
-                  return _ProfileContent(
-                    merchant: profile.merchant!,
-                    onRefresh: _refreshProfile,
-                  );
-                },
-              ),
-            ),
+            // ======================================================
+            // CONTENT
+            // ======================================================
+            Expanded(child: _buildProfileBody()),
           ],
         ),
       ),
@@ -167,7 +263,81 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
   }
 
   // ============================================================
-  // Error Message
+  // PROFILE BODY
+  // ============================================================
+
+  Widget _buildProfileBody() {
+    // ------------------------------------------------------------
+    // FORCE REFRESH LOADING
+    //
+    // Ye sabse important hai.
+    // Edit se wapas aane ke baad _isRefreshing true hoga,
+    // isliye old profile temporarily hide hogi aur shimmer
+    // immediately show hoga.
+    // ------------------------------------------------------------
+
+    if (_isRefreshing) {
+      return const Padding(
+        padding: EdgeInsets.fromLTRB(16, 8, 16, 24),
+        child: VendorProfileLoading(),
+      );
+    }
+
+    return FutureBuilder<VendorSettingsModel>(
+      future: _profileFuture,
+      builder: (context, snapshot) {
+        // --------------------------------------------------------
+        // INITIAL LOADING
+        // --------------------------------------------------------
+
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.fromLTRB(16, 8, 16, 24),
+            child: VendorProfileLoading(),
+          );
+        }
+
+        // --------------------------------------------------------
+        // ERROR
+        // --------------------------------------------------------
+
+        if (snapshot.hasError) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: VendorProfileError(
+              message: _getErrorMessage(snapshot.error),
+              onRetry: _refreshProfile,
+            ),
+          );
+        }
+
+        // --------------------------------------------------------
+        // DATA
+        // --------------------------------------------------------
+
+        final profile = snapshot.data;
+
+        if (profile == null || profile.merchant == null) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: VendorProfileEmpty(onRefresh: _refreshProfile),
+          );
+        }
+
+        // --------------------------------------------------------
+        // SUCCESS
+        // --------------------------------------------------------
+
+        return _ProfileContent(
+          merchant: profile.merchant!,
+          onRefresh: _refreshProfile,
+        );
+      },
+    );
+  }
+
+  // ============================================================
+  // ERROR MESSAGE
   // ============================================================
 
   String _getErrorMessage(Object? error) {
@@ -175,16 +345,6 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
       return 'We couldn’t load your profile information.';
     }
 
-    final message = error.toString().trim();
-
-    if (message.isEmpty) {
-      return 'Something went wrong while loading your profile.';
-    }
-
-    // ApiException ka useful message show karne ke liye.
-    //
-    // Agar ApiException.toString() mein extra technical
-    // information ho to usko UI mein directly show nahi karenge.
     try {
       final dynamic apiError = error;
 
@@ -194,7 +354,7 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
         return apiMessage.trim();
       }
     } catch (_) {
-      // Fallback neeche handle hoga.
+      // Fallback below.
     }
 
     return 'Something went wrong while loading your profile.';
@@ -202,7 +362,7 @@ class _VendorProfileScreenState extends ConsumerState<VendorProfileScreen> {
 }
 
 // ================================================================
-// Profile Content
+// PROFILE CONTENT
 // ================================================================
 
 class _ProfileContent extends StatelessWidget {
@@ -225,37 +385,22 @@ class _ProfileContent extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ======================================================
-            // Merchant Hero
-            // ======================================================
             VendorProfileHeroCard(merchant: merchant),
 
             const SizedBox(height: 16),
 
-            // ======================================================
-            // Merchant Contact / Status
-            // ======================================================
             VendorProfileInfoCard(merchant: merchant),
 
             const SizedBox(height: 16),
 
-            // ======================================================
-            // About Merchant
-            // ======================================================
             VendorProfileAboutCard(about: merchant.about),
 
             const SizedBox(height: 16),
 
-            // ======================================================
-            // Warehouse Address
-            // ======================================================
             VendorProfileWarehouseCard(address: merchant.warehouseAddress),
 
             const SizedBox(height: 16),
 
-            // ======================================================
-            // Merchant Status
-            // ======================================================
             _MerchantStatusCard(
               status: merchant.status,
               kycStatus: merchant.kycStatus,
@@ -268,7 +413,7 @@ class _ProfileContent extends StatelessWidget {
 }
 
 // ================================================================
-// Merchant Status Card
+// MERCHANT STATUS CARD
 // ================================================================
 
 class _MerchantStatusCard extends StatelessWidget {
@@ -312,7 +457,9 @@ class _MerchantStatusCard extends StatelessWidget {
                   color: AppColors.primary,
                 ),
               ),
+
               const SizedBox(width: 12),
+
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -333,16 +480,10 @@ class _MerchantStatusCard extends StatelessWidget {
 
           const SizedBox(height: 18),
 
-          // --------------------------------------------------------
-          // Merchant Status
-          // --------------------------------------------------------
           _StatusRow(title: 'Account Status', status: status),
 
           const SizedBox(height: 10),
 
-          // --------------------------------------------------------
-          // KYC Status
-          // --------------------------------------------------------
           _StatusRow(title: 'KYC Status', status: kycStatus),
         ],
       ),
@@ -351,7 +492,7 @@ class _MerchantStatusCard extends StatelessWidget {
 }
 
 // ================================================================
-// Status Row
+// STATUS ROW
 // ================================================================
 
 class _StatusRow extends StatelessWidget {
@@ -380,6 +521,7 @@ class _StatusRow extends StatelessWidget {
               ),
             ),
           ),
+
           VendorProfileStatusBadge(status: status, large: true),
         ],
       ),

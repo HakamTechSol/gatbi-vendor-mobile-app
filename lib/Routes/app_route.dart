@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../Core/Bottom Naigation Bar/bottom_bar_screen.dart';
 import '../Core/Bottom Naigation Bar/bottom_bar_navigation.dart';
+import '../Features/Account Setting/Bank Info/Screens/bank_info_screen.dart';
+import '../Features/Account Setting/Business Info/Screens/business_info_screen.dart';
+import '../Features/Account Setting/Edit Profile/Screens/edit_profile_screen.dart';
 import '../Features/Account Setting/Get Profile/Screens/vendor_profile_screen.dart';
 import '../Features/Attributes/Add Attributes/Screens/add_attribute_screen.dart';
 import '../Features/Attributes/Edit Attributes/Screens/edit_attribute_screen.dart';
@@ -11,6 +14,7 @@ import '../Features/Attributes/Varient/Add Varient/Screens/add_variant_screen.da
 import '../Features/Attributes/Varient/Edit Varient/Screens/edit_variant_screen.dart';
 import '../Features/Campaign/Campaign Detail/Screens/campaign_detail_screen.dart';
 import '../Features/Campaign/Create Campaign/Screens/create_campaign_screen.dart';
+import '../Features/Notification/Screens/notifications_screen.dart';
 import '../Features/Payouts/Get Payouts/Screens/payout_list_screen.dart';
 import '../Features/Payouts/Payout Detail/Screens/payout_detail_screen.dart';
 import '../Features/Product Section/Add Product/Screens/add_product_screen.dart';
@@ -80,6 +84,10 @@ abstract final class AppRoutes {
 
   static const String changePassword = '/change-password';
 
+  static const String bankInfo = '/bank-info';
+
+  static const String businessInfo = '/business-info';
+
   static const String bottombar = '/bottombar';
 
   static const String dashboard = '/dashboard';
@@ -91,6 +99,8 @@ abstract final class AppRoutes {
   static const String orderDetail = '/orders/detail';
 
   static const String profile = '/profile';
+
+  static const String editProfile = '/profile/edit';
 
   static const String attributes = '/attributes';
 
@@ -151,6 +161,8 @@ abstract final class AppRoutes {
   static const String addVariant = '/add/variant';
 
   static const String editVariant = '/edit/variant';
+
+  static const String notifications = '/notifications';
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -348,6 +360,20 @@ final GoRouter appRouter = GoRouter(
       },
     ),
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // Notifications
+    // ═══════════════════════════════════════════════════════════════════════
+    GoRoute(
+      path: AppRoutes.notifications,
+      name: 'notifications',
+      builder: (context, state) {
+        return const NotificationsScreen();
+      },
+    ),
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // BOTTOM BAR
+    // ═══════════════════════════════════════════════════════════════════════
     GoRoute(
       path: AppRoutes.bottombar,
       name: 'bottombar',
@@ -357,6 +383,28 @@ final GoRouter appRouter = GoRouter(
             : BottomTab.dashboard;
 
         return BottomMainScreen(initialTab: initialTab);
+      },
+    ),
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Bank Info
+    // ═══════════════════════════════════════════════════════════════════════════
+    GoRoute(
+      path: AppRoutes.bankInfo,
+      name: 'bank-info',
+      builder: (context, state) {
+        return const BankInfoScreen();
+      },
+    ),
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // BUSINESS INFO
+    // ═══════════════════════════════════════════════════════════════════════════
+    GoRoute(
+      path: AppRoutes.businessInfo,
+      name: 'business-info',
+      builder: (context, state) {
+        return const BusinessInfoScreen();
       },
     ),
 
@@ -1266,6 +1314,16 @@ final GoRouter appRouter = GoRouter(
           onProfile: () {
             context.push(AppRoutes.profile);
           },
+          onBankDetails: () {
+            context.push(AppRoutes.bankInfo);
+          },
+          onBusiness: () {
+            context.push(AppRoutes.businessInfo);
+          },
+
+          onNotifications: () {
+            context.push(AppRoutes.notifications);
+          }
         );
       },
     ),
@@ -1325,16 +1383,27 @@ final GoRouter appRouter = GoRouter(
       name: 'profile',
       builder: (context, state) {
         return VendorProfileScreen(
-          onEdit: () {
+          onEdit: () async {
             debugPrint('');
             debugPrint('========== VENDOR PROFILE EDIT ==========');
             debugPrint('Opening merchant profile edit screen...');
             debugPrint('=========================================');
             debugPrint('');
 
-            // Edit Profile API / Screen later connect karenge.
+            await context.push(AppRoutes.editProfile);
           },
         );
+      },
+    ),
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // EDIT VENDOR PROFILE
+    // ═══════════════════════════════════════════════════════════════════════════
+    GoRoute(
+      path: AppRoutes.editProfile,
+      name: 'edit-profile',
+      builder: (context, state) {
+        return const EditProfileScreen();
       },
     ),
   ],

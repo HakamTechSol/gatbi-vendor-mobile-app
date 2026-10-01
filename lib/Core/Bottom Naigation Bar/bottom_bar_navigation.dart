@@ -255,9 +255,21 @@ class _BottomMainScreenState extends State<BottomMainScreen> {
     context.push(AppRoutes.profile);
   }
 
+  void _openOnBankDetails() {
+    context.push(AppRoutes.bankInfo);
+  }
+
+  void _openOnBusiness() {
+    context.push(AppRoutes.businessInfo);
+  }
+
+  void _openNotifications() {
+    context.push(AppRoutes.notifications);
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // BUILD
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ════════════════════════════════════════════════════════════════════════════
 
   @override
   Widget build(BuildContext context) {
@@ -301,6 +313,9 @@ class _BottomMainScreenState extends State<BottomMainScreen> {
             onPayouts: _openPayouts,
             onAttributes: _openOnAttributes,
             onProfile: _openOnProfile,
+            onBankDetails: _openOnBankDetails,
+            onBusiness: _openOnBusiness,
+            onNotifications: _openNotifications,
           ),
         ],
       ),

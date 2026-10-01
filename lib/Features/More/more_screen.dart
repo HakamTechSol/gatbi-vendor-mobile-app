@@ -13,6 +13,9 @@ class MoreScreen extends ConsumerStatefulWidget {
   const MoreScreen({
     super.key,
 
+    // Notifications
+    this.onNotifications,
+
     // Sales
     this.onOrders,
     this.onPayouts,
@@ -23,8 +26,9 @@ class MoreScreen extends ConsumerStatefulWidget {
 
     // Account
     this.onProfile,
+    this.onBusiness,
+    this.onBankDetails,
     this.onChangePassword,
-    this.onSettings,
     this.onKycVerification,
 
     // Support
@@ -38,6 +42,12 @@ class MoreScreen extends ConsumerStatefulWidget {
     this.onCampaigns,
     this.onSaleEvent,
   });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // NOTIFICATIONS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  final VoidCallback? onNotifications;
 
   // ═══════════════════════════════════════════════════════════════════════════
   // SALES
@@ -58,8 +68,9 @@ class MoreScreen extends ConsumerStatefulWidget {
   // ═══════════════════════════════════════════════════════════════════════════
 
   final VoidCallback? onProfile;
+  final VoidCallback? onBusiness;
+  final VoidCallback? onBankDetails;
   final VoidCallback? onChangePassword;
-  final VoidCallback? onSettings;
   final VoidCallback? onKycVerification;
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -305,6 +316,8 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
 
             SliverToBoxAdapter(child: _buildQuickSummary(context)),
 
+            SliverToBoxAdapter(child: _buildNotificationSection()),
+
             SliverToBoxAdapter(child: _buildSalesSection()),
 
             SliverToBoxAdapter(child: _buildProductSection()),
@@ -436,6 +449,26 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // NOTIFICATIONS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildNotificationSection() {
+    return _buildSection(
+      title: 'Notifications',
+      subtitle: 'Manage your notifications',
+      icon: Icons.notifications_active_outlined,
+      children: [
+        _buildMenuItem(
+          icon: Icons.notifications_outlined,
+          title: 'Notifications',
+          subtitle: 'View and manage your notifications',
+          onTap: widget.onNotifications,
+        ),
+      ],
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // SALES
   // ═══════════════════════════════════════════════════════════════════════════
 
@@ -504,16 +537,22 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
           onTap: widget.onProfile,
         ),
         _buildMenuItem(
+          icon: Icons.business_outlined,
+          title: 'Business',
+          subtitle: 'Check & Update your business information',
+          onTap: widget.onBusiness,
+        ),
+        _buildMenuItem(
+          icon: Icons.account_balance_outlined,
+          title: 'Bank Details',
+          subtitle: 'Check & Update your bank information',
+          onTap: widget.onBankDetails,
+        ),
+        _buildMenuItem(
           icon: Icons.lock_outlined,
           title: 'Change Password',
           subtitle: 'Update your account password',
           onTap: widget.onChangePassword,
-        ),
-        _buildMenuItem(
-          icon: Icons.settings_outlined,
-          title: 'Settings',
-          subtitle: 'Manage your store preferences',
-          onTap: widget.onSettings,
         ),
         _buildMenuItem(
           icon: Icons.verified_user_outlined,

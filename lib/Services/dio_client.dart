@@ -38,7 +38,7 @@ class DioClient {
 
   Future<Response<T>> post<T>(
     String path, {
-    dynamic data,
+    Object? data,
     Map<String, dynamic>? queryParameters,
     Options? options,
     CancelToken? cancelToken,
