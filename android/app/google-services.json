@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "391572737407",
+    "project_id": "gatbi-84114",
+    "storage_bucket": "gatbi-84114.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:391572737407:android:63e33b3585a7c588c9de4a",
+        "android_client_info": {
+          "package_name": "com.gatbi.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA7Q_ajXdH0XVAectPLff7jYrh6Bar9T8I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:391572737407:android:9a534a59e1952cf4c9de4a",
+        "android_client_info": {
+          "package_name": "com.gatbi.gatbivender"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA7Q_ajXdH0XVAectPLff7jYrh6Bar9T8I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

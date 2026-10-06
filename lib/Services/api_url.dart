@@ -38,6 +38,19 @@ class ApiUrls {
   static const String markAllReadNotifications =
       'vendor/notifications/mark-all-read';
 
+  static const String deleteNotification = 'vendor/notifications/delete';
+
+  static const String notificationSettings = 'vendor/settings/preferences';
+
+  // Device Registration
+  static const String registerDevice = 'vendor/devices/register';
+
+  // Device Unregistration
+  static const String unregisterDevice = 'vendor/devices/unregister';
+
+  // Get Devices
+  static const String getDevices = 'vendor/devices';
+
   // Dashboard
   static const String dashboard = 'vendor/dashboard';
 

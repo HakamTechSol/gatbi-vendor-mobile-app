@@ -1,15 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
-import '../../../Routes/app_route.dart';
 
-class NotificationsHeader extends StatelessWidget {
-  const NotificationsHeader({super.key, this.onBack, this.onSettings});
+class NotificationSettingHeader extends StatelessWidget {
+  const NotificationSettingHeader({super.key, this.onBack});
 
   final VoidCallback? onBack;
-  final VoidCallback? onSettings;
 
   // ============================================================
   // Back
@@ -21,19 +18,7 @@ class NotificationsHeader extends StatelessWidget {
       return;
     }
 
-    context.pop();
-  }
-
-  // ============================================================
-  // Settings
-  // ============================================================
-
-  void _handleSettings(BuildContext context) {
-    if (onSettings != null) {
-      onSettings!.call();
-      return;
-    }
-    context.push(AppRoutes.notificationSettings);
+    Navigator.of(context).maybePop();
   }
 
   // ============================================================
@@ -50,10 +35,6 @@ class NotificationsHeader extends StatelessWidget {
         const SizedBox(width: 12),
 
         Expanded(child: _buildTitle()),
-
-        const SizedBox(width: 12),
-
-        _buildSettingsButton(context),
       ],
     );
   }
@@ -88,35 +69,6 @@ class NotificationsHeader extends StatelessWidget {
   }
 
   // ============================================================
-  // Settings Button
-  // ============================================================
-
-  Widget _buildSettingsButton(BuildContext context) {
-    return Material(
-      color: AppColors.white,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: () => _handleSettings(context),
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.border),
-          ),
-          alignment: Alignment.center,
-          child: const Icon(
-            Icons.settings_outlined,
-            size: 22,
-            color: AppColors.textPrimary,
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ============================================================
   // Title
   // ============================================================
 
@@ -127,7 +79,7 @@ class NotificationsHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Notifications',
+          'Notification Settings',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: AppTextStyles.headlineMedium.copyWith(
@@ -138,7 +90,7 @@ class NotificationsHeader extends StatelessWidget {
         const SizedBox(height: 3),
 
         Text(
-          'Stay updated with your latest activity',
+          'Manage your notification preferences',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: AppTextStyles.bodySmall.copyWith(

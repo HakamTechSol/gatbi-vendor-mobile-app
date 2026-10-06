@@ -115,13 +115,32 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
     });
 
     try {
+      // ============================================================
+      // DIO CLIENT
+      // ============================================================
+
       final dioClient = ref.read(dioProvider);
+
+      // ============================================================
+      // LOGOUT CONTROLLER
+      //
+      // LogoutController internally:
+      //
+      // 1. Unregister Device
+      // 2. Logout API
+      // 3. Delete JWT
+      // 4. Clear AuthSession
+      // ============================================================
 
       final controller = LogoutController(dioClient: dioClient);
 
       final result = await controller.logout();
 
       if (!mounted) return;
+
+      // ============================================================
+      // LOGOUT SUCCESS
+      // ============================================================
 
       if (result.success == true) {
         context.go(AppRoutes.login);
@@ -142,7 +161,6 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
       });
     }
   }
-
   // ═══════════════════════════════════════════════════════════════════════════
   // LOGOUT CONFIRMATION
   // ═══════════════════════════════════════════════════════════════════════════

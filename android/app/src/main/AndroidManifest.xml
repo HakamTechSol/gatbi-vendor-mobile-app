@@ -1,7 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <uses-permission
+        android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <uses-permission
+        android:name="android.permission.POST_NOTIFICATIONS" />
 
     <queries>
 
@@ -26,6 +31,18 @@
         android:label="Gatbi Vender"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+
+        <!-- FCM DEFAULT CHANNEL -->
+
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="gatbi_vendor_notifications" />
+
+        <!-- FCM DEFAULT ICON -->
+
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@mipmap/ic_launcher" />
 
         <activity
             android:name=".MainActivity"

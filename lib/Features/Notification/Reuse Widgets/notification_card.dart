@@ -11,12 +11,16 @@ class NotificationCard extends StatelessWidget {
     super.key,
     required this.notification,
     this.onTap,
+    this.onDelete,
     this.isMarkingAsRead = false,
+    this.isDeleting = false,
   });
 
   final NotificationItemModel notification;
   final VoidCallback? onTap;
+  final VoidCallback? onDelete;
   final bool isMarkingAsRead;
+  final bool isDeleting;
 
   // ============================================================
   // Build
@@ -26,11 +30,13 @@ class NotificationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isUnread = !notification.isRead;
 
+    final isBusy = isMarkingAsRead || isDeleting;
+
     return Material(
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
-        onTap: isMarkingAsRead ? null : onTap,
+        onTap: isBusy ? null : onTap,
         borderRadius: BorderRadius.circular(18),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
@@ -74,9 +80,9 @@ class NotificationCard extends StatelessWidget {
               const SizedBox(width: 8),
 
               // --------------------------------------------------
-              // Status
+              // Actions
               // --------------------------------------------------
-              _buildStatus(isUnread),
+              _buildActions(isUnread: isUnread, isBusy: isBusy),
             ],
           ),
         ),
@@ -160,6 +166,81 @@ class NotificationCard extends StatelessWidget {
   }
 
   // ============================================================
+  // Actions
+  // ============================================================
+
+  Widget _buildActions({required bool isUnread, required bool isBusy}) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        // --------------------------------------------------------
+        // Delete Button / Loading
+        // --------------------------------------------------------
+        _buildDeleteButton(),
+
+        const SizedBox(height: 10),
+
+        // --------------------------------------------------------
+        // Read / Unread Status
+        // --------------------------------------------------------
+        _buildStatus(isUnread, isBusy: isBusy),
+      ],
+    );
+  }
+
+  // ============================================================
+  // Delete Button
+  // ============================================================
+
+  Widget _buildDeleteButton() {
+    if (isDeleting) {
+      return Container(
+        width: 30,
+        height: 30,
+        decoration: BoxDecoration(
+          color: AppColors.errorLight,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.errorBorder),
+        ),
+        alignment: Alignment.center,
+        child: const SizedBox(
+          width: 12,
+          height: 12,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: AppColors.error,
+          ),
+        ),
+      );
+    }
+
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onDelete,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: AppColors.errorLight,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.errorBorder),
+          ),
+          alignment: Alignment.center,
+          child: const Icon(
+            Icons.delete_outline_rounded,
+            size: 14,
+            color: AppColors.error,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
   // Type
   // ============================================================
 
@@ -185,7 +266,7 @@ class NotificationCard extends StatelessWidget {
   // Status
   // ============================================================
 
-  Widget _buildStatus(bool isUnread) {
+  Widget _buildStatus(bool isUnread, {required bool isBusy}) {
     if (isMarkingAsRead) {
       return const SizedBox(
         width: 18,
@@ -292,13 +373,15 @@ class NotificationCard extends StatelessWidget {
     if (difference.inMinutes < 60) {
       final minutes = difference.inMinutes;
 
-      return '$minutes ${minutes == 1 ? 'minute' : 'minutes'} ago';
+      return '$minutes '
+          '${minutes == 1 ? 'minute' : 'minutes'} ago';
     }
 
     if (difference.inHours < 24) {
       final hours = difference.inHours;
 
-      return '$hours ${hours == 1 ? 'hour' : 'hours'} ago';
+      return '$hours '
+          '${hours == 1 ? 'hour' : 'hours'} ago';
     }
 
     if (difference.inDays == 1) {
@@ -308,7 +391,8 @@ class NotificationCard extends StatelessWidget {
     if (difference.inDays < 7) {
       final days = difference.inDays;
 
-      return '$days ${days == 1 ? 'day' : 'days'} ago';
+      return '$days '
+          '${days == 1 ? 'day' : 'days'} ago';
     }
 
     return _formatDate(dateTime);

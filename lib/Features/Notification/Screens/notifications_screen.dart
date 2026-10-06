@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../Services/api_exception.dart';
 import '../../../../Theme/app_colors.dart';
 
+import '../Delete Notification/Controller/delete_notification_controller.dart';
+
 import '../Get Notifications/Controller/get_notifications_controller.dart';
 import '../Get Notifications/Models/notification_item_model.dart';
 
@@ -70,6 +72,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
 
   final Set<int> _markingReadIds = <int>{};
 
+  final Set<int> _deletingNotificationIds = <int>{};
+
   // ============================================================
   // Lifecycle
   // ============================================================
@@ -117,15 +121,6 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
 
   // ============================================================
   // GET Notifications
-  //
-  // Initial load:
-  // Full shimmer.
-  //
-  // Mutation ke baad:
-  // Full shimmer.
-  //
-  // Filter change:
-  // Full shimmer.
   // ============================================================
 
   Future<void> _loadNotifications({bool showShimmer = true}) async {
@@ -167,8 +162,11 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         _unreadCount = result.unreadCount;
 
         _currentPage = result.pagination?.currentPage ?? 1;
+
         _totalPages = result.pagination?.totalPages ?? 1;
+
         _totalItems = result.pagination?.totalItems ?? 0;
+
         _limit = result.pagination?.limit ?? _limit;
 
         _errorMessage = null;
@@ -203,19 +201,15 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
 
   // ============================================================
   // Pull To Refresh
-  //
-  // Pull refresh par:
-  // 1. Existing list clear
-  // 2. Full shimmer
-  // 3. Fresh GET
-  // 4. Server response show
   // ============================================================
 
   Future<void> _refreshNotifications() async {
     if (_isRefreshing ||
         _isInitialLoading ||
         _isLoadingMore ||
-        _isMarkingAllRead) {
+        _isMarkingAllRead ||
+        _deletingNotificationIds.isNotEmpty ||
+        _markingReadIds.isNotEmpty) {
       return;
     }
 
@@ -249,8 +243,11 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         _unreadCount = result.unreadCount;
 
         _currentPage = result.pagination?.currentPage ?? 1;
+
         _totalPages = result.pagination?.totalPages ?? 1;
+
         _totalItems = result.pagination?.totalItems ?? 0;
+
         _limit = result.pagination?.limit ?? _limit;
 
         _errorMessage = null;
@@ -293,16 +290,14 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
 
   // ============================================================
   // Load More
-  //
-  // Pagination par full shimmer nahi.
-  // Sirf bottom loader.
   // ============================================================
 
   Future<void> _loadMoreNotifications() async {
     if (_isInitialLoading ||
         _isRefreshing ||
         _isLoadingMore ||
-        _isMarkingAllRead) {
+        _isMarkingAllRead ||
+        _deletingNotificationIds.isNotEmpty) {
       return;
     }
 
@@ -392,7 +387,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     if (_isInitialLoading ||
         _isRefreshing ||
         _isLoadingMore ||
-        _isMarkingAllRead) {
+        _isMarkingAllRead ||
+        _deletingNotificationIds.isNotEmpty ||
+        _markingReadIds.isNotEmpty) {
       return;
     }
 
@@ -413,12 +410,6 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
 
   // ============================================================
   // Mark Single Notification As Read
-  //
-  // API success:
-  // 1. Clear current data
-  // 2. Show shimmer
-  // 3. Fresh GET
-  // 4. Server response becomes source of truth
   // ============================================================
 
   Future<void> _markNotificationAsRead(
@@ -439,6 +430,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     }
 
     if (_isMarkingAllRead) {
+      return;
+    }
+
+    if (_deletingNotificationIds.contains(notificationId)) {
       return;
     }
 
@@ -464,15 +459,6 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
 
       _logMarkReadResult(notificationId, result.unreadCount);
 
-      // --------------------------------------------------------
-      // API SUCCESS
-      // --------------------------------------------------------
-      //
-      // Local notification ko manually isRead=true nahi karna.
-      //
-      // Server se fresh GET karenge.
-      // --------------------------------------------------------
-
       setState(() {
         _markingReadIds.remove(notificationId);
 
@@ -485,13 +471,6 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         _totalPages = 1;
         _totalItems = 0;
       });
-
-      // --------------------------------------------------------
-      // Fresh GET
-      //
-      // showShimmer:false isliye kyun ke shimmer already
-      // _isInitialLoading=true ki wajah se visible hai.
-      // --------------------------------------------------------
 
       await _loadNotifications(showShimmer: false);
     } on ApiException catch (error) {
@@ -522,12 +501,127 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   }
 
   // ============================================================
-  // Mark All Notifications As Read
+  // Delete Notification
+  //
+  // No confirmation popup.
   //
   // API success:
   // 1. Clear current data
-  // 2. Show shimmer
+  // 2. Show full shimmer
   // 3. Fresh GET
+  // 4. Server response becomes source of truth
+  // ============================================================
+
+  Future<void> _deleteNotification(NotificationItemModel notification) async {
+    final notificationId = notification.id;
+
+    if (notificationId == null) {
+      return;
+    }
+
+    if (_deletingNotificationIds.contains(notificationId)) {
+      return;
+    }
+
+    if (_isMarkingAllRead) {
+      return;
+    }
+
+    if (_markingReadIds.contains(notificationId)) {
+      return;
+    }
+
+    if (_isInitialLoading || _isRefreshing || _isLoadingMore) {
+      return;
+    }
+
+    setState(() {
+      _deletingNotificationIds.add(notificationId);
+    });
+
+    try {
+      final result = await ref
+          .read(deleteNotificationControllerProvider)
+          .deleteNotification(notificationId: notificationId);
+
+      if (!mounted) {
+        return;
+      }
+
+      if (!result.success) {
+        throw ApiException(
+          message: result.message ?? 'Unable to delete notification.',
+          code: 'DELETE_NOTIFICATION_FAILED',
+        );
+      }
+
+      _logDeleteNotificationResult(notificationId, result.unreadCount);
+
+      // --------------------------------------------------------
+      // API SUCCESS
+      //
+      // Local list se manually remove nahi kar rahe.
+      // Fresh GET server source of truth hoga.
+      // --------------------------------------------------------
+
+      setState(() {
+        _deletingNotificationIds.remove(notificationId);
+
+        _isInitialLoading = true;
+        _errorMessage = null;
+
+        _notifications.clear();
+
+        _currentPage = 1;
+        _totalPages = 1;
+        _totalItems = 0;
+      });
+
+      // --------------------------------------------------------
+      // Fresh GET
+      //
+      // Shimmer already visible hai.
+      // Isliye showShimmer:false.
+      // --------------------------------------------------------
+
+      await _loadNotifications(showShimmer: false);
+
+      if (!mounted) {
+        return;
+      }
+
+      if (result.message != null && result.message!.trim().isNotEmpty) {
+        _showSnackBar(result.message!, isError: false);
+      }
+    } on ApiException catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _deletingNotificationIds.remove(notificationId);
+      });
+
+      _showSnackBar(error.message, isError: true);
+
+      _logError('DELETE NOTIFICATION', error);
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _deletingNotificationIds.remove(notificationId);
+      });
+
+      _showSnackBar('Unable to delete notification.', isError: true);
+
+      _logUnknownError('DELETE NOTIFICATION', error);
+    }
+  }
+
+  // ============================================================
+  // Mark All Notifications As Read
   // ============================================================
 
   Future<void> _markAllNotificationsAsRead() async {
@@ -540,6 +634,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     }
 
     if (_markingReadIds.isNotEmpty) {
+      return;
+    }
+
+    if (_deletingNotificationIds.isNotEmpty) {
       return;
     }
 
@@ -566,10 +664,6 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
 
       _logMarkAllReadResult(result.unreadCount);
 
-      // --------------------------------------------------------
-      // API SUCCESS
-      // --------------------------------------------------------
-
       setState(() {
         _isMarkingAllRead = false;
 
@@ -582,10 +676,6 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         _totalPages = 1;
         _totalItems = 0;
       });
-
-      // --------------------------------------------------------
-      // Fresh GET + shimmer
-      // --------------------------------------------------------
 
       await _loadNotifications(showShimmer: false);
 
@@ -757,15 +847,36 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                         notificationId != null &&
                         _markingReadIds.contains(notificationId);
 
+                    final isDeleting =
+                        notificationId != null &&
+                        _deletingNotificationIds.contains(notificationId);
+
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: NotificationCard(
                         notification: notification,
                         isMarkingAsRead: isMarking,
+                        isDeleting: isDeleting,
+
+                        // ------------------------------------------------
+                        // Mark Read
+                        // ------------------------------------------------
                         onTap: notification.isRead
                             ? null
                             : () {
                                 _markNotificationAsRead(notification);
+                              },
+
+                        // ------------------------------------------------
+                        // Delete
+                        //
+                        // Direct API call.
+                        // No confirmation popup.
+                        // ------------------------------------------------
+                        onDelete: isDeleting
+                            ? null
+                            : () {
+                                _deleteNotification(notification);
                               },
                       ),
                     );
@@ -964,6 +1075,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     debugPrint('');
   }
 
+  // ============================================================
+  // Mark Read Log
+  // ============================================================
+
   void _logMarkReadResult(int notificationId, int unreadCount) {
     if (!kDebugMode) {
       return;
@@ -978,6 +1093,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     debugPrint('');
   }
 
+  // ============================================================
+  // Mark All Read Log
+  // ============================================================
+
   void _logMarkAllReadResult(int unreadCount) {
     if (!kDebugMode) {
       return;
@@ -990,6 +1109,28 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     debugPrint('==============================================');
     debugPrint('');
   }
+
+  // ============================================================
+  // Delete Log
+  // ============================================================
+
+  void _logDeleteNotificationResult(int notificationId, int unreadCount) {
+    if (!kDebugMode) {
+      return;
+    }
+
+    debugPrint('');
+    debugPrint('========== DELETE NOTIFICATION ==========');
+    debugPrint('NOTIFICATION ID: $notificationId');
+    debugPrint('NEW UNREAD COUNT: $unreadCount');
+    debugPrint('NEXT ACTION: REFRESH GET NOTIFICATIONS');
+    debugPrint('========================================');
+    debugPrint('');
+  }
+
+  // ============================================================
+  // Error Log
+  // ============================================================
 
   void _logError(String operation, ApiException error) {
     if (!kDebugMode) {
@@ -1004,6 +1145,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     debugPrint('======================================');
     debugPrint('');
   }
+
+  // ============================================================
+  // Unknown Error Log
+  // ============================================================
 
   void _logUnknownError(String operation, Object error) {
     if (!kDebugMode) {

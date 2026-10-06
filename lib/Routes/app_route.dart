@@ -14,6 +14,7 @@ import '../Features/Attributes/Varient/Add Varient/Screens/add_variant_screen.da
 import '../Features/Attributes/Varient/Edit Varient/Screens/edit_variant_screen.dart';
 import '../Features/Campaign/Campaign Detail/Screens/campaign_detail_screen.dart';
 import '../Features/Campaign/Create Campaign/Screens/create_campaign_screen.dart';
+import '../Features/Notification/Notification Setting/Screens/notification_setting_screen.dart';
 import '../Features/Notification/Screens/notifications_screen.dart';
 import '../Features/Payouts/Get Payouts/Screens/payout_list_screen.dart';
 import '../Features/Payouts/Payout Detail/Screens/payout_detail_screen.dart';
@@ -163,6 +164,8 @@ abstract final class AppRoutes {
   static const String editVariant = '/edit/variant';
 
   static const String notifications = '/notifications';
+
+  static const String notificationSettings = '/notification-settings';
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -368,6 +371,14 @@ final GoRouter appRouter = GoRouter(
       name: 'notifications',
       builder: (context, state) {
         return const NotificationsScreen();
+      },
+    ),
+
+    GoRoute(
+      path: AppRoutes.notificationSettings,
+      name: 'notification-settings',
+      builder: (context, state) {
+        return const NotificationSettingScreen();
       },
     ),
 
@@ -1323,7 +1334,7 @@ final GoRouter appRouter = GoRouter(
 
           onNotifications: () {
             context.push(AppRoutes.notifications);
-          }
+          },
         );
       },
     ),
