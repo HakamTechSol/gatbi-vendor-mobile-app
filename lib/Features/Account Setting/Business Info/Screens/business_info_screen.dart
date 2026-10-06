@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../Core/Custom Widgets/custom_button.dart';
 import '../../../../Core/Custom Widgets/custom_textfield.dart';
+import '../../../../Routes/app_route.dart';
 import '../../../../Services/api_exception.dart';
 import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
 
+import '../../Cancel Business Change/Controller/cancel_business_change_controller.dart';
 import '../../Edit Profile/Reuse Widgets/edit_profile_header.dart';
+import '../../Get Business Change/Controller/get_business_change_controller.dart';
+import '../../Get Business Change/Models/get_business_change_model.dart';
+import '../../Get Business Change/Screens/business_change_requests_card.dart';
 import '../../Get Profile/Controller/get_profile_controller.dart';
 
 class BusinessInfoScreen extends ConsumerStatefulWidget {
@@ -38,6 +44,12 @@ class _BusinessInfoScreenState extends ConsumerState<BusinessInfoScreen> {
   String? _errorMessage;
 
   // ============================================================
+  // BUSINESS CHANGE DATA
+  // ============================================================
+
+  GetBusinessChangeModel? _businessChangeData;
+
+  // ============================================================
   // INIT
   // ============================================================
 
@@ -61,7 +73,7 @@ class _BusinessInfoScreenState extends ConsumerState<BusinessInfoScreen> {
   }
 
   // ============================================================
-  // GET PROFILE / LOAD BUSINESS INFO
+  // GET PROFILE + GET BUSINESS CHANGE
   // ============================================================
 
   Future<void> _loadBusinessInfo({bool isRefresh = false}) async {
@@ -82,6 +94,10 @@ class _BusinessInfoScreenState extends ConsumerState<BusinessInfoScreen> {
     });
 
     try {
+      // ==========================================================
+      // GET PROFILE
+      // ==========================================================
+
       debugPrint('');
       debugPrint('==============================================');
       debugPrint('       BUSINESS INFO - GET PROFILE            ');
@@ -112,16 +128,117 @@ class _BusinessInfoScreenState extends ConsumerState<BusinessInfoScreen> {
       debugPrint('Merchant ID            : ${merchant.id}');
       debugPrint('Business Type          : $businessType');
       debugPrint('Trade License Number   : $tradeLicenseNumber');
+
+      // ==========================================================
+      // GET BUSINESS CHANGE REQUESTS
+      // ==========================================================
+
+      debugPrint('');
+      debugPrint('==============================================');
+      debugPrint('     BUSINESS CHANGE - GET REQUESTS            ');
+      debugPrint('==============================================');
+      debugPrint('Fetching business change configuration and requests...');
+      debugPrint('');
+
+      final businessChangeResult = await ref
+          .read(getBusinessChangeControllerProvider)
+          .getBusinessChange();
+
+      if (!mounted) return;
+
+      // ==========================================================
+      // STORE BUSINESS CHANGE DATA
+      // ==========================================================
+
+      _businessChangeData = businessChangeResult;
+
+      debugPrint('Business Change GET API Success');
+
+      debugPrint('Success          : ${businessChangeResult.success}');
+
+      debugPrint(
+        'Requests Count   : '
+        '${businessChangeResult.requests.length}',
+      );
+
+      debugPrint(
+        'Changeable Fields: '
+        '${businessChangeResult.changeableFields}',
+      );
+
+      debugPrint('');
+
+      // ==========================================================
+      // REQUEST DEBUG LOGS
+      // ==========================================================
+
+      if (businessChangeResult.requests.isNotEmpty) {
+        for (final request in businessChangeResult.requests) {
+          debugPrint('------------------------------------------------');
+
+          debugPrint('REQUEST ID       : ${request.id ?? 'N/A'}');
+
+          debugPrint(
+            'FIELD NAME       : '
+            '${request.fieldName ?? 'N/A'}',
+          );
+
+          debugPrint(
+            'FIELD LABEL      : '
+            '${request.fieldLabel ?? 'N/A'}',
+          );
+
+          debugPrint(
+            'CURRENT VALUE    : '
+            '${request.currentValue ?? 'N/A'}',
+          );
+
+          debugPrint(
+            'REQUESTED VALUE  : '
+            '${request.requestedValue ?? 'N/A'}',
+          );
+
+          debugPrint(
+            'STATUS           : '
+            '${request.status ?? 'N/A'}',
+          );
+
+          debugPrint(
+            'HAS DOCUMENT     : '
+            '${request.hasDocument}',
+          );
+
+          debugPrint(
+            'CREATED AT       : '
+            '${request.createdAt ?? 'N/A'}',
+          );
+
+          debugPrint(
+            'REVIEWED AT      : '
+            '${request.reviewedAt ?? 'N/A'}',
+          );
+
+          debugPrint(
+            'REASON           : '
+            '${request.reason ?? 'N/A'}',
+          );
+        }
+
+        debugPrint('------------------------------------------------');
+      } else {
+        debugPrint('No business change requests found.');
+      }
+
+      debugPrint('');
       debugPrint('==============================================');
       debugPrint('');
 
-      // ========================================================
+      // ==========================================================
       // SET API VALUES
       // null => empty string
-      // ========================================================
+      // ==========================================================
 
       _businessTypeController.text = businessType;
-
       _tradeLicenseController.text = tradeLicenseNumber;
 
       if (!mounted) return;
@@ -181,6 +298,169 @@ class _BusinessInfoScreenState extends ConsumerState<BusinessInfoScreen> {
     }
 
     await _loadBusinessInfo(isRefresh: true);
+  }
+
+  // ============================================================
+  // CANCEL BUSINESS CHANGE REQUEST
+  // ============================================================
+
+  Future<void> _handleDeleteRequest(BusinessChangeRequestModel request) async {
+    debugPrint('');
+    debugPrint('==============================================');
+    debugPrint('       CANCEL BUSINESS CHANGE REQUEST         ');
+    debugPrint('==============================================');
+    debugPrint('Request ID : ${request.id ?? 'N/A'}');
+    debugPrint('Field Name : ${request.fieldName ?? 'N/A'}');
+    debugPrint('Field Label: ${request.fieldLabel ?? 'N/A'}');
+    debugPrint('Status     : ${request.status ?? 'N/A'}');
+    debugPrint('==============================================');
+    debugPrint('');
+
+    // ==========================================================
+    // VALIDATE REQUEST ID
+    // ==========================================================
+
+    final requestId = request.id;
+
+    if (requestId == null) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Invalid request ID.'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.error,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+
+      return;
+    }
+
+    // ==========================================================
+    // CHECK REQUEST STATUS
+    // Do not allow cancelling an already cancelled request.
+    // ==========================================================
+
+    final status = request.status?.trim().toLowerCase();
+
+    if (status == 'cancelled') {
+      debugPrint('CANCEL REQUEST: Request is already cancelled.');
+
+      return;
+    }
+
+    // ==========================================================
+    // API CALL
+    // ==========================================================
+
+    try {
+      debugPrint('');
+      debugPrint('========== CANCEL API CALL ==========');
+      debugPrint('Request ID: $requestId');
+      debugPrint('Calling POST cancel API...');
+      debugPrint('=====================================');
+
+      final controller = ref.read(cancelBusinessChangeControllerProvider);
+
+      final result = await controller.cancelBusinessChange(requestId);
+
+      debugPrint('');
+      debugPrint('========== CANCEL API RESPONSE ==========');
+      debugPrint('Success : ${result.success}');
+      debugPrint('Message : ${result.message ?? 'N/A'}');
+      debugPrint('=========================================');
+      debugPrint('');
+
+      if (!mounted) return;
+
+      // ==========================================================
+      // SUCCESS
+      // ==========================================================
+
+      if (result.success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              result.message ?? 'Change request cancelled successfully.',
+            ),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.success,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+
+        // ========================================================
+        // REFRESH GET BUSINESS CHANGE
+        // ========================================================
+
+        await _loadBusinessInfo();
+      } else {
+        // ========================================================
+        // API RETURNED SUCCESS = FALSE
+        // ========================================================
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              result.message ?? 'Unable to cancel the change request.',
+            ),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.error,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
+    } on ApiException catch (error) {
+      debugPrint('');
+      debugPrint('========== CANCEL API ERROR ==========');
+      debugPrint('Code    : ${error.code}');
+      debugPrint('Message : ${error.message}');
+      debugPrint('======================================');
+      debugPrint('');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error.message.trim().isNotEmpty
+                ? error.message
+                : 'Unable to cancel the change request.',
+          ),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.error,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    } catch (error) {
+      debugPrint('');
+      debugPrint('========== CANCEL UNKNOWN ERROR ==========');
+      debugPrint('Error: $error');
+      debugPrint('=========================================');
+      debugPrint('');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Something went wrong. Please try again.'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.error,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    }
   }
 
   // ============================================================
@@ -259,17 +539,36 @@ class _BusinessInfoScreenState extends ConsumerState<BusinessInfoScreen> {
                       const SizedBox(height: 20),
 
                       // ========================================
+                      // REQUEST CHANGE BUTTON
+                      // ========================================
+                      _buildLockedButton(context),
+
+                      const SizedBox(height: 20),
+
+                      // ========================================
+                      // BUSINESS CHANGE REQUESTS
+                      //
+                      // Card automatically hides when
+                      // requests list is empty.
+                      // ========================================
+                      if (_businessChangeData != null &&
+                          _businessChangeData!.requests.isNotEmpty) ...[
+                        BusinessChangeRequestsCard(
+                          requests: _businessChangeData!.requests,
+                          onDelete: _handleDeleteRequest,
+                        ),
+
+                        const SizedBox(height: 20),
+                      ],
+
+                      // ========================================
                       // REFRESHING INDICATOR
                       // ========================================
                       if (_isRefreshing) ...[
                         _buildRefreshingIndicator(),
+
                         const SizedBox(height: 16),
                       ],
-
-                      // ========================================
-                      // LOCKED BUTTON
-                      // ========================================
-                      _buildLockedButton(),
 
                       const SizedBox(height: 12),
 
@@ -337,7 +636,9 @@ class _BusinessInfoScreenState extends ConsumerState<BusinessInfoScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Business Details', style: AppTextStyles.titleLarge),
+
                     const SizedBox(height: 3),
+
                     Text(
                       'Your registered business information.',
                       style: AppTextStyles.bodySmall,
@@ -398,20 +699,42 @@ class _BusinessInfoScreenState extends ConsumerState<BusinessInfoScreen> {
   }
 
   // ============================================================
-  // LOCKED BUTTON
+  // REQUEST CHANGE BUTTON
   // ============================================================
 
-  Widget _buildLockedButton() {
+  Widget _buildLockedButton(BuildContext context) {
     return CustomButton(
-      text: 'Business Information Locked',
-      icon: Icons.lock_outline_rounded,
-      onPressed: null,
-      isEnabled: false,
-      backgroundColor: AppColors.disabled,
-      foregroundColor: AppColors.textMuted,
+      text: 'Request to Change Business Info',
+      icon: Icons.request_page_rounded,
+      onPressed: () async {
+        debugPrint('');
+        debugPrint('========== OPEN BUSINESS CHANGE ==========');
+        debugPrint('Opening Business Change screen...');
+        debugPrint('==========================================');
+        debugPrint('');
+
+        final result = await context.push<bool>(AppRoutes.businessChange);
+
+        if (!mounted) return;
+
+        debugPrint('');
+        debugPrint('========== BUSINESS CHANGE BACK ==========');
+        debugPrint('Returned result: $result');
+        debugPrint('Refreshing Business Info APIs...');
+        debugPrint('==========================================');
+        debugPrint('');
+
+        // --------------------------------------------------------
+        // ALWAYS REFRESH WHEN BUSINESS CHANGE SCREEN CLOSES
+        // --------------------------------------------------------
+
+        await _loadBusinessInfo(isRefresh: true);
+      },
+      isEnabled: true,
+      backgroundColor: AppColors.primary,
+      foregroundColor: AppColors.textOnPrimary,
     );
   }
-
   // ============================================================
   // LOCKED NOTE
   // ============================================================

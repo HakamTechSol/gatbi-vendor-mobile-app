@@ -19,7 +19,7 @@ class LoginOtpVerificationScreen extends ConsumerStatefulWidget {
     required this.email,
     required this.merchantId,
     this.expiresInMinutes,
-    this.onBack,
+    required this.onBack,
   });
 
   /// Email received from login screen.
@@ -34,7 +34,7 @@ class LoginOtpVerificationScreen extends ConsumerStatefulWidget {
   final int? expiresInMinutes;
 
   /// Back button.
-  final VoidCallback? onBack;
+  final VoidCallback onBack;
 
   @override
   ConsumerState<LoginOtpVerificationScreen> createState() =>
@@ -933,7 +933,7 @@ class _LoginOtpVerificationScreenState
 
   Widget _buildBackButton() {
     return CustomButton(
-      text: 'Back to Registration',
+      text: 'Back to Login',
       icon: Icons.arrow_back_rounded,
       onPressed: widget.onBack,
       type: CustomButtonType.outlined,

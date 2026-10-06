@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../Core/Bottom Naigation Bar/bottom_bar_screen.dart';
 import '../Core/Bottom Naigation Bar/bottom_bar_navigation.dart';
 import '../Features/Account Setting/Bank Info/Screens/bank_info_screen.dart';
+import '../Features/Account Setting/Business Change/Screens/business_changes_screen.dart';
 import '../Features/Account Setting/Business Info/Screens/business_info_screen.dart';
 import '../Features/Account Setting/Edit Profile/Screens/edit_profile_screen.dart';
 import '../Features/Account Setting/Get Profile/Screens/vendor_profile_screen.dart';
@@ -88,6 +89,8 @@ abstract final class AppRoutes {
   static const String bankInfo = '/bank-info';
 
   static const String businessInfo = '/business-info';
+
+  static const String businessChange = '/business-change';
 
   static const String bottombar = '/bottombar';
 
@@ -281,17 +284,29 @@ final GoRouter appRouter = GoRouter(
             : <String, dynamic>{};
 
         final email = data['email'] as String? ?? '';
-        final merchantId = data['merchant_id'] as int? ?? 0;
-        final expiresInMinutes = data['expires_in_minutes'] as int? ?? 0;
+
+        final merchantId = data['merchant_id'] is int
+            ? data['merchant_id'] as int
+            : int.tryParse(data['merchant_id']?.toString() ?? '') ?? 0;
+
+        final expiresInMinutes = data['expires_in_minutes'] is int
+            ? data['expires_in_minutes'] as int
+            : int.tryParse(data['expires_in_minutes']?.toString() ?? '') ?? 0;
 
         return LoginOtpVerificationScreen(
           email: email,
           merchantId: merchantId,
           expiresInMinutes: expiresInMinutes,
+
+          // IMPORTANT:
+          // OTP screen ko Login par wapas bhejna hai.
+          // context.pop() USE NAHI karna.
+          onBack: () {
+            context.go(AppRoutes.login);
+          },
         );
       },
     ),
-
     // ═══════════════════════════════════════════════════════════════════════
     // FORGET PASSWORD
     // ═══════════════════════════════════════════════════════════════════════
@@ -416,6 +431,17 @@ final GoRouter appRouter = GoRouter(
       name: 'business-info',
       builder: (context, state) {
         return const BusinessInfoScreen();
+      },
+    ),
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // BUSINESS CHANGE
+    // ═══════════════════════════════════════════════════════════════════════════
+    GoRoute(
+      path: AppRoutes.businessChange,
+      name: 'business-change',
+      builder: (context, state) {
+        return const BusinessChangeScreen();
       },
     ),
 

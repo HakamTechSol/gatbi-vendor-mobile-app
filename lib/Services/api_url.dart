@@ -30,6 +30,14 @@ class ApiUrls {
   // Bank Info
   static const String vendorBankInfo = 'vendor/settings/bank';
 
+  // Business Change
+  static const String businessChange =
+    'vendor/settings/business-change';
+
+  static String cancelBusinessChange(int requestId) {
+  return '$businessChange/$requestId/cancel';
+}
+
   // Notifications
   static const String getNotifications = 'vendor/notifications';
 

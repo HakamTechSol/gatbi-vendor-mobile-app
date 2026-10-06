@@ -62,15 +62,6 @@ class KycStatusCard extends StatelessWidget {
 
           const SizedBox(height: 8),
 
-          Text(
-            message ?? info.description,
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: AppColors.textSecondary,
-            ),
-            textAlign: TextAlign.center,
-          ),
-
-          const SizedBox(height: 18),
 
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),

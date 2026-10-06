@@ -173,8 +173,23 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   // ═══════════════════════════════════════════════════════════════════════════
 
   void _nextStep() {
+    // ============================================================
+    // STEP 1 VALIDATION
+    // ============================================================
     if (_currentStep == 0) {
+      // 1. Form validate karein
       final isValid = _step1FormKey.currentState?.validate() ?? false;
+
+      // 2. Manually check karein (API fail hone par bhi rokne ke liye)
+      if (_selectedBusinessType == null || _selectedBusinessType!.isEmpty) {
+        _showError('Please select a business type.');
+        return;
+      }
+
+      if (_selectedCategoryId == null) {
+        _showError('Please select a category.');
+        return;
+      }
 
       if (!isValid) {
         return;
@@ -187,8 +202,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       return;
     }
 
+    // ============================================================
+    // STEP 2 VALIDATION
+    // ============================================================
     if (_currentStep == 1) {
       final isValid = _step2FormKey.currentState?.validate() ?? false;
+
+      // Phone country code manual check
+      if (_selectedPhoneCountryCode == null ||
+          _selectedPhoneCountryCode!.isEmpty) {
+        _showError('Please select your phone country.');
+        return;
+      }
 
       if (!isValid) {
         return;
@@ -234,17 +259,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     var currentValue = _phoneController.text.trim();
 
-    // ------------------------------------------------------------
     // Remove previous country's dial code.
-    //
-    // Example:
-    // Previous: +971
-    // Current:  +971501234567
-    //
-    // Result:
-    // 501234567
-    // ------------------------------------------------------------
-
     if (previousCountry != null) {
       final previousDialCode = previousCountry.dialCode?.trim();
 
@@ -261,34 +276,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       }
     }
 
-    // ------------------------------------------------------------
-    // If current value already starts with the new dial code,
-    // don't add it again.
-    // ------------------------------------------------------------
-
+    // If current value already starts with the new dial code, don't add again.
     if (currentValue.startsWith(normalizedDialCode)) {
       return;
     }
 
-    // ------------------------------------------------------------
     // Remove formatting from local number.
-    // ------------------------------------------------------------
-
     currentValue = currentValue
         .replaceAll(' ', '')
         .replaceAll('-', '')
         .replaceAll('(', '')
         .replaceAll(')', '');
-
-    // ------------------------------------------------------------
-    // Put dial code directly INSIDE the phone field.
-    //
-    // Empty:
-    // +92 |
-    //
-    // Existing local number:
-    // +92 3212513290
-    // ------------------------------------------------------------
 
     final newValue = currentValue.isEmpty
         ? '$normalizedDialCode '
@@ -299,6 +297,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       selection: TextSelection.collapsed(offset: newValue.length),
     );
   }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // REGISTRATION SUCCESS DIALOG
   // ═══════════════════════════════════════════════════════════════════════════
@@ -335,9 +334,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   size: 22,
                 ),
               ),
-
               const SizedBox(width: 12),
-
               Expanded(
                 child: Text(
                   'Registration Successful',
@@ -394,28 +391,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       return;
     }
 
-    // ------------------------------------------------------------
-    // Terms validation
-    // ------------------------------------------------------------
-
     if (!_termsAgreed) {
       _showError('Please agree to the Terms of Service and Privacy Policy.');
       return;
     }
-
-    // ------------------------------------------------------------
-    // Step 3 validation
-    // ------------------------------------------------------------
 
     final isStep3Valid = _step3FormKey.currentState?.validate() ?? false;
 
     if (!isStep3Valid) {
       return;
     }
-
-    // ------------------------------------------------------------
-    // Required values
-    // ------------------------------------------------------------
 
     final businessType = _selectedBusinessType;
     final categoryId = _selectedCategoryId;
@@ -435,7 +420,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           ),
         ),
       );
-
       return;
     }
 
@@ -449,24 +433,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       return;
     }
 
-    // ------------------------------------------------------------
-    // Form values
-    // ------------------------------------------------------------
-
     final storeName = _storeNameController.text.trim();
-
     final email = _emailController.text.trim();
-
     final phone = _phoneController.text.trim();
-
     final address = _addressController.text.trim();
-
     final about = _aboutController.text.trim();
-
     final tradeLicenseNumber = _licenseNumberController.text.trim();
-
     final password = _passwordController.text;
-
     final passwordConfirmation = _passwordConfirmationController.text;
 
     if (phone.isEmpty) {
@@ -481,10 +454,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     });
 
     try {
-      // ==========================================================
-      // REGISTER REQUEST
-      // ==========================================================
-
       final result = await _registerController.register(
         storeName: storeName,
         businessType: businessType,
@@ -506,42 +475,30 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         return;
       }
 
-      // ==========================================================
-      // SUCCESS
-      // ==========================================================
-
       if (result.success == true) {
         await _showRegistrationSuccessDialog(
           message:
               result.message ??
               'Registration successful. Please verify your email before logging in.',
         );
-
         return;
       }
-
-      // ==========================================================
-      // API FAILURE
-      // ==========================================================
 
       _showError(result.message ?? 'Registration failed. Please try again.');
     } on ApiException catch (error) {
       if (!mounted) {
         return;
       }
-
       _showError(error.message);
     } catch (_) {
       if (!mounted) {
         return;
       }
-
       _showError('Something went wrong. Please try again.');
     } finally {
       if (!mounted) {
         return;
       }
-
       setState(() {
         _isLoading = false;
       });
@@ -559,16 +516,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     final requestId = ++_phoneRuleRequestId;
 
-    // ------------------------------------------------------------
-    // Country cleared
-    // ------------------------------------------------------------
-
     if (country == null || country.code == null) {
       setState(() {
         _selectedPhoneRule = null;
         _isPhoneRuleLoading = false;
       });
-
       return;
     }
 
@@ -579,13 +531,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         _selectedPhoneRule = null;
         _isPhoneRuleLoading = false;
       });
-
       return;
     }
-
-    // ------------------------------------------------------------
-    // Loading
-    // ------------------------------------------------------------
 
     setState(() {
       _selectedPhoneRule = null;
@@ -599,7 +546,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         return;
       }
 
-      // Ignore an old request if user selected another country.
       if (requestId != _phoneRuleRequestId) {
         return;
       }
@@ -634,6 +580,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       });
     }
   }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // ERROR SNACKBAR
   // ═══════════════════════════════════════════════════════════════════════════
@@ -667,7 +614,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
-
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
 
     return Scaffold(
@@ -676,7 +622,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       body: Stack(
         children: [
           _buildBackground(size),
-
           SafeArea(
             bottom: false,
             child: SingleChildScrollView(
@@ -710,30 +655,25 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             height: screenHeight * 0.51,
             decoration: const BoxDecoration(gradient: AppColors.heroGradient),
           ),
-
           Positioned(
             top: 70,
             right: -55,
             child: _buildBackgroundCircle(size: 170, opacity: 0.05),
           ),
-
           Positioned(
             top: 180,
             right: -90,
             child: _buildBackgroundCircle(size: 230, opacity: 0.04),
           ),
-
           Positioned(
             top: 280,
             right: -120,
             child: _buildBackgroundCircle(size: 300, opacity: 0.035),
           ),
-
           Positioned.fill(
             top: screenHeight * 0.45,
             child: Container(color: AppColors.background),
           ),
-
           ClipPath(
             clipper: _HeroWaveClipper(),
             child: Container(
@@ -770,7 +710,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   Widget _buildHeroSection(Size size) {
     final isSmallHeight = size.height < 700;
-
     final horizontalPadding = size.width < 350 ? 16.0 : 20.0;
 
     return Padding(
@@ -784,9 +723,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildBrandHeader(),
-
           SizedBox(height: isSmallHeight ? 14 : 17),
-
           Text(
             'Start your\nbusiness journey',
             style: AppTextStyles.displayLarge.copyWith(
@@ -797,9 +734,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               fontWeight: FontWeight.w800,
             ),
           ),
-
           const SizedBox(height: 9),
-
           Text(
             'Create your vendor account, manage your '
             'store, track orders, and grow your business '
@@ -810,7 +745,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               height: 1.4,
             ),
           ),
-
           SizedBox(height: isSmallHeight ? 14 : 17),
         ],
       ),
@@ -834,9 +768,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             size: 17,
           ),
         ),
-
         const SizedBox(width: 11),
-
         Text(
           'Vendor Hub',
           style: AppTextStyles.titleLarge.copyWith(
@@ -881,17 +813,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         child: Column(
           children: [
             _buildStepIndicator(),
-
             const SizedBox(height: 24),
-
             if (_currentStep == 0) _buildStep1Content(),
-
             if (_currentStep == 1) _buildStep2Content(),
-
             if (_currentStep == 2) _buildStep3Content(),
-
             const SizedBox(height: 24),
-
             _buildNavigationButtons(),
           ],
         ),
@@ -907,13 +833,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     return Row(
       children: [
         _buildStepCircle(1, 'Business\nDetails'),
-
         Expanded(child: _buildStepLine(0)),
-
         _buildStepCircle(2, 'Contact &\nLocation'),
-
         Expanded(child: _buildStepLine(1)),
-
         _buildStepCircle(3, 'Profile &\nCompliance'),
       ],
     );
@@ -921,7 +843,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   Widget _buildStepCircle(int step, String label) {
     final isActive = _currentStep >= step - 1;
-
     final isCompleted = _currentStep > step - 1;
 
     return Column(
@@ -956,9 +877,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
           ),
         ),
-
         const SizedBox(height: 6),
-
         Text(
           label,
           textAlign: TextAlign.center,
@@ -1001,14 +920,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             'Business Details',
             style: AppTextStyles.authTitle.copyWith(fontSize: 20),
           ),
-
           const SizedBox(height: 4),
-
           Text(
             'Store basics & category',
             style: AppTextStyles.authSubtitle.copyWith(fontSize: 12),
           ),
-
           const SizedBox(height: 20),
 
           // Store Name
@@ -1024,17 +940,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               _licenseNumberFocusNode.requestFocus();
             },
           ),
-
           const SizedBox(height: 16),
 
           // Business Type
           _buildBusinessTypeDropdown(),
-
           const SizedBox(height: 16),
 
           // Category
           _buildCategoryDropdown(),
-
           const SizedBox(height: 16),
 
           // Trade License
@@ -1052,45 +965,81 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // BUSINESS TYPE
+  // BUSINESS TYPE (FormField Wrapper)
   // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildBusinessTypeDropdown() {
-    return BusinessTypeDropdown(
-      value: _selectedBusinessType,
-      onChanged: (value) {
-        setState(() {
-          _selectedBusinessType = value;
-        });
-      },
+    return FormField<String>(
+      initialValue: _selectedBusinessType,
       validator: (value) {
         if (value == null || value.isEmpty) {
           return 'Please select business type';
         }
-
         return null;
+      },
+      builder: (FormFieldState<String> state) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            BusinessTypeDropdown(
+              value: _selectedBusinessType,
+              onChanged: (value) {
+                setState(() {
+                  _selectedBusinessType = value;
+                });
+                state.didChange(value);
+              },
+            ),
+            if (state.hasError)
+              Padding(
+                padding: const EdgeInsets.only(top: 6, left: 12),
+                child: Text(
+                  state.errorText!,
+                  style: TextStyle(color: AppColors.error, fontSize: 12),
+                ),
+              ),
+          ],
+        );
       },
     );
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // CATEGORY
+  // CATEGORY (FormField Wrapper)
   // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildCategoryDropdown() {
-    return CategoryDropdown(
-      value: _selectedCategoryId,
-      onChanged: (value) {
-        setState(() {
-          _selectedCategoryId = value;
-        });
-      },
+    return FormField<int>(
+      initialValue: _selectedCategoryId,
       validator: (value) {
         if (value == null) {
           return 'Please select a category';
         }
-
         return null;
+      },
+      builder: (FormFieldState<int> state) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CategoryDropdown(
+              value: _selectedCategoryId,
+              onChanged: (value) {
+                setState(() {
+                  _selectedCategoryId = value;
+                });
+                state.didChange(value);
+              },
+            ),
+            if (state.hasError)
+              Padding(
+                padding: const EdgeInsets.only(top: 6, left: 12),
+                child: Text(
+                  state.errorText!,
+                  style: TextStyle(color: AppColors.error, fontSize: 12),
+                ),
+              ),
+          ],
+        );
       },
     );
   }
@@ -1109,14 +1058,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             'Contact & Location',
             style: AppTextStyles.authTitle.copyWith(fontSize: 20),
           ),
-
           const SizedBox(height: 4),
-
           Text(
             'Communication & address',
             style: AppTextStyles.authSubtitle.copyWith(fontSize: 12),
           ),
-
           const SizedBox(height: 20),
 
           // Email
@@ -1135,12 +1081,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               _phoneFocusNode.requestFocus();
             },
           ),
-
           const SizedBox(height: 16),
 
           // Phone
           _buildPhoneField(),
-
           const SizedBox(height: 16),
 
           // Address
@@ -1155,7 +1099,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               if (value == null || value.trim().length < 10) {
                 return 'Address must be at least 10 characters';
               }
-
               return null;
             },
           ),
@@ -1181,46 +1124,72 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             color: AppColors.textPrimary,
           ),
         ),
-
         const SizedBox(height: 6),
-
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ======================================================
+            // PHONE CODE DROPDOWN (FormField Wrapper)
+            // ======================================================
             Container(
               width: 110,
               margin: const EdgeInsets.only(right: 8),
-              child: PhoneCodeDropdown(
-                value: _selectedPhoneCountryCode,
-
-                // ==================================================
-                // COUNTRY CODE
-                // ==================================================
-                onChanged: (value) {
-                  setState(() {
-                    _selectedPhoneCountryCode = value;
-                  });
+              child: FormField<String>(
+                initialValue: _selectedPhoneCountryCode,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Select';
+                  }
+                  return null;
                 },
+                builder: (FormFieldState<String> state) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      PhoneCodeDropdown(
+                        value: _selectedPhoneCountryCode,
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedPhoneCountryCode = value;
+                          });
+                          state.didChange(value);
+                        },
+                        onCountryChanged: (country) {
+                          final previousCountry = _selectedPhoneCountry;
 
-                // ==================================================
-                // COMPLETE COUNTRY
-                // ==================================================
-                onCountryChanged: (country) {
-                  final previousCountry = _selectedPhoneCountry;
+                          setState(() {
+                            _selectedPhoneCountry = country;
 
-                  setState(() {
-                    _selectedPhoneCountry = country;
+                            if (country?.code != null) {
+                              _selectedPhoneCountryCode = country!.code;
+                            }
+                          });
 
-                    if (country?.code != null) {
-                      _selectedPhoneCountryCode = country!.code;
-                    }
-                  });
+                          state.didChange(country?.code);
 
-                  // Load matching validation rule.
-                  _updatePhoneRuleForCountry(country);
+                          // Load matching validation rule.
+                          _updatePhoneRuleForCountry(country);
 
-                  // Put dial code directly inside the phone text field.
-                  _setPhoneDialCode(country, previousCountry: previousCountry);
+                          // Put dial code directly inside the phone text field.
+                          _setPhoneDialCode(
+                            country,
+                            previousCountry: previousCountry,
+                          );
+                        },
+                      ),
+                      if (state.hasError)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4, left: 4),
+                          child: Text(
+                            state.errorText!,
+                            style: TextStyle(
+                              color: AppColors.error,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
                 },
               ),
             ),
@@ -1232,18 +1201,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               child: CustomTextField(
                 controller: _phoneController,
                 focusNode: _phoneFocusNode,
-
                 hintText: example != null
                     ? 'Example: $example'
                     : 'Enter phone number',
-
-                // IMPORTANT:
-                // Dial code ab prefixText mein nahi hoga.
                 prefixText: null,
-
                 keyboardType: TextInputType.phone,
                 textInputAction: TextInputAction.done,
-
                 validator: _validatePhone,
               ),
             ),
@@ -1255,7 +1218,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         // ======================================================
         if (_isPhoneRuleLoading) ...[
           const SizedBox(height: 6),
-
           Text(
             'Loading phone validation rules...',
             style: AppTextStyles.bodyMedium.copyWith(
@@ -1265,7 +1227,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           ),
         ] else if (_selectedPhoneRule != null) ...[
           const SizedBox(height: 6),
-
           Text(
             _phoneRuleHint(),
             style: AppTextStyles.bodyMedium.copyWith(
@@ -1289,19 +1250,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       return 'Phone number is required';
     }
 
-    // ------------------------------------------------------------
-    // Country
-    // ------------------------------------------------------------
-
     final country = _selectedPhoneCountry;
 
     if (country == null) {
       return 'Please select a country';
     }
-
-    // ------------------------------------------------------------
-    // Phone Rule
-    // ------------------------------------------------------------
 
     final rule = _selectedPhoneRule;
 
@@ -1309,13 +1262,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       if (_isPhoneRuleLoading) {
         return 'Phone rules are still loading. Please try again.';
       }
-
       return 'Phone validation rule is not available for this country.';
     }
-
-    // ------------------------------------------------------------
-    // Dial Code
-    // ------------------------------------------------------------
 
     final dialCode = country.dialCode?.trim();
 
@@ -1327,25 +1275,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         ? dialCode
         : '+$dialCode';
 
-    // ------------------------------------------------------------
-    // Remove country dial code.
-    //
-    // Field:
-    // +92 3212513290
-    //
-    // Local number:
-    // 3212513290
-    // ------------------------------------------------------------
-
     String phone = rawPhone;
 
     if (phone.startsWith(normalizedDialCode)) {
       phone = phone.substring(normalizedDialCode.length).trim();
     }
-
-    // ------------------------------------------------------------
-    // Remove formatting
-    // ------------------------------------------------------------
 
     phone = phone
         .replaceAll(' ', '')
@@ -1357,27 +1291,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       return 'Phone number is required';
     }
 
-    // ------------------------------------------------------------
-    // Digits only
-    // ------------------------------------------------------------
-
     if (!RegExp(r'^\d+$').hasMatch(phone)) {
       return 'Phone number must contain digits only';
     }
 
-    // ------------------------------------------------------------
-    // Length
-    // ------------------------------------------------------------
-
     final minLength = rule.minLength;
     final maxLength = rule.maxLength;
     final example = rule.example;
-
     final length = phone.length;
-
-    // ------------------------------------------------------------
-    // Minimum
-    // ------------------------------------------------------------
 
     if (minLength != null && length < minLength) {
       if (minLength == maxLength) {
@@ -1385,15 +1306,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             ? 'Phone number must be $minLength digits. Example: $example'
             : 'Phone number must be $minLength digits';
       }
-
       return example != null
           ? 'Phone number must be at least $minLength digits. Example: $example'
           : 'Phone number must be at least $minLength digits';
     }
-
-    // ------------------------------------------------------------
-    // Maximum
-    // ------------------------------------------------------------
 
     if (maxLength != null && length > maxLength) {
       if (minLength == maxLength) {
@@ -1401,11 +1317,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             ? 'Phone number must be $maxLength digits. Example: $example'
             : 'Phone number must be $maxLength digits';
       }
-
       final rangeText = minLength != null
           ? '$minLength-$maxLength'
           : 'up to $maxLength';
-
       return example != null
           ? 'Phone number must be $rangeText digits. Example: $example'
           : 'Phone number must be $rangeText digits';
@@ -1413,6 +1327,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     return null;
   }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // BUILD FULL PHONE NUMBER
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1440,23 +1355,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       return null;
     }
 
-    // ------------------------------------------------------------
-    // Remove dial code from field.
-    //
-    // Field:
-    // +92 3212513290
-    //
-    // Becomes:
-    // 3212513290
-    // ------------------------------------------------------------
-
     if (phone.startsWith(normalizedDialCode)) {
       phone = phone.substring(normalizedDialCode.length).trim();
     }
-
-    // ------------------------------------------------------------
-    // Remove formatting
-    // ------------------------------------------------------------
 
     phone = phone
         .replaceAll(' ', '')
@@ -1468,14 +1369,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       return null;
     }
 
-    // ------------------------------------------------------------
-    // API requires:
-    //
-    // +923212513290
-    // ------------------------------------------------------------
-
     return '$normalizedDialCode$phone';
   }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // PHONE RULE HINT
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1531,14 +1427,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             'Profile & Compliance',
             style: AppTextStyles.authTitle.copyWith(fontSize: 20),
           ),
-
           const SizedBox(height: 4),
-
           Text(
             'Business story & consents',
             style: AppTextStyles.authSubtitle.copyWith(fontSize: 12),
           ),
-
           const SizedBox(height: 20),
 
           // About
@@ -1553,11 +1446,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               if (value == null || value.trim().length < 50) {
                 return 'Minimum 50 characters required';
               }
-
               return null;
             },
           ),
-
           const SizedBox(height: 16),
 
           // Password
@@ -1574,7 +1465,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               _passwordConfirmationFocusNode.requestFocus();
             },
           ),
-
           const SizedBox(height: 16),
 
           // Confirm Password
@@ -1593,7 +1483,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               );
             },
           ),
-
           const SizedBox(height: 16),
 
           // Terms
@@ -1609,7 +1498,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 },
                 activeColor: AppColors.primary,
               ),
-
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.only(top: 10),
@@ -1631,32 +1519,65 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildNavigationButtons() {
+    // ================================================================
+    // STEP 1
+    // ================================================================
+    if (_currentStep == 0) {
+      return Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: CustomButton(
+                  text: 'Login',
+                  icon: Icons.login_rounded,
+                  iconPosition: CustomButtonIconPosition.leading,
+                  onPressed: () {
+                    context.go(AppRoutes.login);
+                  },
+                  type: CustomButtonType.outlined,
+                  height: 47,
+                  borderRadius: 10,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: CustomButton(
+                  text: 'Next',
+                  icon: Icons.arrow_forward_rounded,
+                  iconPosition: CustomButtonIconPosition.trailing,
+                  onPressed: _nextStep,
+                  isLoading: _isLoading,
+                  type: CustomButtonType.primary,
+                  height: 47,
+                  borderRadius: 10,
+                  elevation: 3,
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+
+    // ================================================================
+    // STEP 2 & STEP 3
+    // ================================================================
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        // ----------------------------------------------------------
-        // Back
-        // ----------------------------------------------------------
-        if (_currentStep > 0)
-          Expanded(
-            child: CustomButton(
-              text: 'Back',
-              icon: Icons.arrow_back_rounded,
-              iconPosition: CustomButtonIconPosition.leading,
-              onPressed: _prevStep,
-              type: CustomButtonType.outlined,
-              height: 47,
-              borderRadius: 10,
-            ),
-          )
-        else
-          const Spacer(),
-
+        Expanded(
+          child: CustomButton(
+            text: 'Back',
+            icon: Icons.arrow_back_rounded,
+            iconPosition: CustomButtonIconPosition.leading,
+            onPressed: _prevStep,
+            type: CustomButtonType.outlined,
+            height: 47,
+            borderRadius: 10,
+          ),
+        ),
         const SizedBox(width: 12),
-
-        // ----------------------------------------------------------
-        // Next / Submit
-        // ----------------------------------------------------------
         Expanded(
           child: CustomButton(
             text: _currentStep == 2 ? 'Submit Application' : 'Next',
@@ -1687,7 +1608,6 @@ class _HeroWaveClipper extends CustomClipper<Path> {
     final path = Path();
 
     path.moveTo(0, 0);
-
     path.lineTo(0, size.height * 0.87);
 
     path.quadraticBezierTo(
@@ -1712,7 +1632,6 @@ class _HeroWaveClipper extends CustomClipper<Path> {
     );
 
     path.lineTo(size.width, 0);
-
     path.close();
 
     return path;

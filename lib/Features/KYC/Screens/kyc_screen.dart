@@ -1704,7 +1704,6 @@ class _KycScreenState extends ConsumerState<KycScreen> {
                       _currentStep = 0;
                     });
                   },
-            icon: const Icon(Icons.arrow_back_rounded),
             label: const Text('Back'),
             style: OutlinedButton.styleFrom(
               minimumSize: const Size.fromHeight(52),
