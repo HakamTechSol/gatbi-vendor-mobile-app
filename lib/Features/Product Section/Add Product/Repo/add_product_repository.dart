@@ -126,8 +126,8 @@ class AddProductRepository {
     // Affiliate
     // ==========================================================
 
-    formData.fields.add(
-      MapEntry('allow_affiliate', request.allowAffiliate ? '1' : '0'),
+     formData.fields.add(
+      MapEntry('allow_affiliate', request.allowAffiliate.toString()),
     );
 
     // ==========================================================

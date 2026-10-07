@@ -8,11 +8,7 @@ class AddProductRequestModel {
     required this.price,
     required this.stockQty,
 
-    // ==========================================================
-    // STATUS
-    // ==========================================================
     this.isActive = 1,
-
     this.galleryImages = const [],
     this.priceOld,
     this.sku,
@@ -20,7 +16,10 @@ class AddProductRequestModel {
     this.brandId,
     this.description,
     this.shortDescription,
-    this.allowAffiliate = false,
+
+    // ✅ int (0 ya 1)
+    this.allowAffiliate = 0,
+
     this.hasVariants = false,
     this.variantAttributes = const [],
     this.attributeValues = const {},
@@ -44,6 +43,8 @@ class AddProductRequestModel {
   final String name;
 
   final File heroImage;
+
+  final int allowAffiliate;
 
   final int categoryId;
 
@@ -92,11 +93,7 @@ class AddProductRequestModel {
 
   final String? shortDescription;
 
-  // ============================================================
-  // Affiliate
-  // ============================================================
 
-  final bool allowAffiliate;
 
   // ============================================================
   // Variants

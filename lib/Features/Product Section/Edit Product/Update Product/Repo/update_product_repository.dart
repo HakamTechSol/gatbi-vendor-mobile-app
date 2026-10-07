@@ -101,7 +101,7 @@ class UpdateProductRepository {
     }
 
     // ==========================================================
-    // Affiliate
+    // Affiliate  ✅ FIXED — Always send 0/1
     // ==========================================================
 
     if (request.allowAffiliate != null) {
@@ -121,15 +121,7 @@ class UpdateProductRepository {
     }
 
     // ==========================================================
-    // IMPORTANT
-    //
-    // Product is_active is intentionally NOT sent.
-    // ==========================================================
-
-    // ==========================================================
     // Hero Image
-    //
-    // Only send when a NEW image is selected.
     // ==========================================================
 
     if (request.heroImage != null) {
@@ -143,10 +135,6 @@ class UpdateProductRepository {
 
     // ==========================================================
     // Gallery Images
-    //
-    // Update API:
-    //
-    // images[]
     // ==========================================================
 
     if (request.galleryImages != null) {
@@ -162,8 +150,6 @@ class UpdateProductRepository {
 
     // ==========================================================
     // Has Variants
-    //
-    // Only send when explicitly provided.
     // ==========================================================
 
     if (request.hasVariants != null) {
@@ -173,7 +159,9 @@ class UpdateProductRepository {
     }
 
     // ==========================================================
-    // Variant Attributes
+    // Variant Attributes  ✅ FIXED
+    //
+    // Postman: variant_attributes: [4, 2]
     // ==========================================================
 
     if (request.variantAttributes != null) {
@@ -185,7 +173,9 @@ class UpdateProductRepository {
     }
 
     // ==========================================================
-    // Attribute Values
+    // Attribute Values  ✅ FIXED
+    //
+    // Postman: attribute_values: {"2":[8],"4":[9,12]}
     // ==========================================================
 
     if (request.attributeValues != null) {
@@ -211,10 +201,14 @@ class UpdateProductRepository {
     }
 
     // ==========================================================
-    // Variants Matrix
+    // Variants Matrix  ✅ FIXED
     //
-    // Existing variant matrix remains untouched if variants
-    // are omitted completely.
+    // Postman:
+    // variants[0][attributes][2] = 8
+    // variants[0][attributes][4] = 9
+    // variants[0][stock_qty] = 10
+    // variants[0][auto] = 1
+    // variants[0][is_active] = 1
     // ==========================================================
 
     if (request.variants != null) {
@@ -268,9 +262,13 @@ class UpdateProductRepository {
         }
 
         // ------------------------------------------------------
+        // Variant auto flag
+        // ------------------------------------------------------
+
+        formData.fields.add(MapEntry('variants[$index][auto]', '1'));
+
+        // ------------------------------------------------------
         // Variant Active Status
-        //
-        // Only send when explicitly provided.
         // ------------------------------------------------------
 
         if (variant.isActive != null) {
@@ -283,14 +281,19 @@ class UpdateProductRepository {
         }
 
         // ------------------------------------------------------
-        // Variant Attribute Values
+        // Variant Attributes  ✅ KEY FIX
+        //
+        // OLD (wrong): variants[index][attribute_values][attrId] = valId
+        // NEW (correct): variants[index][attributes][attrId] = valId
+        //
+        // Postman mein attributes key hai, attribute_values nahi.
         // ------------------------------------------------------
 
         if (variant.attributeValues != null) {
           variant.attributeValues!.forEach((attributeId, valueId) {
             formData.fields.add(
               MapEntry(
-                'variants[$index][attribute_values][$attributeId]',
+                'variants[$index][attributes][$attributeId]',
                 valueId.toString(),
               ),
             );
@@ -366,83 +369,45 @@ class UpdateProductRepository {
       debugPrint('========== UPDATE PRODUCT REQUEST ==========');
 
       debugPrint('PRODUCT ID: $productId');
-
       debugPrint('NAME: ${request.name ?? 'OMITTED'}');
-
       debugPrint(
         'SHORT DESCRIPTION: '
         '${_hasValue(request.shortDescription) ? 'YES' : 'OMITTED'}',
       );
-
       debugPrint(
         'DESCRIPTION: '
         '${_hasValue(request.description) ? 'YES' : 'OMITTED'}',
       );
-
       debugPrint('PRICE: ${request.price ?? 'OMITTED'}');
-
       debugPrint('PRICE OLD: ${request.priceOld ?? 'OMITTED'}');
-
       debugPrint('STOCK QTY: ${request.stockQty ?? 'OMITTED'}');
-
       debugPrint('CATEGORY ID: ${request.categoryId ?? 'OMITTED'}');
-
       debugPrint('BRAND ID: ${request.brandId ?? 'OMITTED'}');
-
       debugPrint('BRAND: ${request.brand ?? 'OMITTED'}');
-
       debugPrint('SKU: ${request.sku ?? 'OMITTED'}');
-
       debugPrint('WEIGHT: ${request.weight ?? 'OMITTED'}');
-
       debugPrint(
-        'ALLOW AFFILIATE: '
-        '${request.allowAffiliate ?? 'OMITTED'}',
+        'ALLOW AFFILIATE: ${request.allowAffiliate ?? 'OMITTED'} '
+        '→ SENT AS: ${request.allowAffiliate == null ? 'OMITTED' : (request.allowAffiliate! ? '1' : '0')}',
       );
-
+      debugPrint('IS FEATURED: ${request.isFeatured ?? 'OMITTED'}');
+      debugPrint('HAS VARIANTS: ${request.hasVariants ?? 'OMITTED'}');
+      debugPrint('HERO IMAGE: ${request.heroImage?.path ?? 'OMITTED'}');
       debugPrint(
-        'IS FEATURED: '
-        '${request.isFeatured ?? 'OMITTED'}',
+        'GALLERY IMAGES: ${request.galleryImages?.length ?? 'OMITTED'}',
       );
-
       debugPrint(
-        'HAS VARIANTS: '
-        '${request.hasVariants ?? 'OMITTED'}',
+        'VARIANT ATTRIBUTES: ${request.variantAttributes ?? 'OMITTED'}',
       );
-
       debugPrint(
-        'HERO IMAGE: '
-        '${request.heroImage?.path ?? 'OMITTED'}',
+        'ATTRIBUTE VALUES: ${request.attributeValues ?? 'OMITTED'}',
       );
-
       debugPrint(
-        'GALLERY IMAGES: '
-        '${request.galleryImages?.length ?? 'OMITTED'}',
+        'ATTRIBUTE MODIFIERS: ${request.attributeValueModifiers ?? 'OMITTED'}',
       );
-
       debugPrint(
-        'VARIANT ATTRIBUTES: '
-        '${request.variantAttributes ?? 'OMITTED'}',
+        'VARIANTS COUNT: ${request.variants?.length ?? 'OMITTED'}',
       );
-
-      debugPrint(
-        'ATTRIBUTE VALUES: '
-        '${request.attributeValues ?? 'OMITTED'}',
-      );
-
-      debugPrint(
-        'ATTRIBUTE MODIFIERS: '
-        '${request.attributeValueModifiers ?? 'OMITTED'}',
-      );
-
-      debugPrint(
-        'VARIANTS COUNT: '
-        '${request.variants?.length ?? 'OMITTED'}',
-      );
-
-      // --------------------------------------------------------
-      // Variant Logs
-      // --------------------------------------------------------
 
       if (request.variants != null) {
         for (var index = 0; index < request.variants!.length; index++) {
@@ -455,44 +420,25 @@ class UpdateProductRepository {
             'PRICE OLD: ${variant.priceOld ?? 'OMITTED'} | '
             'STOCK: ${variant.stockQty ?? 'OMITTED'} | '
             'IS ACTIVE: ${variant.isActive ?? 'OMITTED'} | '
-            'ATTRIBUTES: '
-            '${variant.attributeValues ?? 'OMITTED'}',
+            'ATTRIBUTES: ${variant.attributeValues ?? 'OMITTED'}',
           );
         }
       }
 
-      debugPrint(
-        'ARABIC NAME: '
-        '${request.nameAr ?? 'OMITTED'}',
-      );
-
+      debugPrint('ARABIC NAME: ${request.nameAr ?? 'OMITTED'}');
       debugPrint(
         'ARABIC SHORT DESCRIPTION: '
         '${request.shortDescriptionAr ?? 'OMITTED'}',
       );
-
       debugPrint(
-        'ARABIC DESCRIPTION: '
-        '${request.descriptionAr ?? 'OMITTED'}',
+        'ARABIC DESCRIPTION: ${request.descriptionAr ?? 'OMITTED'}',
       );
-
+      debugPrint('META TITLE: ${request.metaTitle ?? 'OMITTED'}');
       debugPrint(
-        'META TITLE: '
-        '${request.metaTitle ?? 'OMITTED'}',
+        'META DESCRIPTION: ${request.metaDescription ?? 'OMITTED'}',
       );
-
-      debugPrint(
-        'META DESCRIPTION: '
-        '${request.metaDescription ?? 'OMITTED'}',
-      );
-
-      debugPrint(
-        'META KEYWORDS: '
-        '${request.metaKeywords ?? 'OMITTED'}',
-      );
-
+      debugPrint('META KEYWORDS: ${request.metaKeywords ?? 'OMITTED'}');
       debugPrint('============================================');
-
       debugPrint('');
     }
 
@@ -514,20 +460,12 @@ class UpdateProductRepository {
 
     final data = response.data;
 
-    // ==========================================================
-    // Validate Response
-    // ==========================================================
-
     if (data == null) {
       throw const ApiException(
         message: 'Invalid response received from server.',
         code: 'INVALID_RESPONSE',
       );
     }
-
-    // ==========================================================
-    // Convert Response -> Model
-    // ==========================================================
 
     final result = UpdateProductModel.fromJson(data);
 
@@ -540,74 +478,33 @@ class UpdateProductRepository {
 
       debugPrint('');
       debugPrint('========== UPDATE PRODUCT RESULT ==========');
-
       debugPrint('SUCCESS: ${result.success}');
-
       debugPrint('MESSAGE: ${result.message ?? 'N/A'}');
-
       debugPrint('');
-
       debugPrint('---------- PRODUCT ----------');
-
       debugPrint('PRODUCT ID: ${product?.id ?? 'N/A'}');
-
       debugPrint('PRODUCT NAME: ${product?.name ?? 'N/A'}');
-
       debugPrint('SLUG: ${product?.slug ?? 'N/A'}');
-
       debugPrint(
-        'PRICE: '
-        '${product?.price ?? 0} '
-        '${product?.currency ?? ''}',
+        'PRICE: ${product?.price ?? 0} ${product?.currency ?? ''}',
       );
-
-      debugPrint(
-        'REGULAR PRICE: '
-        '${product?.regularPrice ?? 0}',
-      );
-
-      debugPrint(
-        'SALE PRICE: '
-        '${product?.salePrice ?? 0}',
-      );
-
-      debugPrint(
-        'STOCK STATUS: '
-        '${product?.stockStatus ?? 'N/A'}',
-      );
-
-      debugPrint(
-        'STOCK QUANTITY: '
-        '${product?.stockQuantity ?? 0}',
-      );
-
-      debugPrint(
-        'HAS VARIANTS: '
-        '${product?.hasVariants ?? false}',
-      );
-
+      debugPrint('REGULAR PRICE: ${product?.regularPrice ?? 0}');
+      debugPrint('SALE PRICE: ${product?.salePrice ?? 0}');
+      debugPrint('STOCK STATUS: ${product?.stockStatus ?? 'N/A'}');
+      debugPrint('STOCK QUANTITY: ${product?.stockQuantity ?? 0}');
+      debugPrint('HAS VARIANTS: ${product?.hasVariants ?? false}');
       debugPrint('SKU: ${product?.sku ?? 'N/A'}');
-
       debugPrint('BRAND: ${product?.brand ?? 'N/A'}');
-
       debugPrint(
-        'CATEGORY: '
-        '${product?.category?.name ?? 'N/A'} '
+        'CATEGORY: ${product?.category?.name ?? 'N/A'} '
         '(ID: ${product?.category?.id ?? 'N/A'})',
       );
-
       debugPrint(
-        'MERCHANT: '
-        '${product?.merchantName ?? 'N/A'} '
+        'MERCHANT: ${product?.merchantName ?? 'N/A'} '
         '(ID: ${product?.merchantId ?? 'N/A'})',
       );
-
       debugPrint('IMAGE: ${product?.image ?? 'N/A'}');
-
-      debugPrint(
-        'VARIANTS COUNT: '
-        '${product?.variants.length ?? 0}',
-      );
+      debugPrint('VARIANTS COUNT: ${product?.variants.length ?? 0}');
 
       if (product?.variants.isNotEmpty == true) {
         for (final variant in product!.variants) {
@@ -622,21 +519,9 @@ class UpdateProductRepository {
         }
       }
 
-      debugPrint(
-        'GALLERY COUNT: '
-        '${product?.gallery.length ?? 0}',
-      );
-
-      debugPrint(
-        'ATTRIBUTES COUNT: '
-        '${product?.attributes.length ?? 0}',
-      );
-
-      debugPrint(
-        'CAMPAIGNS COUNT: '
-        '${product?.campaigns.length ?? 0}',
-      );
-
+      debugPrint('GALLERY COUNT: ${product?.gallery.length ?? 0}');
+      debugPrint('ATTRIBUTES COUNT: ${product?.attributes.length ?? 0}');
+      debugPrint('CAMPAIGNS COUNT: ${product?.campaigns.length ?? 0}');
       debugPrint('');
       debugPrint('===========================================');
       debugPrint('');
@@ -655,13 +540,10 @@ class UpdateProductRepository {
 
   static String _fileName(String path) {
     final normalizedPath = path.replaceAll('\\', '/');
-
     final index = normalizedPath.lastIndexOf('/');
-
     if (index == -1) {
       return normalizedPath;
     }
-
     return normalizedPath.substring(index + 1);
   }
 }

@@ -471,9 +471,9 @@ class MyProductCard extends StatelessWidget {
             onEdit?.call();
             break;
 
-          case _ProductAction.stock:
-            onStockEdit?.call();
-            break;
+          // case _ProductAction.stock:
+          //   onStockEdit?.call();
+          //   break;
 
           case _ProductAction.delete:
             onDelete?.call();
@@ -489,13 +489,13 @@ class MyProductCard extends StatelessWidget {
               label: 'Edit Product',
             ),
           ),
-          const PopupMenuItem<_ProductAction>(
-            value: _ProductAction.stock,
-            child: _ProductMenuItem(
-              icon: Icons.inventory_2_outlined,
-              label: 'Update Stock',
-            ),
-          ),
+          // const PopupMenuItem<_ProductAction>(
+          //   value: _ProductAction.stock,
+          //   child: _ProductMenuItem(
+          //     icon: Icons.inventory_2_outlined,
+          //     label: 'Update Stock',
+          //   ),
+          // ),
           const PopupMenuDivider(),
           const PopupMenuItem<_ProductAction>(
             value: _ProductAction.delete,
@@ -555,4 +555,4 @@ class _ProductMenuItem extends StatelessWidget {
 // ACTION ENUM
 // ============================================================
 
-enum _ProductAction { edit, stock, delete }
+enum _ProductAction { edit, delete }

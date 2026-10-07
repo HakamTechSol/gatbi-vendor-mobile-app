@@ -12,6 +12,7 @@ import '../../../../Services/api_exception.dart';
 import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
 
+import '../../../Core/Bottom Naigation Bar/bottom_bar_screen.dart';
 import '../../Attributes/Get Attributes/Controllers/get_attributes_controller.dart';
 import '../../Attributes/Get Attributes/Models/get_attributes_model.dart';
 
@@ -668,6 +669,16 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
       }
     }
 
+    // ✅ Also lookup by attribute_id (server's attribute_id)
+    final availableByAttributeId = <int, GetAttributeModel>{};
+
+    for (final attribute in _availableAttributes) {
+      final attrId = attribute.attributeId;
+      if (attrId != null) {
+        availableByAttributeId[attrId] = attribute;
+      }
+    }
+
     final availableValuesById = <int, GetAttributeValueModel>{};
 
     for (final attribute in _availableAttributes) {
@@ -694,6 +705,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     );
 
     final restoredAttributes = <GetAttributeModel>[];
+    final addedAttributeIds = <int>{}; // ✅ Guard against duplicates
 
     // ═══════════════════════════════════════════════════════════════════════════
     // PATH A — Use attributeGroups
@@ -707,10 +719,17 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
           continue;
         }
 
-        final fullAttribute = availableById[attributeId];
+        // ✅ Skip if already added (prevents duplicates)
+        if (addedAttributeIds.contains(attributeId)) {
+          continue;
+        }
+
+        // Lookup by attribute_id first, then fall back to id
+        final fullAttribute =
+            availableByAttributeId[attributeId] ?? availableById[attributeId];
 
         if (fullAttribute == null) {
-          debugPrint('SKIP GROUP: attribute id=$attributeId not found in API.');
+          debugPrint('SKIP GROUP: attribute_id=$attributeId not found in API.');
           continue;
         }
 
@@ -753,9 +772,11 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
           continue;
         }
 
+        // ✅ SINGLE add() — no duplicate!
         restoredAttributes.add(
           GetAttributeModel(
             id: fullAttribute.id,
+            attributeId: fullAttribute.attributeId ?? attributeId,
             name: fullAttribute.name,
             adminLabel: fullAttribute.adminLabel,
             slug: fullAttribute.slug,
@@ -765,9 +786,11 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
           ),
         );
 
+        addedAttributeIds.add(attributeId);
+
         debugPrint(
           'RESTORED (group): ${fullAttribute.name} '
-          '(ID: $attributeId) '
+          '(attribute_id: $attributeId) '
           'values=${selectedValues.length}',
         );
       }
@@ -793,8 +816,14 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
           continue;
         }
 
+        // ✅ Skip if already added
+        if (addedAttributeIds.contains(attributeId)) {
+          continue;
+        }
+
         // Try to enrich from GET ATTRIBUTES API.
-        final fullAttribute = availableById[attributeId];
+        final fullAttribute =
+            availableByAttributeId[attributeId] ?? availableById[attributeId];
 
         // ─────────────────────────────────────────────────────────────
         // Build selected values from product.attributes.values
@@ -841,14 +870,12 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
 
         // ─────────────────────────────────────────────────────────────
         // Build final attribute.
-        //
-        // Prefer full metadata from GET ATTRIBUTES API when available.
-        // Otherwise use product.attributes metadata.
         // ─────────────────────────────────────────────────────────────
 
         restoredAttributes.add(
           GetAttributeModel(
             id: fullAttribute?.id ?? attributeId,
+            attributeId: fullAttribute?.attributeId ?? attributeId, // ✅ ADD
             name: fullAttribute?.name ?? productAttribute.name,
             adminLabel: fullAttribute?.adminLabel,
             slug: fullAttribute?.slug,
@@ -858,10 +885,12 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
           ),
         );
 
+        addedAttributeIds.add(attributeId);
+
         debugPrint(
           'RESTORED (fallback): '
           '${productAttribute.name} '
-          '(ID: $attributeId) '
+          '(attribute_id: $attributeId) '
           'values=${selectedValues.length}',
         );
       }
@@ -879,13 +908,16 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
 
     debugPrint('');
     debugPrint('FINAL ATTRIBUTES RESTORED: ${_attributes.length}');
+
     for (final attribute in _attributes) {
       debugPrint(
-        '  → ${attribute.name} (ID: ${attribute.id}) '
+        '  → ${attribute.name} '
+        '(id: ${attribute.id}, attributeId: ${attribute.attributeId}) '
         'inputType=${attribute.inputType} '
         'values=${attribute.values.length}',
       );
     }
+
     debugPrint('==================================================');
     debugPrint('');
   }
@@ -1603,35 +1635,33 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
 
   UpdateProductRequestModel _buildUpdateRequest() {
     final name = _productNameController.text.trim();
-
     final shortDescription = _shortDescriptionController.text.trim();
-
     final description = _fullDescriptionController.text.trim();
-
     final sku = _skuController.text.trim();
 
     final price = num.tryParse(_priceController.text.trim());
-
     final priceOld = num.tryParse(_compareAtPriceController.text.trim());
-
     final stockQty = int.tryParse(_stockController.text.trim());
-
     final categoryId = int.tryParse(_categoryId?.trim() ?? '');
-
     final brandId = int.tryParse(_brandId?.trim() ?? '');
 
     // ═════════════════════════════════════════════════════════════════════════
     // PRODUCT ATTRIBUTES
+    //
+    // Use attribute.effectiveAttributeId (attribute_id, NOT DB id).
+    // Use value.effectiveValueId (attribute_value_id).
     // ═════════════════════════════════════════════════════════════════════════
 
     final variantAttributeIds = <int>[];
-
     final attributeValues = <int, List<int>>{};
 
     for (final attribute in _attributes) {
-      final attributeId = attribute.id;
+      final attributeId = attribute.effectiveAttributeId; // ✅
 
       if (attributeId == null) {
+        debugPrint(
+          'SKIP ATTRIBUTE: ${attribute.name} — no attributeId available.',
+        );
         continue;
       }
 
@@ -1640,7 +1670,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
       final valueIds = <int>[];
 
       for (final value in attribute.values) {
-        final valueId = value.id;
+        final valueId = value.effectiveValueId; // ✅ FIXED
 
         if (valueId != null) {
           valueIds.add(valueId);
@@ -1650,6 +1680,13 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
       if (valueIds.isNotEmpty) {
         attributeValues[attributeId] = valueIds;
       }
+
+      debugPrint(
+        'BUILD ATTRIBUTE: '
+        '${attribute.name} '
+        'attributeId=$attributeId '
+        'valueIds=$valueIds',
+      );
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -1661,11 +1698,8 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     if (_enableVariants) {
       for (final variant in _variants) {
         final variantSku = variant.sku.trim();
-
         final variantPrice = num.tryParse(variant.price.trim());
-
         final variantPriceOld = num.tryParse(variant.compareAtPrice.trim());
-
         final variantStockQty = int.tryParse(variant.stockQuantity.trim());
 
         updateVariants.add(
@@ -1674,17 +1708,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
             price: variantPrice,
             priceOld: variantPriceOld,
             stockQty: variantStockQty,
-
-            // ═══════════════════════════════════════════════════════
-            // Always 1
-            //
-            // - Existing variant → 1 (stays active)
-            // - New variant added by user → 1 (created active)
-            //
-            // Never send 0.
-            // ═══════════════════════════════════════════════════════
-            isActive: 1,
-
+            isActive: 1, // ✅ always 1
             attributeValues: variant.attributeValueIds.isEmpty
                 ? null
                 : Map<int, int>.from(variant.attributeValueIds),
@@ -1697,162 +1721,93 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     debugPrint('==================================================');
     debugPrint('BUILD UPDATE PRODUCT REQUEST');
     debugPrint('==================================================');
-
     debugPrint('NAME: $name');
-
-    debugPrint(
-      'SHORT DESCRIPTION: '
-      '${shortDescription.length} chars',
-    );
-
-    debugPrint(
-      'DESCRIPTION: '
-      '${description.length} chars',
-    );
-
+    debugPrint('SHORT DESCRIPTION: ${shortDescription.length} chars');
+    debugPrint('DESCRIPTION: ${description.length} chars');
     debugPrint('PRICE: $price');
-
     debugPrint('PRICE OLD: $priceOld');
-
     debugPrint('STOCK QTY: $stockQty');
-
     debugPrint('CATEGORY ID: $categoryId');
-
     debugPrint('BRAND ID: $brandId');
-
     debugPrint('SKU: $sku');
-
-    debugPrint('ALLOW AFFILIATE: $_allowAffiliates');
-
+    debugPrint('ALLOW AFFILIATE: $_allowAffiliates (will be sent as 1/0)');
     debugPrint('HAS VARIANTS: $_enableVariants');
+    debugPrint('VARIANT ATTRIBUTES (attribute_ids): $variantAttributeIds');
+    debugPrint('ATTRIBUTE VALUES: $attributeValues');
+    debugPrint('VARIANTS COUNT: ${updateVariants.length}');
 
-    debugPrint(
-      'VARIANT ATTRIBUTES: '
-      '$variantAttributeIds',
-    );
+    for (int i = 0; i < updateVariants.length; i++) {
+      final v = updateVariants[i];
+      debugPrint(
+        'VARIANT[$i] '
+        'sku=${v.sku} '
+        'price=${v.price} '
+        'price_old=${v.priceOld} '
+        'stock_qty=${v.stockQty} '
+        'is_active=${v.isActive} '
+        'attributes=${v.attributeValues}',
+      );
+    }
 
-    debugPrint(
-      'ATTRIBUTE VALUES: '
-      '$attributeValues',
-    );
-
-    debugPrint(
-      'VARIANTS COUNT: '
-      '${updateVariants.length}',
-    );
-
-    debugPrint(
-      'NEW PRIMARY IMAGE: '
-      '${_primaryImage?.path}',
-    );
-
-    debugPrint(
-      'NEW GALLERY IMAGES: '
-      '${_galleryImages.length}',
-    );
-
-    debugPrint(
-      'PRODUCT IS ACTIVE: $_isActive '
-      '(NOT SENT TO UPDATE API)',
-    );
-
+    debugPrint('NEW PRIMARY IMAGE: ${_primaryImage?.path}');
+    debugPrint('NEW GALLERY IMAGES: ${_galleryImages.length}');
+    debugPrint('PRODUCT IS ACTIVE: $_isActive (NOT SENT)');
     debugPrint('==================================================');
     debugPrint('');
 
     return UpdateProductRequestModel(
       name: name.isEmpty ? null : name,
-
       shortDescription: shortDescription.isEmpty ? null : shortDescription,
-
       description: description.isEmpty ? null : description,
-
       sku: sku.isEmpty ? null : sku,
-
       heroImage: _primaryImage,
-
       galleryImages: _galleryImages.isEmpty
           ? null
           : List<File>.from(_galleryImages),
-
       price: price,
-
       priceOld: priceOld,
-
       stockQty: stockQty,
-
       categoryId: categoryId,
-
       brandId: brandId,
-
-      // User-selected brand name is not required
-      // when brand_id is available.
       brand: null,
-
-      // Current Edit UI does not have a weight field.
       weight: null,
-
       allowAffiliate: _allowAffiliates,
-
       hasVariants: _enableVariants,
-
       variantAttributes: _enableVariants && variantAttributeIds.isNotEmpty
           ? variantAttributeIds
           : null,
-
       attributeValues: _enableVariants && attributeValues.isNotEmpty
           ? attributeValues
           : null,
-
-      // Current Edit UI does not maintain
-      // attribute value price modifiers.
       attributeValueModifiers: null,
-
       variants: _enableVariants && updateVariants.isNotEmpty
           ? updateVariants
           : null,
-
-      // Product-level is_active is intentionally
-      // NOT included in UpdateProductRequestModel.
       isFeatured: null,
-
-      // ═══════════════════════════════════════════════════════════════════════
-      // ARABIC
-      // ═══════════════════════════════════════════════════════════════════════
       nameAr: _arabicNameController.text.trim().isEmpty
           ? null
           : _arabicNameController.text.trim(),
-
       shortDescriptionAr: _arabicShortDescriptionController.text.trim().isEmpty
           ? null
           : _arabicShortDescriptionController.text.trim(),
-
       descriptionAr: _arabicFullDescriptionController.text.trim().isEmpty
           ? null
           : _arabicFullDescriptionController.text.trim(),
-
-      // ═══════════════════════════════════════════════════════════════════════
-      // SEO
-      // ═══════════════════════════════════════════════════════════════════════
       metaTitle: _metaTitleController.text.trim().isEmpty
           ? null
           : _metaTitleController.text.trim(),
-
       metaDescription: _metaDescriptionController.text.trim().isEmpty
           ? null
           : _metaDescriptionController.text.trim(),
-
       metaKeywords: _metaKeywordsController.text.trim().isEmpty
           ? null
           : _metaKeywordsController.text.trim(),
-
       metaTitleAr: _arabicMetaTitleController.text.trim().isEmpty
           ? null
           : _arabicMetaTitleController.text.trim(),
-
       metaDescriptionAr: _arabicMetaDescriptionController.text.trim().isEmpty
           ? null
           : _arabicMetaDescriptionController.text.trim(),
-
       metaKeywordsAr: _arabicMetaKeywordsController.text.trim().isEmpty
           ? null
           : _arabicMetaKeywordsController.text.trim(),
@@ -1943,7 +1898,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
         return;
       }
 
-      context.push(AppRoutes.products);
+      context.push(AppRoutes.bottombar, extra: BottomTab.products);
     } on ApiException catch (error) {
       if (!mounted) {
         return;

@@ -59,6 +59,12 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
 
   List<TicketDetailMessageModel> _messages = [];
 
+  bool get _isTicketClosed {
+    final status = _ticket?.status?.trim().toLowerCase();
+
+    return status == 'closed';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -382,10 +388,11 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
             // ═══════════════════════════════════════════════════════════════
             Expanded(child: _buildContent()),
 
-            // ═══════════════════════════════════════════════════════════════
+            // ═══════════════════════════════════════════════════════════════════════
             // REPLY INPUT
-            // ═══════════════════════════════════════════════════════════════
-            if (!_isLoading && !_hasError) _buildReplyComposer(),
+            // ═══════════════════════════════════════════════════════════════════════
+            if (!_isLoading && !_hasError && !_isTicketClosed)
+              _buildReplyComposer(),
           ],
         ),
       ),

@@ -1634,30 +1634,23 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         brand: null,
         description: _nullableText(_fullDescriptionController.text),
         shortDescription: _nullableText(_shortDescriptionController.text),
-        allowAffiliate: _allowAffiliates,
+
+        // ✅ Convert bool toggle → int
+        allowAffiliate: _allowAffiliates ? 1 : 0,
+
         hasVariants: _enableVariants,
         variantAttributes: variantAttributes,
         attributeValues: attributeValues,
         attributeValueModifiers: attributeValueModifiers,
         variants: variants,
-
-        // ========================================================
-        // ACTIVE STATUS
-        // ========================================================
         isActive: isActive,
 
-        // ========================================================
-        // ARABIC
-        // ========================================================
         nameAr: _nullableText(_arabicNameController.text),
         shortDescriptionAr: _nullableText(
           _arabicShortDescriptionController.text,
         ),
         descriptionAr: _nullableText(_arabicFullDescriptionController.text),
 
-        // ========================================================
-        // SEO
-        // ========================================================
         metaTitle: _nullableText(_metaTitleController.text),
         metaDescription: _nullableText(_metaDescriptionController.text),
         metaKeywords: _nullableText(_metaKeywordsController.text),
@@ -1665,7 +1658,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         metaDescriptionAr: _nullableText(_arabicMetaDescriptionController.text),
         metaKeywordsAr: _nullableText(_arabicMetaKeywordsController.text),
       );
-
       // ==========================================================
       // DEBUG REQUEST
       // ==========================================================
