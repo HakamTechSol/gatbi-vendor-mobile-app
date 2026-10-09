@@ -180,17 +180,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       // 1. Form validate karein
       final isValid = _step1FormKey.currentState?.validate() ?? false;
 
-      // 2. Manually check karein (API fail hone par bhi rokne ke liye)
-      if (_selectedBusinessType == null || _selectedBusinessType!.isEmpty) {
-        _showError('Please select a business type.');
-        return;
-      }
-
-      if (_selectedCategoryId == null) {
-        _showError('Please select a category.');
-        return;
-      }
-
       if (!isValid) {
         return;
       }
@@ -207,13 +196,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     // ============================================================
     if (_currentStep == 1) {
       final isValid = _step2FormKey.currentState?.validate() ?? false;
-
-      // Phone country code manual check
-      if (_selectedPhoneCountryCode == null ||
-          _selectedPhoneCountryCode!.isEmpty) {
-        _showError('Please select your phone country.');
-        return;
-      }
 
       if (!isValid) {
         return;
@@ -408,7 +390,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     final phoneFull = _buildPhoneFull();
 
     if (businessType == null || businessType.isEmpty) {
-      _showError('Please select a business type.');
       return;
     }
 
@@ -424,12 +405,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
 
     if (categoryId == null) {
-      _showError('Please select a category.');
       return;
     }
 
     if (phoneCountry == null || phoneCountry.isEmpty) {
-      _showError('Please select your phone country.');
       return;
     }
 
@@ -443,7 +422,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     final passwordConfirmation = _passwordConfirmationController.text;
 
     if (phone.isEmpty) {
-      _showError('Phone number is required.');
       return;
     }
 

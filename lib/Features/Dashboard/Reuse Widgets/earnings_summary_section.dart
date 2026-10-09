@@ -14,22 +14,11 @@ class EarningsSummarySection extends StatelessWidget {
     this.currencySymbol = 'د.إ',
   });
 
-  /// Total products gross amount.
   final double grossAmount;
-
-  /// Total shipping amount.
   final double shippingAmount;
-
-  /// Gatbi commission amount.
   final double commissionAmount;
-
-  /// Amount payable to vendor.
   final double netPayable;
-
-  /// Example: 5.00
   final double commissionPercentage;
-
-  /// API dashboard currently uses AED.
   final String currencySymbol;
 
   @override
@@ -38,217 +27,465 @@ class EarningsSummarySection extends StatelessWidget {
       builder: (context, constraints) {
         final width = constraints.maxWidth;
 
-        if (width < 360) {
-          return Column(
-            children: [
-              _buildGrossCard(),
-
-              const SizedBox(height: 12),
-
-              _buildCommissionCard(),
-
-              const SizedBox(height: 12),
-
-              _buildNetPayableCard(),
-            ],
-          );
-        }
+        final isSmall = width < 520;
 
         return Column(
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(child: _buildGrossCard()),
-
-                const SizedBox(width: 12),
-
-                Expanded(child: _buildCommissionCard()),
-              ],
-            ),
+            _buildNetHeroCard(),
 
             const SizedBox(height: 12),
 
-            _buildNetPayableCard(),
+            if (isSmall)
+              Column(
+                children: [
+                  _buildGrossCard(),
+                  const SizedBox(height: 12),
+                  _buildCommissionCard(),
+                ],
+              )
+            else
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: _buildGrossCard()),
+                  const SizedBox(width: 12),
+                  Expanded(child: _buildCommissionCard()),
+                ],
+              ),
           ],
         );
       },
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // YOUR PRODUCTS GROSS
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ===========================================================================
+  // NET PAYABLE HERO
+  // ===========================================================================
 
-  Widget _buildGrossCard() {
-    return _EarningsSummaryCard(
-      icon: Icons.shopping_bag_outlined,
-      iconColor: AppColors.primary,
-      iconBackgroundColor: AppColors.primaryLight,
-      title: 'Your Products Gross',
-      amount: grossAmount,
-      currencySymbol: currencySymbol,
-      subtitle: 'Products: $currencySymbol ${grossAmount.toStringAsFixed(2)}',
-      secondarySubtitle:
-          'Shipping: $currencySymbol ${shippingAmount.toStringAsFixed(2)}',
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // GATBI COMMISSION
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  Widget _buildCommissionCard() {
-    return _EarningsSummaryCard(
-      icon: Icons.content_cut_rounded,
-      iconColor: AppColors.errorDark,
-      iconBackgroundColor: AppColors.error.withValues(alpha: 0.10),
-      title: 'Gatbi Commission (${commissionPercentage.toStringAsFixed(2)}%)',
-      amount: commissionAmount,
-      currencySymbol: currencySymbol,
-      subtitle: 'Deducted from your sales',
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // NET PAYABLE
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  Widget _buildNetPayableCard() {
-    return _EarningsSummaryCard(
-      icon: Icons.account_balance_wallet_outlined,
-      iconColor: AppColors.success,
-      iconBackgroundColor: AppColors.success.withValues(alpha: 0.10),
-      title: 'Net Payable to You',
-      amount: netPayable,
-      currencySymbol: currencySymbol,
-      subtitle: 'Gross minus Gatbi commission',
-    );
-  }
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
-// REUSABLE EARNINGS CARD
-// ═════════════════════════════════════════════════════════════════════════════
-
-class _EarningsSummaryCard extends StatelessWidget {
-  const _EarningsSummaryCard({
-    required this.icon,
-    required this.iconColor,
-    required this.iconBackgroundColor,
-    required this.title,
-    required this.amount,
-    required this.currencySymbol,
-    required this.subtitle,
-    this.secondarySubtitle,
-  });
-
-  final IconData icon;
-  final Color iconColor;
-  final Color iconBackgroundColor;
-
-  final String title;
-  final double amount;
-  final String currencySymbol;
-
-  final String subtitle;
-  final String? secondarySubtitle;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildNetHeroCard() {
     return Container(
       width: double.infinity,
-      constraints: const BoxConstraints(minHeight: 132),
-      padding: const EdgeInsets.all(15),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.divider.withValues(alpha: 0.7)),
+        gradient: AppColors.primaryGradient,
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: AppColors.shadowStrong.withValues(alpha: 0.06),
-            blurRadius: 16,
-            offset: const Offset(0, 5),
+            color: AppColors.primary.withValues(alpha: 0.20),
+            blurRadius: 26,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          // -------------------------------------------------------------------
+          // LEFT ICON
+          // -------------------------------------------------------------------
           Container(
-            width: 46,
-            height: 46,
+            width: 54,
+            height: 54,
             decoration: BoxDecoration(
-              color: iconBackgroundColor,
-              borderRadius: BorderRadius.circular(15),
+              color: AppColors.white.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: AppColors.white.withValues(alpha: 0.14),
+              ),
             ),
-            child: Icon(icon, color: iconColor, size: 23),
+            child: const Icon(
+              Icons.account_balance_wallet_rounded,
+              color: AppColors.white,
+              size: 26,
+            ),
           ),
 
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
 
+          // -------------------------------------------------------------------
+          // CONTENT
+          // -------------------------------------------------------------------
           Expanded(
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.bodyMedium.copyWith(
-                    color: AppColors.textSecondary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    height: 1.25,
-                  ),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        'Net Payable to You',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.titleSmall.copyWith(
+                          color: AppColors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.white.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Icon(
+                        Icons.check_rounded,
+                        color: AppColors.white,
+                        size: 11,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 6),
+
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      currencySymbol,
+                      style: AppTextStyles.titleMedium.copyWith(
+                        color: AppColors.white.withValues(alpha: 0.82),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(width: 7),
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          netPayable.toStringAsFixed(2),
+                          maxLines: 1,
+                          style: AppTextStyles.titleLarge.copyWith(
+                            color: AppColors.white,
+                            fontSize: 34,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -1,
+                            height: 0.95,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
 
                 const SizedBox(height: 5),
 
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    '$currencySymbol ${amount.toStringAsFixed(2)}',
-                    style: AppTextStyles.titleLarge.copyWith(
-                      color: AppColors.navy,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 4),
-
                 Text(
-                  subtitle,
+                  'Estimated earnings after Gatbi commission',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.caption.copyWith(
-                    color: AppColors.textSecondary,
-                    fontSize: 9.5,
+                    color: AppColors.white.withValues(alpha: 0.72),
+                    fontSize: 8.8,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-
-                if (secondarySubtitle != null) ...[
-                  const SizedBox(height: 2),
-
-                  Text(
-                    secondarySubtitle!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.caption.copyWith(
-                      color: AppColors.textSecondary,
-                      fontSize: 9,
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+
+  // ===========================================================================
+  // GROSS CARD
+  // ===========================================================================
+
+  Widget _buildGrossCard() {
+    return _SmallEarningsCard(
+      icon: Icons.shopping_bag_rounded,
+      iconColor: AppColors.primary,
+      iconBackground: AppColors.primary.withValues(alpha: 0.08),
+      title: 'Products Gross',
+      amount: grossAmount,
+      currencySymbol: currencySymbol,
+      subtitle: 'Total sales generated',
+      bottom: Row(
+        children: [
+          Expanded(
+            child: _MiniInfo(
+              icon: Icons.inventory_2_outlined,
+              label: 'Products',
+              value: '$currencySymbol ${grossAmount.toStringAsFixed(2)}',
+            ),
+          ),
+          Container(
+            width: 1,
+            height: 28,
+            color: AppColors.divider.withValues(alpha: 0.8),
+          ),
+          Expanded(
+            child: _MiniInfo(
+              icon: Icons.local_shipping_outlined,
+              label: 'Shipping',
+              value: '$currencySymbol ${shippingAmount.toStringAsFixed(2)}',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ===========================================================================
+  // COMMISSION CARD
+  // ===========================================================================
+
+  Widget _buildCommissionCard() {
+    return _SmallEarningsCard(
+      icon: Icons.percent_rounded,
+      iconColor: AppColors.errorDark,
+      iconBackground: AppColors.error.withValues(alpha: 0.08),
+      title: 'Gatbi Commission',
+      amount: commissionAmount,
+      currencySymbol: currencySymbol,
+      subtitle: 'Deducted from your sales',
+      badge: '${commissionPercentage.toStringAsFixed(2)}%',
+    );
+  }
+}
+
+// =============================================================================
+// SMALL EARNINGS CARD
+// =============================================================================
+
+class _SmallEarningsCard extends StatelessWidget {
+  const _SmallEarningsCard({
+    required this.icon,
+    required this.iconColor,
+    required this.iconBackground,
+    required this.title,
+    required this.amount,
+    required this.currencySymbol,
+    required this.subtitle,
+    this.bottom,
+    this.badge,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final Color iconBackground;
+
+  final String title;
+  final double amount;
+  final String currencySymbol;
+  final String subtitle;
+
+  final Widget? bottom;
+  final String? badge;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.65)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.shadowStrong.withValues(alpha: 0.045),
+            blurRadius: 20,
+            offset: const Offset(0, 7),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // -------------------------------------------------------------------
+          // TOP
+          // -------------------------------------------------------------------
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: iconBackground,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: iconColor, size: 20),
+              ),
+
+              const SizedBox(width: 11),
+
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.titleSmall.copyWith(
+                        color: AppColors.navy,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.textSecondary,
+                        fontSize: 8.8,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              if (badge != null) ...[
+                const SizedBox(width: 7),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    badge!,
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.errorDark,
+                      fontSize: 8.5,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+
+          const SizedBox(height: 14),
+
+          // -------------------------------------------------------------------
+          // AMOUNT
+          // -------------------------------------------------------------------
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                currencySymbol,
+                style: AppTextStyles.titleMedium.copyWith(
+                  color: iconColor,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    amount.toStringAsFixed(2),
+                    maxLines: 1,
+                    style: AppTextStyles.titleLarge.copyWith(
+                      color: AppColors.navy,
+                      fontSize: 27,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.7,
+                      height: 1,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          if (bottom != null) ...[
+            const SizedBox(height: 13),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(11),
+              ),
+              child: bottom!,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// MINI INFO
+// =============================================================================
+
+class _MiniInfo extends StatelessWidget {
+  const _MiniInfo({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 26,
+          height: 26,
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.07),
+            borderRadius: BorderRadius.circular(7),
+          ),
+          child: Icon(icon, color: AppColors.primary, size: 13),
+        ),
+
+        const SizedBox(width: 6),
+
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.textSecondary,
+                  fontSize: 7.8,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.navy,
+                  fontSize: 8.8,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

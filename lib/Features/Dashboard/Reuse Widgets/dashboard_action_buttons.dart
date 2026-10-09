@@ -1,139 +1,139 @@
-import 'package:flutter/material.dart';
+// import 'package:flutter/material.dart';
 
-import '../../../Core/Custom Widgets/custom_button.dart';
+// import '../../../Core/Custom Widgets/custom_button.dart';
 
-class DashboardActionButtons extends StatelessWidget {
-  const DashboardActionButtons({
-    super.key,
-    this.onAddProduct,
-    this.onViewOrders,
-    this.onShopSettings,
-    this.isStoreApproved = true,
-  });
+// class DashboardActionButtons extends StatelessWidget {
+//   const DashboardActionButtons({
+//     super.key,
+//     this.onAddProduct,
+//     this.onViewOrders,
+//     this.onShopSettings,
+//     this.isStoreApproved = true,
+//   });
 
-  final VoidCallback? onAddProduct;
-  final VoidCallback? onViewOrders;
-  final VoidCallback? onShopSettings;
+//   final VoidCallback? onAddProduct;
+//   final VoidCallback? onViewOrders;
+//   final VoidCallback? onShopSettings;
 
-  /// Store pending ho to Add Product disabled rahega.
-  final bool isStoreApproved;
+//   /// Store pending ho to Add Product disabled rahega.
+//   final bool isStoreApproved;
 
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
+//   @override
+//   Widget build(BuildContext context) {
+//     return LayoutBuilder(
+//       builder: (context, constraints) {
+//         final width = constraints.maxWidth;
 
-        // ═══════════════════════════════════════════════════════════════════
-        // VERY SMALL MOBILE
-        // ═══════════════════════════════════════════════════════════════════
+//         // ═══════════════════════════════════════════════════════════════════
+//         // VERY SMALL MOBILE
+//         // ═══════════════════════════════════════════════════════════════════
 
-        if (width < 360) {
-          return Column(
-            children: [
-              _buildAddProductButton(),
+//         if (width < 360) {
+//           return Column(
+//             children: [
+//               _buildAddProductButton(),
 
-              const SizedBox(height: 10),
+//               const SizedBox(height: 10),
 
-              _buildViewOrdersButton(),
+//               _buildViewOrdersButton(),
 
-              const SizedBox(height: 10),
+//               const SizedBox(height: 10),
 
-              _buildShopSettingsButton(),
-            ],
-          );
-        }
+//               _buildShopSettingsButton(),
+//             ],
+//           );
+//         }
 
-        // ═══════════════════════════════════════════════════════════════════
-        // NORMAL MOBILE
-        // ═══════════════════════════════════════════════════════════════════
+//         // ═══════════════════════════════════════════════════════════════════
+//         // NORMAL MOBILE
+//         // ═══════════════════════════════════════════════════════════════════
 
-        if (width < 600) {
-          return Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              SizedBox(
-                width: (width - 10) / 2,
-                child: _buildAddProductButton(),
-              ),
+//         if (width < 600) {
+//           return Wrap(
+//             spacing: 10,
+//             runSpacing: 10,
+//             children: [
+//               SizedBox(
+//                 width: (width - 10) / 2,
+//                 child: _buildAddProductButton(),
+//               ),
 
-              SizedBox(
-                width: (width - 10) / 2,
-                child: _buildViewOrdersButton(),
-              ),
+//               SizedBox(
+//                 width: (width - 10) / 2,
+//                 child: _buildViewOrdersButton(),
+//               ),
 
-              SizedBox(width: width, child: _buildShopSettingsButton()),
-            ],
-          );
-        }
+//               SizedBox(width: width, child: _buildShopSettingsButton()),
+//             ],
+//           );
+//         }
 
-        // ═══════════════════════════════════════════════════════════════════
-        // TABLET / WEB
-        // ═══════════════════════════════════════════════════════════════════
+//         // ═══════════════════════════════════════════════════════════════════
+//         // TABLET / WEB
+//         // ═══════════════════════════════════════════════════════════════════
 
-        return Row(
-          children: [
-            Expanded(child: _buildAddProductButton()),
+//         return Row(
+//           children: [
+//             Expanded(child: _buildAddProductButton()),
 
-            const SizedBox(width: 10),
+//             const SizedBox(width: 10),
 
-            Expanded(child: _buildViewOrdersButton()),
+//             Expanded(child: _buildViewOrdersButton()),
 
-            const SizedBox(width: 10),
+//             const SizedBox(width: 10),
 
-            Expanded(child: _buildShopSettingsButton()),
-          ],
-        );
-      },
-    );
-  }
+//             Expanded(child: _buildShopSettingsButton()),
+//           ],
+//         );
+//       },
+//     );
+//   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // ADD PRODUCT
-  // ═══════════════════════════════════════════════════════════════════════════
+//   // ═══════════════════════════════════════════════════════════════════════════
+//   // ADD PRODUCT
+//   // ═══════════════════════════════════════════════════════════════════════════
 
-  Widget _buildAddProductButton() {
-    return CustomButton(
-      text: 'Add Product',
-      icon: Icons.add_box_outlined,
+//   Widget _buildAddProductButton() {
+//     return CustomButton(
+//       text: 'Add Product',
+//       icon: Icons.add_box_outlined,
 
-      /// Pending store ke case mein button disabled.
-      onPressed: isStoreApproved ? onAddProduct : null,
+//       /// Pending store ke case mein button disabled.
+//       onPressed: isStoreApproved ? onAddProduct : null,
 
-      type: CustomButtonType.outlined,
-      height: 44,
-      borderRadius: 11,
-    );
-  }
+//       type: CustomButtonType.outlined,
+//       height: 44,
+//       borderRadius: 11,
+//     );
+//   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // VIEW ORDERS
-  // ═══════════════════════════════════════════════════════════════════════════
+//   // ═══════════════════════════════════════════════════════════════════════════
+//   // VIEW ORDERS
+//   // ═══════════════════════════════════════════════════════════════════════════
 
-  Widget _buildViewOrdersButton() {
-    return CustomButton(
-      text: 'View Orders',
-      icon: Icons.receipt_long_outlined,
-      onPressed: onViewOrders,
-      type: CustomButtonType.outlined,
-      height: 44,
-      borderRadius: 11,
-    );
-  }
+//   Widget _buildViewOrdersButton() {
+//     return CustomButton(
+//       text: 'View Orders',
+//       icon: Icons.receipt_long_outlined,
+//       onPressed: onViewOrders,
+//       type: CustomButtonType.outlined,
+//       height: 44,
+//       borderRadius: 11,
+//     );
+//   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // SHOP SETTINGS
-  // ═══════════════════════════════════════════════════════════════════════════
+//   // ═══════════════════════════════════════════════════════════════════════════
+//   // SHOP SETTINGS
+//   // ═══════════════════════════════════════════════════════════════════════════
 
-  Widget _buildShopSettingsButton() {
-    return CustomButton(
-      text: 'Shop Settings',
-      icon: Icons.settings_outlined,
-      onPressed: onShopSettings,
-      type: CustomButtonType.outlined,
-      height: 44,
-      borderRadius: 11,
-    );
-  }
-}
+//   Widget _buildShopSettingsButton() {
+//     return CustomButton(
+//       text: 'Shop Settings',
+//       icon: Icons.settings_outlined,
+//       onPressed: onShopSettings,
+//       type: CustomButtonType.outlined,
+//       height: 44,
+//       borderRadius: 11,
+//     );
+//   }
+// }

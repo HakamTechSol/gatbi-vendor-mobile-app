@@ -37,317 +37,419 @@ class RecentOrdersSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.65)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadowStrong.withValues(alpha: 0.06),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildHeader(),
-          const SizedBox(height: 14),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final bool isMobile = constraints.maxWidth < 600;
+        final bool isVerySmall = constraints.maxWidth < 370;
 
-          if (orders.isEmpty) _buildEmptyState() else _buildOrdersList(),
-        ],
-      ),
+        return Container(
+          width: double.infinity,
+          padding: EdgeInsets.all(isMobile ? 14 : 18),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: AppColors.border.withValues(alpha: 0.65)),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.shadowStrong.withValues(alpha: 0.055),
+                blurRadius: 22,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _RecentOrdersHeader(
+                orderCount: orders.length,
+                hasOrders: orders.isNotEmpty,
+                onViewAll: onViewAll,
+                isMobile: isMobile,
+              ),
+
+              SizedBox(height: isMobile ? 14 : 18),
+
+              if (orders.isEmpty)
+                _RecentOrdersEmptyState(isMobile: isMobile)
+              else
+                _RecentOrdersList(
+                  orders: orders,
+                  onOrderTap: onOrderTap,
+                  isMobile: isMobile,
+                  isVerySmall: isVerySmall,
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
+}
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // HEADER
-  // ═══════════════════════════════════════════════════════════════════════════
+// ============================================================================
+// HEADER
+// ============================================================================
 
-  Widget _buildHeader() {
+class _RecentOrdersHeader extends StatelessWidget {
+  const _RecentOrdersHeader({
+    required this.orderCount,
+    required this.hasOrders,
+    required this.onViewAll,
+    required this.isMobile,
+  });
+
+  final int orderCount;
+  final bool hasOrders;
+  final VoidCallback? onViewAll;
+  final bool isMobile;
+
+  @override
+  Widget build(BuildContext context) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
+        Container(
+          width: isMobile ? 42 : 46,
+          height: isMobile ? 42 : 46,
+          decoration: BoxDecoration(
+            gradient: AppColors.primaryGradient,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primaryShadow.withValues(alpha: 0.16),
+                blurRadius: 14,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Icon(
+            Icons.shopping_bag_rounded,
+            color: AppColors.white,
+            size: isMobile ? 20 : 22,
+          ),
+        ),
+
+        const SizedBox(width: 11),
+
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Recent Orders',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.titleLarge.copyWith(
-                  color: AppColors.navy,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                ),
+              Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      'Recent Orders',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.titleLarge.copyWith(
+                        color: AppColors.navy,
+                        fontSize: isMobile ? 16 : 18,
+                        fontWeight: FontWeight.w800,
+                        height: 1.1,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                  ),
+
+                  if (hasOrders) ...[
+                    const SizedBox(width: 7),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryLight,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '$orderCount',
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.primary,
+                          fontSize: 8.5,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
 
-              const SizedBox(height: 3),
+              const SizedBox(height: 4),
 
               Text(
-                orders.isEmpty
-                    ? 'Your latest orders will appear here'
-                    : 'Latest activity from your store',
+                hasOrders
+                    ? 'Latest activity from your store'
+                    : 'Your latest orders will appear here',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.caption.copyWith(
                   color: AppColors.textSecondary,
-                  fontSize: 10.5,
+                  fontSize: isMobile ? 10 : 10.5,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
           ),
         ),
 
-        const SizedBox(width: 8),
-
-        if (onViewAll != null)
-          InkWell(
-            onTap: onViewAll,
-            borderRadius: BorderRadius.circular(8),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'View all',
-                    style: AppTextStyles.buttonText.copyWith(
-                      color: AppColors.primary,
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-
-                  const SizedBox(width: 3),
-
-                  const Icon(
-                    Icons.arrow_forward_rounded,
-                    color: AppColors.primary,
-                    size: 14,
-                  ),
-                ],
-              ),
-            ),
-          ),
+        if (onViewAll != null) ...[
+          const SizedBox(width: 8),
+          _ViewAllButton(onTap: onViewAll!, isMobile: isMobile),
+        ],
       ],
     );
   }
+}
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // EMPTY STATE
-  // ═══════════════════════════════════════════════════════════════════════════
+// ============================================================================
+// VIEW ALL BUTTON
+// ============================================================================
 
-  Widget _buildEmptyState() {
+class _ViewAllButton extends StatelessWidget {
+  const _ViewAllButton({required this.onTap, required this.isMobile});
+
+  final VoidCallback onTap;
+  final bool isMobile;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.primaryLight.withValues(alpha: 0.65),
+      borderRadius: BorderRadius.circular(11),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(11),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: isMobile ? 8 : 10,
+            vertical: 7,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'View all',
+                style: AppTextStyles.buttonText.copyWith(
+                  color: AppColors.primary,
+                  fontSize: isMobile ? 9 : 10,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(width: 3),
+              const Icon(
+                Icons.arrow_forward_rounded,
+                color: AppColors.primary,
+                size: 13,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// EMPTY STATE
+// ============================================================================
+
+class _RecentOrdersEmptyState extends StatelessWidget {
+  const _RecentOrdersEmptyState({required this.isMobile});
+
+  final bool isMobile;
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 18 : 24,
+        vertical: isMobile ? 25 : 30,
+      ),
       decoration: BoxDecoration(
         color: AppColors.background,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(17),
         border: Border.all(color: AppColors.border.withValues(alpha: 0.55)),
       ),
       child: Column(
         children: [
           Container(
-            width: 52,
-            height: 52,
+            width: isMobile ? 58 : 64,
+            height: isMobile ? 58 : 64,
             decoration: BoxDecoration(
-              color: AppColors.primaryLight,
-              borderRadius: BorderRadius.circular(16),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppColors.primaryLight,
+                  AppColors.primaryLight.withValues(alpha: 0.55),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.08),
+              ),
             ),
-            child: const Icon(
-              Icons.receipt_long_outlined,
+            child: Icon(
+              Icons.receipt_long_rounded,
               color: AppColors.primary,
-              size: 25,
+              size: isMobile ? 27 : 30,
             ),
           ),
 
-          const SizedBox(height: 11),
+          const SizedBox(height: 13),
 
           Text(
             'No orders yet',
             textAlign: TextAlign.center,
             style: AppTextStyles.titleMedium.copyWith(
               color: AppColors.navy,
-              fontSize: 13.5,
+              fontSize: isMobile ? 14 : 15,
               fontWeight: FontWeight.w800,
             ),
           ),
 
-          const SizedBox(height: 4),
+          const SizedBox(height: 5),
 
-          Text(
-            'Once customers place orders, your latest orders will show up here.',
-            textAlign: TextAlign.center,
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: AppColors.textSecondary,
-              fontSize: 10.5,
-              height: 1.4,
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 390),
+            child: Text(
+              'Once customers place orders, your latest orders will appear here.',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.textSecondary,
+                fontSize: isMobile ? 10 : 10.5,
+                height: 1.45,
+              ),
             ),
           ),
         ],
       ),
     );
   }
+}
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // ORDERS LIST
-  // ═══════════════════════════════════════════════════════════════════════════
+// ============================================================================
+// ORDERS LIST
+// ============================================================================
 
-  Widget _buildOrdersList() {
+class _RecentOrdersList extends StatelessWidget {
+  const _RecentOrdersList({
+    required this.orders,
+    required this.onOrderTap,
+    required this.isMobile,
+    required this.isVerySmall,
+  });
+
+  final List<RecentOrderItem> orders;
+  final ValueChanged<RecentOrderItem>? onOrderTap;
+  final bool isMobile;
+  final bool isVerySmall;
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       children: [
         for (int index = 0; index < orders.length; index++) ...[
-          _buildOrderTile(orders[index]),
-          if (index != orders.length - 1)
-            Divider(height: 1, color: AppColors.divider.withValues(alpha: 0.7)),
+          _RecentOrderCard(
+            order: orders[index],
+            onTap: onOrderTap == null ? null : () => onOrderTap!(orders[index]),
+            isMobile: isMobile,
+            isVerySmall: isVerySmall,
+          ),
+
+          if (index != orders.length - 1) const SizedBox(height: 9),
         ],
       ],
     );
   }
+}
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // ORDER TILE
-  // ═══════════════════════════════════════════════════════════════════════════
+// ============================================================================
+// ORDER CARD
+// ============================================================================
 
-  Widget _buildOrderTile(RecentOrderItem order) {
-    final statusColor = order.statusColor ?? _getStatusColor(order.status);
+class _RecentOrderCard extends StatelessWidget {
+  const _RecentOrderCard({
+    required this.order,
+    required this.onTap,
+    required this.isMobile,
+    required this.isVerySmall,
+  });
 
-    return InkWell(
-      onTap: onOrderTap == null ? null : () => onOrderTap!(order),
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 11),
-        child: Row(
-          children: [
-            // Order icon
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppColors.primaryLight,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.shopping_bag_outlined,
-                color: AppColors.primary,
-                size: 19,
-              ),
-            ),
+  final RecentOrderItem order;
+  final VoidCallback? onTap;
+  final bool isMobile;
+  final bool isVerySmall;
 
-            const SizedBox(width: 10),
+  @override
+  Widget build(BuildContext context) {
+    final Color statusColor =
+        order.statusColor ?? _getStatusColor(order.status);
+    final IconData statusIcon = _getStatusIcon(order.status);
 
-            // Order information
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          order.orderId,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.titleSmall.copyWith(
-                            color: AppColors.navy,
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Ink(
+          width: double.infinity,
+          padding: EdgeInsets.all(
+            isVerySmall
+                ? 10
+                : isMobile
+                ? 11
+                : 13,
+          ),
+          decoration: BoxDecoration(
+            color: AppColors.background.withValues(alpha: 0.68),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border.withValues(alpha: 0.55)),
+          ),
+          child: Row(
+            children: [
+              _OrderIcon(statusColor: statusColor, isMobile: isMobile),
 
-                      if (order.date != null) ...[
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            order.date!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.caption.copyWith(
-                              color: AppColors.textSecondary,
-                              fontSize: 8.5,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
+              SizedBox(width: isMobile ? 10 : 12),
 
-                  const SizedBox(height: 3),
-
-                  Text(
-                    order.customerName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: AppColors.textSecondary,
-                      fontSize: 9.5,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(width: 8),
-
-            // Amount + status
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  order.amount,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.titleSmall.copyWith(
-                    color: AppColors.navy,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                  ),
+              Expanded(
+                child: _OrderInformation(
+                  order: order,
+                  isMobile: isMobile,
+                  isVerySmall: isVerySmall,
                 ),
+              ),
 
-                const SizedBox(height: 4),
+              SizedBox(width: isMobile ? 7 : 10),
 
-                Container(
-                  constraints: const BoxConstraints(maxWidth: 85),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    order.status,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.caption.copyWith(
-                      color: statusColor,
-                      fontSize: 8,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+              _OrderAmountAndStatus(
+                order: order,
+                statusColor: statusColor,
+                statusIcon: statusIcon,
+                isMobile: isMobile,
+                isVerySmall: isVerySmall,
+              ),
+
+              if (onTap != null) ...[
+                const SizedBox(width: 5),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.textSecondary.withValues(alpha: 0.55),
+                  size: 18,
                 ),
               ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // STATUS COLOR
-  // ═══════════════════════════════════════════════════════════════════════════
-
   Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
+    switch (status.toLowerCase().trim()) {
       case 'pending':
         return AppColors.warning;
 
@@ -367,5 +469,275 @@ class RecentOrdersSection extends StatelessWidget {
       default:
         return AppColors.textSecondary;
     }
+  }
+
+  IconData _getStatusIcon(String status) {
+    switch (status.toLowerCase().trim()) {
+      case 'pending':
+        return Icons.schedule_rounded;
+
+      case 'processing':
+        return Icons.sync_rounded;
+
+      case 'shipped':
+        return Icons.local_shipping_rounded;
+
+      case 'delivered':
+        return Icons.check_circle_rounded;
+
+      case 'cancelled':
+      case 'canceled':
+        return Icons.cancel_rounded;
+
+      default:
+        return Icons.info_rounded;
+    }
+  }
+}
+
+// ============================================================================
+// ORDER ICON
+// ============================================================================
+
+class _OrderIcon extends StatelessWidget {
+  const _OrderIcon({required this.statusColor, required this.isMobile});
+
+  final Color statusColor;
+  final bool isMobile;
+
+  @override
+  Widget build(BuildContext context) {
+    final double size = isMobile ? 42 : 46;
+
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: statusColor.withValues(alpha: 0.15)),
+        boxShadow: [
+          BoxShadow(
+            color: statusColor.withValues(alpha: 0.07),
+            blurRadius: 9,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Icon(
+            Icons.shopping_bag_rounded,
+            color: AppColors.primary,
+            size: isMobile ? 19 : 21,
+          ),
+
+          Positioned(
+            right: 6,
+            top: 6,
+            child: Container(
+              width: 7,
+              height: 7,
+              decoration: BoxDecoration(
+                color: statusColor,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.white, width: 1.2),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// ORDER INFORMATION
+// ============================================================================
+
+class _OrderInformation extends StatelessWidget {
+  const _OrderInformation({
+    required this.order,
+    required this.isMobile,
+    required this.isVerySmall,
+  });
+
+  final RecentOrderItem order;
+  final bool isMobile;
+  final bool isVerySmall;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Flexible(
+              child: Text(
+                order.orderId,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.titleSmall.copyWith(
+                  color: AppColors.navy,
+                  fontSize: isVerySmall
+                      ? 10.5
+                      : isMobile
+                      ? 11
+                      : 12,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+
+            if (order.date != null && order.date!.trim().isNotEmpty) ...[
+              const SizedBox(width: 6),
+
+              Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 3,
+                      height: 3,
+                      decoration: const BoxDecoration(
+                        color: AppColors.divider,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Flexible(
+                      child: Text(
+                        order.date!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.textSecondary,
+                          fontSize: isMobile ? 8 : 8.5,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+
+        const SizedBox(height: 4),
+
+        Row(
+          children: [
+            Icon(
+              Icons.person_outline_rounded,
+              color: AppColors.textSecondary.withValues(alpha: 0.75),
+              size: 13,
+            ),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                order.customerName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                  fontSize: isMobile ? 9 : 9.5,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+// ============================================================================
+// AMOUNT + STATUS
+// ============================================================================
+
+class _OrderAmountAndStatus extends StatelessWidget {
+  const _OrderAmountAndStatus({
+    required this.order,
+    required this.statusColor,
+    required this.statusIcon,
+    required this.isMobile,
+    required this.isVerySmall,
+  });
+
+  final RecentOrderItem order;
+  final Color statusColor;
+  final IconData statusIcon;
+  final bool isMobile;
+  final bool isVerySmall;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 105),
+          child: Text(
+            order.amount,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.end,
+            style: AppTextStyles.titleSmall.copyWith(
+              color: AppColors.navy,
+              fontSize: isVerySmall
+                  ? 10.5
+                  : isMobile
+                  ? 11
+                  : 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 5),
+
+        Container(
+          constraints: const BoxConstraints(maxWidth: 105),
+          padding: EdgeInsets.symmetric(
+            horizontal: isMobile ? 7 : 8,
+            vertical: isMobile ? 4 : 4.5,
+          ),
+          decoration: BoxDecoration(
+            color: statusColor.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: statusColor.withValues(alpha: 0.08)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(statusIcon, color: statusColor, size: isMobile ? 10 : 11),
+
+              const SizedBox(width: 4),
+
+              Flexible(
+                child: Text(
+                  order.status,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.caption.copyWith(
+                    color: statusColor,
+                    fontSize: isVerySmall
+                        ? 7
+                        : isMobile
+                        ? 7.5
+                        : 8,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 }

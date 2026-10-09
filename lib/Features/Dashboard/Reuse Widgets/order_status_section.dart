@@ -1,3 +1,5 @@
+// lib/View/Vendor/Dashboard/widgets/order_status_section.dart
+
 import 'package:flutter/material.dart';
 
 import '../../../Theme/app_colors.dart';
@@ -25,50 +27,120 @@ class OrderStatusSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadowStrong.withValues(alpha: 0.06),
-            blurRadius: 18,
-            offset: const Offset(0, 7),
+    final int totalOrders =
+        pending + processing + shipped + delivered + cancelled;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final bool isMobile = constraints.maxWidth < 600;
+        final bool isVerySmall = constraints.maxWidth < 370;
+
+        return Container(
+          width: double.infinity,
+          padding: EdgeInsets.all(isMobile ? 14 : 18),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: AppColors.border.withValues(alpha: 0.65)),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.shadowStrong.withValues(alpha: 0.055),
+                blurRadius: 22,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
-        ],
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.55)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildHeader(),
-          const SizedBox(height: 16),
-          _buildStatusGrid(),
-        ],
-      ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _OrderStatusHeader(totalOrders: totalOrders, isMobile: isMobile),
+
+              SizedBox(height: isMobile ? 15 : 18),
+
+              _OrderStatusGrid(
+                statuses: [
+                  _OrderStatusItem(
+                    title: 'Pending',
+                    count: pending,
+                    icon: Icons.schedule_rounded,
+                    color: AppColors.warning,
+                    backgroundColor: const Color(0xFFFFF8E8),
+                  ),
+                  _OrderStatusItem(
+                    title: 'Processing',
+                    count: processing,
+                    icon: Icons.sync_rounded,
+                    color: AppColors.primary,
+                    backgroundColor: const Color(0xFFF0F5FF),
+                  ),
+                  _OrderStatusItem(
+                    title: 'Shipped',
+                    count: shipped,
+                    icon: Icons.local_shipping_rounded,
+                    color: const Color(0xFF8B5CF6),
+                    backgroundColor: const Color(0xFFF6F2FF),
+                  ),
+                  _OrderStatusItem(
+                    title: 'Delivered',
+                    count: delivered,
+                    icon: Icons.check_circle_rounded,
+                    color: AppColors.success,
+                    backgroundColor: const Color(0xFFECFBF4),
+                  ),
+                  _OrderStatusItem(
+                    title: 'Cancelled',
+                    count: cancelled,
+                    icon: Icons.cancel_rounded,
+                    color: AppColors.error,
+                    backgroundColor: const Color(0xFFFFF1F1),
+                  ),
+                ],
+                totalOrders: totalOrders,
+                onStatusTap: onStatusTap,
+                isMobile: isMobile,
+                isVerySmall: isVerySmall,
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
+}
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // HEADER
-  // ═══════════════════════════════════════════════════════════════════════════
+// ============================================================================
+// HEADER
+// ============================================================================
 
-  Widget _buildHeader() {
+class _OrderStatusHeader extends StatelessWidget {
+  const _OrderStatusHeader({required this.totalOrders, required this.isMobile});
+
+  final int totalOrders;
+  final bool isMobile;
+
+  @override
+  Widget build(BuildContext context) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Container(
-          width: 38,
-          height: 38,
+          width: isMobile ? 42 : 46,
+          height: isMobile ? 42 : 46,
           decoration: BoxDecoration(
-            color: AppColors.primaryLight,
-            borderRadius: BorderRadius.circular(11),
+            gradient: AppColors.primaryGradient,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primaryShadow.withValues(alpha: 0.16),
+                blurRadius: 14,
+                offset: const Offset(0, 5),
+              ),
+            ],
           ),
-          child: const Icon(
+          child: Icon(
             Icons.bar_chart_rounded,
-            color: AppColors.primary,
-            size: 20,
+            color: AppColors.white,
+            size: isMobile ? 21 : 23,
           ),
         ),
 
@@ -82,20 +154,63 @@ class OrderStatusSection extends StatelessWidget {
                 'Order Status',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.titleMedium.copyWith(
+                style: AppTextStyles.titleLarge.copyWith(
                   color: AppColors.navy,
                   fontWeight: FontWeight.w800,
-                  fontSize: 15,
+                  fontSize: isMobile ? 16 : 18,
+                  height: 1.1,
+                  letterSpacing: -0.2,
                 ),
               ),
-              const SizedBox(height: 2),
+
+              const SizedBox(height: 4),
+
               Text(
                 'Track your order progress',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.caption.copyWith(
                   color: AppColors.textSecondary,
-                  fontSize: 10.5,
+                  fontSize: isMobile ? 10 : 10.5,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(width: 8),
+
+        Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: isMobile ? 9 : 11,
+            vertical: isMobile ? 7 : 8,
+          ),
+          decoration: BoxDecoration(
+            color: AppColors.background,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border.withValues(alpha: 0.65)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '$totalOrders',
+                style: AppTextStyles.titleMedium.copyWith(
+                  color: AppColors.navy,
+                  fontSize: isMobile ? 13 : 14,
+                  fontWeight: FontWeight.w900,
+                  height: 1,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                'TOTAL',
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.textSecondary,
+                  fontSize: 7,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.5,
                 ),
               ),
             ],
@@ -104,168 +219,272 @@ class OrderStatusSection extends StatelessWidget {
       ],
     );
   }
+}
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // STATUS GRID  —  First 4 in 2x2, last one centered
-  // ═══════════════════════════════════════════════════════════════════════════
+// ============================================================================
+// STATUS GRID
+// ============================================================================
 
-  Widget _buildStatusGrid() {
-    final statuses = [
-      _OrderStatusItem(
-        title: 'Pending',
-        count: pending,
-        icon: Icons.schedule_rounded,
-        color: const Color(0xFFF59E0B),
-        backgroundColor: const Color(0xFFFFF7E6),
-      ),
-      _OrderStatusItem(
-        title: 'Processing',
-        count: processing,
-        icon: Icons.sync_rounded,
-        color: const Color(0xFF3B82F6),
-        backgroundColor: const Color(0xFFEFF6FF),
-      ),
-      _OrderStatusItem(
-        title: 'Shipped',
-        count: shipped,
-        icon: Icons.local_shipping_outlined,
-        color: const Color(0xFF8B5CF6),
-        backgroundColor: const Color(0xFFF5F3FF),
-      ),
-      _OrderStatusItem(
-        title: 'Delivered',
-        count: delivered,
-        icon: Icons.check_circle_outline_rounded,
-        color: const Color(0xFF10B981),
-        backgroundColor: const Color(0xFFECFDF5),
-      ),
-      _OrderStatusItem(
-        title: 'Cancelled',
-        count: cancelled,
-        icon: Icons.cancel_outlined,
-        color: const Color(0xFFEF4444),
-        backgroundColor: const Color(0xFFFEF2F2),
-      ),
-    ];
+class _OrderStatusGrid extends StatelessWidget {
+  const _OrderStatusGrid({
+    required this.statuses,
+    required this.totalOrders,
+    required this.onStatusTap,
+    required this.isMobile,
+    required this.isVerySmall,
+  });
 
+  final List<_OrderStatusItem> statuses;
+  final int totalOrders;
+  final ValueChanged<String>? onStatusTap;
+  final bool isMobile;
+  final bool isVerySmall;
+
+  @override
+  Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        const spacing = 10.0;
+        final double spacing = isMobile ? 9 : 12;
 
-        // Half width card (for 2-col grid)
-        final halfWidth = (constraints.maxWidth - spacing) / 2;
-
-        // Full width for the centered last item (same width as a grid item)
-        final centeredWidth = halfWidth;
-
-        // Split into pairs (grid) + leftovers (centered)
-        final gridItems = statuses.take(statuses.length - (statuses.length % 2 == 0 ? 0 : 1)).toList();
-        final leftoverItems = statuses.skip(gridItems.length).toList();
+        final double cardWidth = (constraints.maxWidth - spacing) / 2;
 
         return Column(
           children: [
-            // --------------------------------------------------------
-            // 2x2 GRID (first 4 items)
-            // --------------------------------------------------------
-            for (int i = 0; i < gridItems.length; i += 2)
-              Padding(
-                padding: EdgeInsets.only(
-                  bottom: i + 2 < gridItems.length ? spacing : 0,
+            Row(
+              children: [
+                SizedBox(
+                  width: cardWidth,
+                  child: _OrderStatusCard(
+                    status: statuses[0],
+                    totalOrders: totalOrders,
+                    onTap: onStatusTap,
+                    isMobile: isMobile,
+                    isVerySmall: isVerySmall,
+                  ),
                 ),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: halfWidth,
-                      child: _buildStatusCard(gridItems[i]),
-                    ),
-                    const SizedBox(width: spacing),
-                    if (i + 1 < gridItems.length)
-                      SizedBox(
-                        width: halfWidth,
-                        child: _buildStatusCard(gridItems[i + 1]),
-                      )
-                    else
-                      const SizedBox(width: 0),
-                  ],
+                SizedBox(width: spacing),
+                SizedBox(
+                  width: cardWidth,
+                  child: _OrderStatusCard(
+                    status: statuses[1],
+                    totalOrders: totalOrders,
+                    onTap: onStatusTap,
+                    isMobile: isMobile,
+                    isVerySmall: isVerySmall,
+                  ),
                 ),
-              ),
+              ],
+            ),
 
-            // --------------------------------------------------------
-            // LAST ITEM (centered, if odd count)
-            // --------------------------------------------------------
-            if (leftoverItems.isNotEmpty) ...[
-              const SizedBox(height: spacing),
-              Center(
-                child: SizedBox(
-                  width: centeredWidth,
-                  child: _buildStatusCard(leftoverItems.first),
+            SizedBox(height: spacing),
+
+            Row(
+              children: [
+                SizedBox(
+                  width: cardWidth,
+                  child: _OrderStatusCard(
+                    status: statuses[2],
+                    totalOrders: totalOrders,
+                    onTap: onStatusTap,
+                    isMobile: isMobile,
+                    isVerySmall: isVerySmall,
+                  ),
+                ),
+                SizedBox(width: spacing),
+                SizedBox(
+                  width: cardWidth,
+                  child: _OrderStatusCard(
+                    status: statuses[3],
+                    totalOrders: totalOrders,
+                    onTap: onStatusTap,
+                    isMobile: isMobile,
+                    isVerySmall: isVerySmall,
+                  ),
+                ),
+              ],
+            ),
+
+            SizedBox(height: spacing),
+
+            Center(
+              child: SizedBox(
+                width: cardWidth,
+                child: _OrderStatusCard(
+                  status: statuses[4],
+                  totalOrders: totalOrders,
+                  onTap: onStatusTap,
+                  isMobile: isMobile,
+                  isVerySmall: isVerySmall,
                 ),
               ),
-            ],
+            ),
           ],
         );
       },
     );
   }
+}
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // STATUS CARD
-  // ═══════════════════════════════════════════════════════════════════════════
+// ============================================================================
+// STATUS CARD
+// ============================================================================
 
-  Widget _buildStatusCard(_OrderStatusItem status) {
+class _OrderStatusCard extends StatelessWidget {
+  const _OrderStatusCard({
+    required this.status,
+    required this.totalOrders,
+    required this.onTap,
+    required this.isMobile,
+    required this.isVerySmall,
+  });
+
+  final _OrderStatusItem status;
+  final int totalOrders;
+  final ValueChanged<String>? onTap;
+  final bool isMobile;
+  final bool isVerySmall;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool hasOrders = status.count > 0;
+
+    final double percentage = totalOrders > 0 ? status.count / totalOrders : 0;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onStatusTap == null ? null : () => onStatusTap!(status.title),
-        borderRadius: BorderRadius.circular(14),
+        onTap: onTap == null ? null : () => onTap!(status.title),
+        borderRadius: BorderRadius.circular(16),
         child: Ink(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: status.backgroundColor,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: status.color.withValues(alpha: 0.10)),
+          width: double.infinity,
+          padding: EdgeInsets.all(
+            isVerySmall
+                ? 10
+                : isMobile
+                ? 11
+                : 13,
           ),
-          child: Row(
+          decoration: BoxDecoration(
+            color: hasOrders ? status.backgroundColor : AppColors.background,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: hasOrders
+                  ? status.color.withValues(alpha: 0.13)
+                  : AppColors.border.withValues(alpha: 0.55),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: status.color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(status.icon, color: status.color, size: 18),
+              Row(
+                children: [
+                  Container(
+                    width: isMobile ? 37 : 40,
+                    height: isMobile ? 37 : 40,
+                    decoration: BoxDecoration(
+                      color: hasOrders
+                          ? status.color.withValues(alpha: 0.12)
+                          : AppColors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: status.color.withValues(
+                          alpha: hasOrders ? 0.12 : 0.07,
+                        ),
+                      ),
+                    ),
+                    child: Icon(
+                      status.icon,
+                      color: hasOrders ? status.color : AppColors.textSecondary,
+                      size: isMobile ? 18 : 20,
+                    ),
+                  ),
+
+                  const Spacer(),
+
+                  if (hasOrders)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: status.color.withValues(alpha: 0.09),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '${(percentage * 100).round()}%',
+                        style: AppTextStyles.caption.copyWith(
+                          color: status.color,
+                          fontSize: 7.5,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                ],
               ),
 
-              const SizedBox(width: 9),
+              const SizedBox(height: 11),
 
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: Text(
                       status.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.caption.copyWith(
                         color: AppColors.textSecondary,
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w600,
+                        fontSize: isVerySmall
+                            ? 8.5
+                            : isMobile
+                            ? 9
+                            : 9.5,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${status.count}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.titleMedium.copyWith(
-                        color: AppColors.navy,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        height: 1,
+                  ),
+
+                  const SizedBox(width: 6),
+
+                  Text(
+                    '${status.count}',
+                    style: AppTextStyles.titleMedium.copyWith(
+                      color: hasOrders
+                          ? AppColors.navy
+                          : AppColors.textSecondary,
+                      fontSize: isVerySmall
+                          ? 17
+                          : isMobile
+                          ? 18
+                          : 19,
+                      fontWeight: FontWeight.w900,
+                      height: 1,
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 9),
+
+              ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  height: 4,
+                  width: double.infinity,
+                  color: status.color.withValues(alpha: 0.08),
+                  child: FractionallySizedBox(
+                    alignment: Alignment.centerLeft,
+                    widthFactor: percentage.clamp(0.0, 1.0),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: hasOrders
+                            ? status.color
+                            : status.color.withValues(alpha: 0.20),
+                        borderRadius: BorderRadius.circular(20),
                       ),
                     ),
-                  ],
+                  ),
                 ),
               ),
             ],
@@ -276,9 +495,9 @@ class OrderStatusSection extends StatelessWidget {
   }
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// ORDER STATUS MODEL
-// ═════════════════════════════════════════════════════════════════════════════
+// ============================================================================
+// MODEL
+// ============================================================================
 
 class _OrderStatusItem {
   const _OrderStatusItem({

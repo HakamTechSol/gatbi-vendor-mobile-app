@@ -4,19 +4,17 @@ import 'package:shimmer/shimmer.dart';
 import '../../../Theme/app_colors.dart';
 
 /// ============================================================
-/// DASHBOARD SHIMMER  —  Production Level
+/// DASHBOARD SHIMMER — Production Level (Updated UI Match)
 /// ------------------------------------------------------------
-/// Structure matches real dashboard:
-///   1. Header card (circle icon + 2 lines + dots)
-///   2. Four info cards (Gross / Commission / Net / Affiliate)
-///   3. Stats grid 2x2
-///   4. Recent orders tiles
-///   5. Product preview tiles
-///
-/// NOTE:
-///   • Card background = WHITE (real card look)
-///   • Skeleton blocks = GREY (visible inside white card)
-///   • No text is rendered — only grey skeleton blocks
+/// Structure matches attached UI:
+///   1. Header Bar (Avatar + Welcome Text + Approved Badge + Menu)
+///   2. Net Payable Card (Highlighted Purple Top Banner)
+///   3. Products Gross Card (Icon, Title, Value, Sub-boxes for Products/Shipping)
+///   4. Gatbi Commission Card (Icon, Title, Percentage Badge, Value)
+///   5. Affiliate Program Card (Header + Active Badge + Inner Container)
+///   6. Stats Grid 2x2
+///   7. Recent Orders Tiles
+///   8. Product Preview Tiles
 /// ============================================================
 
 class DashboardShimmer extends StatelessWidget {
@@ -31,14 +29,14 @@ class DashboardShimmer extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ============================================================
-          // 1. HEADER — FULL WIDTH
-          // ============================================================
+          // -----------------------------------------------------------
+          // 1. HEADER - FULL WIDTH
+          // -----------------------------------------------------------
           const _HeaderCardShimmer(),
 
-          // ============================================================
-          // REST OF DASHBOARD — WITH HORIZONTAL PADDING
-          // ============================================================
+          // -----------------------------------------------------------
+          // REST OF DASHBOARD CONTENT
+          // -----------------------------------------------------------
           Padding(
             padding: EdgeInsets.fromLTRB(
               horizontalPadding,
@@ -46,69 +44,52 @@ class DashboardShimmer extends StatelessWidget {
               horizontalPadding,
               30,
             ),
-            child: const Column(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ------------------------------------------------------
-                // 2. GROSS CARD
-                // ------------------------------------------------------
-                _InfoCardShimmer(
-                  lines: [
-                    _LineSpec(widthFactor: 0.45, height: 11),
-                    _LineSpec(widthFactor: 0.35, height: 24, topGap: 12),
-                    _LineSpec(widthFactor: 0.42, height: 10, topGap: 14),
-                    _LineSpec(widthFactor: 0.38, height: 10, topGap: 8),
+                // -----------------------------------------------------
+                // 2. NET PAYABLE CARD (Purple Accent Hero Card)
+                // -----------------------------------------------------
+                const _NetPayableCardShimmer(),
+
+                const SizedBox(height: 14),
+
+                // -----------------------------------------------------
+                // 3. PRODUCTS GROSS CARD (With Bottom Sub-boxes)
+                // -----------------------------------------------------
+                const _ProductsGrossCardShimmer(),
+
+                const SizedBox(height: 14),
+
+                // -----------------------------------------------------
+                // 4. GATBI COMMISSION CARD (With Percentage Badge)
+                // -----------------------------------------------------
+                const _GatbiCommissionCardShimmer(),
+
+                const SizedBox(height: 14),
+
+                // -----------------------------------------------------
+                // 5. AFFILIATE PROGRAM CARD
+                // -----------------------------------------------------
+                const _AffiliateCardShimmer(),
+
+                const SizedBox(height: 24),
+
+                // -----------------------------------------------------
+                // 6. STATS SECTION (2x2 Grid)
+                // -----------------------------------------------------
+                const _SectionTitleShimmer(),
+                const SizedBox(height: 12),
+
+                const Row(
+                  children: [
+                    Expanded(child: _StatTileShimmer()),
+                    SizedBox(width: 12),
+                    Expanded(child: _StatTileShimmer()),
                   ],
                 ),
-
-                SizedBox(height: 14),
-
-                // ------------------------------------------------------
-                // 3. COMMISSION CARD
-                // ------------------------------------------------------
-                _InfoCardShimmer(
-                  lines: [
-                    _LineSpec(widthFactor: 0.55, height: 11),
-                    _LineSpec(widthFactor: 0.30, height: 24, topGap: 12),
-                    _LineSpec(widthFactor: 0.58, height: 10, topGap: 14),
-                  ],
-                ),
-
-                SizedBox(height: 14),
-
-                // ------------------------------------------------------
-                // 4. NET PAYABLE CARD
-                // ------------------------------------------------------
-                _InfoCardShimmer(
-                  lines: [
-                    _LineSpec(widthFactor: 0.42, height: 11),
-                    _LineSpec(widthFactor: 0.36, height: 24, topGap: 12),
-                    _LineSpec(widthFactor: 0.52, height: 10, topGap: 14),
-                  ],
-                ),
-
-                SizedBox(height: 14),
-
-                // ------------------------------------------------------
-                // 5. AFFILIATE-READY CARD
-                // ------------------------------------------------------
-                _InfoCardShimmer(
-                  lines: [
-                    _LineSpec(widthFactor: 0.58, height: 11),
-                    _LineSpec(widthFactor: 0.10, height: 24, topGap: 12),
-                    _LineSpec(widthFactor: 0.45, height: 10, topGap: 14),
-                  ],
-                ),
-
-                SizedBox(height: 24),
-
-                // ------------------------------------------------------
-                // 6. STATS SECTION
-                // ------------------------------------------------------
-                _SectionTitleShimmer(),
-                SizedBox(height: 12),
-
-                Row(
+                const SizedBox(height: 12),
+                const Row(
                   children: [
                     Expanded(child: _StatTileShimmer()),
                     SizedBox(width: 12),
@@ -116,41 +97,31 @@ class DashboardShimmer extends StatelessWidget {
                   ],
                 ),
 
-                SizedBox(height: 12),
+                const SizedBox(height: 24),
 
-                Row(
-                  children: [
-                    Expanded(child: _StatTileShimmer()),
-                    SizedBox(width: 12),
-                    Expanded(child: _StatTileShimmer()),
-                  ],
-                ),
+                // -----------------------------------------------------
+                // 7. RECENT ORDERS SECTION
+                // -----------------------------------------------------
+                const _SectionTitleShimmer(),
+                const SizedBox(height: 12),
 
-                SizedBox(height: 24),
+                const _RecentTileShimmer(),
+                const SizedBox(height: 10),
+                const _RecentTileShimmer(),
+                const SizedBox(height: 10),
+                const _RecentTileShimmer(),
 
-                // ------------------------------------------------------
-                // 7. RECENT ORDERS
-                // ------------------------------------------------------
-                _SectionTitleShimmer(),
-                SizedBox(height: 12),
+                const SizedBox(height: 24),
 
-                _RecentTileShimmer(),
-                SizedBox(height: 10),
-                _RecentTileShimmer(),
-                SizedBox(height: 10),
-                _RecentTileShimmer(),
+                // -----------------------------------------------------
+                // 8. PRODUCTS PREVIEW SECTION
+                // -----------------------------------------------------
+                const _SectionTitleShimmer(),
+                const SizedBox(height: 12),
 
-                SizedBox(height: 24),
-
-                // ------------------------------------------------------
-                // 8. PRODUCTS PREVIEW
-                // ------------------------------------------------------
-                _SectionTitleShimmer(),
-                SizedBox(height: 12),
-
-                _ProductTileShimmer(),
-                SizedBox(height: 10),
-                _ProductTileShimmer(),
+                const _ProductTileShimmer(),
+                const SizedBox(height: 10),
+                const _ProductTileShimmer(),
               ],
             ),
           ),
@@ -161,10 +132,7 @@ class DashboardShimmer extends StatelessWidget {
 }
 
 // ============================================================
-// SHIMMER WRAPPER
-// ------------------------------------------------------------
-// Wraps any widget with shimmer.
-// Cards themselves stay WHITE — only inner blocks shimmer.
+// SHIMMER WRAPPER BLOCK
 // ============================================================
 
 class _ShimmerBlock extends StatelessWidget {
@@ -198,23 +166,7 @@ class _ShimmerBlock extends StatelessWidget {
 }
 
 // ============================================================
-// LINE SPEC
-// ============================================================
-
-class _LineSpec {
-  const _LineSpec({
-    required this.widthFactor,
-    required this.height,
-    this.topGap = 0,
-  });
-
-  final double widthFactor;
-  final double height;
-  final double topGap;
-}
-
-// ============================================================
-// HEADER SHIMMER
+// HEADER SHIMMER (Avatar + Title + Subtitle + Badge + Menu)
 // ============================================================
 
 class _HeaderCardShimmer extends StatelessWidget {
@@ -227,10 +179,9 @@ class _HeaderCardShimmer extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      height: 77,
-      padding: EdgeInsets.only(
-        left: isSmallScreen ? 14 : 18,
-        right: isSmallScreen ? 10 : 14,
+      padding: EdgeInsets.symmetric(
+        horizontal: isSmallScreen ? 14 : 18,
+        vertical: 14,
       ),
       decoration: BoxDecoration(
         color: AppColors.shimmerCard,
@@ -240,67 +191,108 @@ class _HeaderCardShimmer extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // --------------------------------------------------
-          // AVATAR
-          // --------------------------------------------------
+          // Avatar
           _ShimmerBlock(
             width: isSmallScreen ? 44 : 48,
             height: isSmallScreen ? 44 : 48,
             radius: 50,
           ),
+          SizedBox(width: isSmallScreen ? 10 : 12),
 
-          SizedBox(width: isSmallScreen ? 10 : 13),
-
-          // --------------------------------------------------
-          // WELCOME CONTENT
-          // --------------------------------------------------
+          // Title, Subtitle, & Status Badge
           Expanded(
-            child: LayoutBuilder(
-              builder: (_, constraints) {
-                return Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
                   children: [
-                    _ShimmerBlock(
-                      width: constraints.maxWidth * 0.58,
-                      height: isSmallScreen ? 15 : 17,
-                      radius: 5,
-                    ),
-                    const SizedBox(height: 7),
-                    _ShimmerBlock(
-                      width: constraints.maxWidth * 0.88,
-                      height: isSmallScreen ? 9 : 10,
-                      radius: 4,
-                    ),
+                    const _ShimmerBlock(width: 110, height: 16, radius: 4),
+                    const SizedBox(width: 8),
+                    // Approved badge skeleton
+                    const _ShimmerBlock(width: 65, height: 18, radius: 12),
                   ],
-                );
-              },
+                ),
+                const SizedBox(height: 6),
+                const _ShimmerBlock(width: 170, height: 10, radius: 4),
+              ],
             ),
           ),
-
           const SizedBox(width: 8),
 
-          // --------------------------------------------------
-          // MENU BUTTON
-          // --------------------------------------------------
+          // Menu button
           _ShimmerBlock(
-            width: isSmallScreen ? 40 : 44,
-            height: isSmallScreen ? 40 : 44,
-            radius: 13,
+            width: isSmallScreen ? 38 : 42,
+            height: isSmallScreen ? 38 : 42,
+            radius: 12,
           ),
         ],
       ),
     );
   }
 }
+
 // ============================================================
-// INFO CARD
+// 2. NET PAYABLE CARD (Purple Featured Card)
 // ============================================================
 
-class _InfoCardShimmer extends StatelessWidget {
-  const _InfoCardShimmer({required this.lines});
+class _NetPayableCardShimmer extends StatelessWidget {
+  const _NetPayableCardShimmer();
 
-  final List<_LineSpec> lines;
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.shimmerCard,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Wallet Icon Box
+          const _ShimmerBlock(width: 52, height: 52, radius: 16),
+          const SizedBox(width: 14),
+
+          // Details Column
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: const [
+                    _ShimmerBlock(width: 110, height: 12, radius: 4),
+                    SizedBox(width: 8),
+                    _ShimmerBlock(width: 16, height: 16, radius: 50),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const _ShimmerBlock(width: 130, height: 26, radius: 6),
+                const SizedBox(height: 8),
+                const _ShimmerBlock(width: 160, height: 9, radius: 4),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================
+// 3. PRODUCTS GROSS CARD (With Products & Shipping Inner Blocks)
+// ============================================================
+
+class _ProductsGrossCardShimmer extends StatelessWidget {
+  const _ProductsGrossCardShimmer();
 
   @override
   Widget build(BuildContext context) {
@@ -318,30 +310,219 @@ class _InfoCardShimmer extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Icon box
-          const _ShimmerBlock(width: 48, height: 48, radius: 14),
-
-          const SizedBox(width: 14),
-
-          // Text lines
-          Expanded(
-            child: LayoutBuilder(
-              builder: (_, c) => Column(
+          // Top Row: Icon + Title/Subtitle
+          Row(
+            children: [
+              const _ShimmerBlock(width: 44, height: 44, radius: 12),
+              const SizedBox(width: 12),
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (final line in lines) ...[
-                    if (line.topGap > 0) SizedBox(height: line.topGap),
-                    _ShimmerBlock(
-                      width: c.maxWidth * line.widthFactor,
-                      height: line.height,
-                      radius: line.height >= 18 ? 8 : 6,
-                    ),
-                  ],
+                children: const [
+                  _ShimmerBlock(width: 110, height: 13, radius: 4),
+                  SizedBox(height: 6),
+                  _ShimmerBlock(width: 90, height: 9, radius: 4),
                 ],
               ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Big Amount
+          const _ShimmerBlock(width: 140, height: 24, radius: 6),
+          const SizedBox(height: 14),
+
+          // Bottom Sub-Boxes Row (Products | Shipping)
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.shimmerBase.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      const _ShimmerBlock(width: 28, height: 28, radius: 8),
+                      const SizedBox(width: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          _ShimmerBlock(width: 45, height: 9, radius: 3),
+                          SizedBox(height: 4),
+                          _ShimmerBlock(width: 55, height: 11, radius: 3),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.shimmerBase.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      const _ShimmerBlock(width: 28, height: 28, radius: 8),
+                      const SizedBox(width: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          _ShimmerBlock(width: 45, height: 9, radius: 3),
+                          SizedBox(height: 4),
+                          _ShimmerBlock(width: 55, height: 11, radius: 3),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================
+// 4. GATBI COMMISSION CARD (With Percentage Badge on Top Right)
+// ============================================================
+
+class _GatbiCommissionCardShimmer extends StatelessWidget {
+  const _GatbiCommissionCardShimmer();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.shimmerCard,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top Row with Badge
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const _ShimmerBlock(width: 44, height: 44, radius: 12),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    _ShimmerBlock(width: 120, height: 13, radius: 4),
+                    SizedBox(height: 6),
+                    _ShimmerBlock(width: 100, height: 9, radius: 4),
+                  ],
+                ),
+              ),
+              // Percentage Badge
+              const _ShimmerBlock(width: 45, height: 20, radius: 8),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Big Amount
+          const _ShimmerBlock(width: 120, height: 24, radius: 6),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================
+// 5. AFFILIATE PROGRAM CARD (Header + Active Badge + Inner Tile)
+// ============================================================
+
+class _AffiliateCardShimmer extends StatelessWidget {
+  const _AffiliateCardShimmer();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.shimmerCard,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top Bar with Active Badge
+          Row(
+            children: [
+              const _ShimmerBlock(width: 40, height: 40, radius: 12),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    _ShimmerBlock(width: 110, height: 13, radius: 4),
+                    SizedBox(height: 6),
+                    _ShimmerBlock(width: 150, height: 9, radius: 4),
+                  ],
+                ),
+              ),
+              const _ShimmerBlock(width: 55, height: 20, radius: 10),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Inner Affiliate Sub-card
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.shimmerBase.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                const _ShimmerBlock(width: 44, height: 44, radius: 12),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      _ShimmerBlock(width: 110, height: 10, radius: 3),
+                      SizedBox(height: 6),
+                      Row(
+                        children: [
+                          _ShimmerBlock(width: 16, height: 18, radius: 4),
+                          SizedBox(width: 6),
+                          _ShimmerBlock(width: 50, height: 10, radius: 3),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const _ShimmerBlock(width: 24, height: 24, radius: 12),
+              ],
             ),
           ),
         ],
@@ -351,7 +532,7 @@ class _InfoCardShimmer extends StatelessWidget {
 }
 
 // ============================================================
-// SECTION TITLE
+// SECTION TITLE SHIMMER
 // ============================================================
 
 class _SectionTitleShimmer extends StatelessWidget {
@@ -370,7 +551,7 @@ class _SectionTitleShimmer extends StatelessWidget {
 }
 
 // ============================================================
-// STAT TILE
+// STAT TILE SHIMMER
 // ============================================================
 
 class _StatTileShimmer extends StatelessWidget {
@@ -406,7 +587,7 @@ class _StatTileShimmer extends StatelessWidget {
 }
 
 // ============================================================
-// RECENT ORDER TILE
+// RECENT ORDER TILE SHIMMER
 // ============================================================
 
 class _RecentTileShimmer extends StatelessWidget {
@@ -450,7 +631,7 @@ class _RecentTileShimmer extends StatelessWidget {
 }
 
 // ============================================================
-// PRODUCT TILE
+// PRODUCT TILE SHIMMER
 // ============================================================
 
 class _ProductTileShimmer extends StatelessWidget {
