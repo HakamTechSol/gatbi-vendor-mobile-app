@@ -14,7 +14,7 @@ plugins {
 android {
     namespace = "com.gatbi.gatbivender"
 
-    compileSdk = 36
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

@@ -1,3 +1,57 @@
+typedef JsonMap = Map<String, dynamic>;
+
+bool parseJsonBool(dynamic value, {bool fallback = false}) {
+  if (value is bool) return value;
+  if (value is num) return value != 0;
+
+  if (value is String) {
+    switch (value.trim().toLowerCase()) {
+      case 'true':
+      case '1':
+      case 'yes':
+        return true;
+      case 'false':
+      case '0':
+      case 'no':
+        return false;
+    }
+  }
+
+  return fallback;
+}
+
+int? parseJsonInt(dynamic value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  if (value is String) return int.tryParse(value.trim());
+  return null;
+}
+
+num? parseJsonNum(dynamic value) {
+  if (value is num) return value;
+  if (value is String) return num.tryParse(value.trim());
+  return null;
+}
+
+String? parseJsonString(dynamic value) {
+  if (value == null) return null;
+  return value.toString();
+}
+
+JsonMap parseJsonMap(dynamic value) {
+  if (value is! Map) return <String, dynamic>{};
+  return Map<String, dynamic>.from(value);
+}
+
+List<T> parseJsonList<T>(dynamic value, T Function(JsonMap json) fromJson) {
+  if (value is! List) return <T>[];
+
+  return value
+      .whereType<Map>()
+      .map((item) => fromJson(Map<String, dynamic>.from(item)))
+      .toList();
+}
+
 class GetEditProductModel {
   const GetEditProductModel({
     this.success = false,
@@ -9,76 +63,28 @@ class GetEditProductModel {
   final GetEditProductItemModel? product;
   final GetEditProductTranslationModel? translation;
 
-  // ============================================================
-  // From JSON
-  // ============================================================
-
-  factory GetEditProductModel.fromJson(
-    Map<String, dynamic>? json,
-  ) {
-    if (json == null) {
-      return const GetEditProductModel();
-    }
+  factory GetEditProductModel.fromJson(JsonMap? json) {
+    if (json == null) return const GetEditProductModel();
 
     return GetEditProductModel(
-      success: _parseBool(json['success']),
+      success: parseJsonBool(json['success']),
       product: json['product'] is Map
-          ? GetEditProductItemModel.fromJson(
-              Map<String, dynamic>.from(
-                json['product'] as Map,
-              ),
-            )
+          ? GetEditProductItemModel.fromJson(parseJsonMap(json['product']))
           : null,
       translation: json['translation'] is Map
           ? GetEditProductTranslationModel.fromJson(
-              Map<String, dynamic>.from(
-                json['translation'] as Map,
-              ),
+              parseJsonMap(json['translation']),
             )
           : null,
     );
   }
 
-  // ============================================================
-  // To JSON
-  // ============================================================
-
-  Map<String, dynamic> toJson() {
-    return {
-      'success': success,
-      'product': product?.toJson(),
-      'translation': translation?.toJson(),
-    };
-  }
-
-  // ============================================================
-  // Helpers
-  // ============================================================
-
-  static bool _parseBool(dynamic value) {
-    if (value is bool) {
-      return value;
-    }
-
-    if (value is String) {
-      final normalized = value.trim().toLowerCase();
-
-      return normalized == 'true' ||
-          normalized == '1' ||
-          normalized == 'yes';
-    }
-
-    if (value is num) {
-      return value != 0;
-    }
-
-    return false;
-  }
+  JsonMap toJson() => {
+    'success': success,
+    'product': product?.toJson(),
+    'translation': translation?.toJson(),
+  };
 }
-
-// ================================================================
-// Product
-// ================================================================
 
 class GetEditProductItemModel {
   const GetEditProductItemModel({
@@ -122,493 +128,218 @@ class GetEditProductItemModel {
     this.category,
     this.sku,
     this.brand,
+    this.brandId,
     this.priceOld,
     this.isActive = false,
     this.gallery = const [],
     this.attributes = const [],
     this.campaigns = const [],
+    this.allowAffiliate = false,
+    this.metaTitle,
+    this.metaDescription,
+    this.metaKeywords,
+    this.affiliateMetaTitle,
+    this.affiliateMetaDescription,
+    this.affiliateMetaKeywords,
   });
 
-  // ============================================================
-  // Basic Product Fields
-  // ============================================================
-
   final int? id;
-
   final String? name;
-
   final String? slug;
-
   final String? description;
-
   final String? shortDescription;
 
-  // ============================================================
-  // Pricing
-  // ============================================================
-
   final num? price;
-
   final num? regularPrice;
-
   final num? salePrice;
-
   final String? currency;
-
   final String? currencySymbol;
 
-  // ============================================================
-  // Stock
-  // ============================================================
-
   final String? stockStatus;
-
   final int? stockQuantity;
-
-  // ============================================================
-  // Product Flags
-  // ============================================================
-
   final bool hasVariants;
 
   final num? rating;
-
   final int? reviewCount;
-
   final bool onSale;
-
   final bool isFlashDeal;
-
   final num? flashDealPrice;
-
   final String? flashDealEnd;
-
   final int? dealCampaignId;
-
   final num? dealDiscountPercentage;
-
   final String? dealEventName;
-
   final String? dealEventSlug;
-
   final bool featured;
 
-  // ============================================================
-  // Image
-  // ============================================================
-
   final String? image;
-
-  // ============================================================
-  // Merchant
-  // ============================================================
-
   final int? merchantId;
-
   final String? merchantName;
-
-  // ============================================================
-  // Dates
-  // ============================================================
-
   final String? createdAt;
-
   final String? updatedAt;
 
-  // ============================================================
-  // Variants
-  // ============================================================
-
   final List<GetEditProductVariantModel> variants;
-
-  // ============================================================
-  // Base Pricing
-  // ============================================================
-
   final num? basePrice;
-
   final num? basePriceOld;
-
   final num? dealRate;
-
-  // ============================================================
-  // Attribute Groups
-  // ============================================================
-
   final List<GetEditProductAttributeGroupModel> attributeGroups;
-
-  // ============================================================
-  // Price Range
-  // ============================================================
-
   final num? priceMin;
-
   final num? priceMax;
-
   final num? priceFrom;
 
-  // ============================================================
-  // Category
-  // ============================================================
-
   final GetEditProductCategoryModel? category;
-
-  // ============================================================
-  // SKU / Brand
-  // ============================================================
-
   final String? sku;
-
   final String? brand;
-
+  final int? brandId;
   final num? priceOld;
-
-  // ============================================================
-  // Status
-  // ============================================================
-
   final bool isActive;
 
-  // ============================================================
-  // Gallery
-  // ============================================================
-
   final List<GetEditProductGalleryModel> gallery;
-
-  // ============================================================
-  // Product Attributes
-  // ============================================================
-
   final List<GetEditProductAttributeModel> attributes;
+  final List<GetEditProductCampaignModel> campaigns;
 
-  // ============================================================
-  // Campaigns
-  // ============================================================
+  final bool allowAffiliate;
+  final String? metaTitle;
+  final String? metaDescription;
+  final String? metaKeywords;
+  final String? affiliateMetaTitle;
+  final String? affiliateMetaDescription;
+  final String? affiliateMetaKeywords;
 
-  final List<dynamic> campaigns;
-
-  // ============================================================
-  // From JSON
-  // ============================================================
-
-  factory GetEditProductItemModel.fromJson(
-    Map<String, dynamic>? json,
-  ) {
-    if (json == null) {
-      return const GetEditProductItemModel();
-    }
+  factory GetEditProductItemModel.fromJson(JsonMap? json) {
+    if (json == null) return const GetEditProductItemModel();
 
     return GetEditProductItemModel(
-      id: _parseInt(json['id']),
-      name: _parseString(json['name']),
-      slug: _parseString(json['slug']),
-      description: _parseString(json['description']),
-      shortDescription: _parseString(
-        json['short_description'],
-      ),
-
-      price: _parseNum(json['price']),
-      regularPrice: _parseNum(json['regular_price']),
-      salePrice: _parseNum(json['sale_price']),
-
-      currency: _parseString(json['currency']),
-      currencySymbol: _parseString(
-        json['currency_symbol'],
-      ),
-
-      stockStatus: _parseString(
-        json['stock_status'],
-      ),
-
-      stockQuantity: _parseInt(
-        json['stock_quantity'],
-      ),
-
-      hasVariants: _parseBool(
-        json['has_variants'],
-      ),
-
-      rating: _parseNum(json['rating']),
-
-      reviewCount: _parseInt(
-        json['review_count'],
-      ),
-
-      onSale: _parseBool(
-        json['on_sale'],
-      ),
-
-      isFlashDeal: _parseBool(
-        json['is_flash_deal'],
-      ),
-
-      flashDealPrice: _parseNum(
-        json['flash_deal_price'],
-      ),
-
-      flashDealEnd: _parseString(
-        json['flash_deal_end'],
-      ),
-
-      dealCampaignId: _parseInt(
-        json['deal_campaign_id'],
-      ),
-
-      dealDiscountPercentage: _parseNum(
-        json['deal_discount_percentage'],
-      ),
-
-      dealEventName: _parseString(
-        json['deal_event_name'],
-      ),
-
-      dealEventSlug: _parseString(
-        json['deal_event_slug'],
-      ),
-
-      featured: _parseBool(
-        json['featured'],
-      ),
-
-      image: _parseString(
-        json['image'],
-      ),
-
-      merchantId: _parseInt(
-        json['merchant_id'],
-      ),
-
-      merchantName: _parseString(
-        json['merchant_name'],
-      ),
-
-      createdAt: _parseString(
-        json['created_at'],
-      ),
-
-      updatedAt: _parseString(
-        json['updated_at'],
-      ),
-
-      variants: _parseList(
+      id: parseJsonInt(json['id']),
+      name: parseJsonString(json['name']),
+      slug: parseJsonString(json['slug']),
+      description: parseJsonString(json['description']),
+      shortDescription: parseJsonString(json['short_description']),
+      price: parseJsonNum(json['price']),
+      regularPrice: parseJsonNum(json['regular_price']),
+      salePrice: parseJsonNum(json['sale_price']),
+      currency: parseJsonString(json['currency']),
+      currencySymbol: parseJsonString(json['currency_symbol']),
+      stockStatus: parseJsonString(json['stock_status']),
+      stockQuantity: parseJsonInt(json['stock_quantity']),
+      hasVariants: parseJsonBool(json['has_variants']),
+      rating: parseJsonNum(json['rating']),
+      reviewCount: parseJsonInt(json['review_count']),
+      onSale: parseJsonBool(json['on_sale']),
+      isFlashDeal: parseJsonBool(json['is_flash_deal']),
+      flashDealPrice: parseJsonNum(json['flash_deal_price']),
+      flashDealEnd: parseJsonString(json['flash_deal_end']),
+      dealCampaignId: parseJsonInt(json['deal_campaign_id']),
+      dealDiscountPercentage: parseJsonNum(json['deal_discount_percentage']),
+      dealEventName: parseJsonString(json['deal_event_name']),
+      dealEventSlug: parseJsonString(json['deal_event_slug']),
+      featured: parseJsonBool(json['featured']),
+      image: parseJsonString(json['image']),
+      merchantId: parseJsonInt(json['merchant_id']),
+      merchantName: parseJsonString(json['merchant_name']),
+      createdAt: parseJsonString(json['created_at']),
+      updatedAt: parseJsonString(json['updated_at']),
+      variants: parseJsonList(
         json['variants'],
         GetEditProductVariantModel.fromJson,
       ),
-
-      basePrice: _parseNum(
-        json['base_price'],
-      ),
-
-      basePriceOld: _parseNum(
-        json['base_price_old'],
-      ),
-
-      dealRate: _parseNum(
-        json['deal_rate'],
-      ),
-
-      attributeGroups: _parseList(
+      basePrice: parseJsonNum(json['base_price']),
+      basePriceOld: parseJsonNum(json['base_price_old']),
+      dealRate: parseJsonNum(json['deal_rate']),
+      attributeGroups: parseJsonList(
         json['attribute_groups'],
         GetEditProductAttributeGroupModel.fromJson,
       ),
-
-      priceMin: _parseNum(
-        json['price_min'],
-      ),
-
-      priceMax: _parseNum(
-        json['price_max'],
-      ),
-
-      priceFrom: _parseNum(
-        json['price_from'],
-      ),
-
+      priceMin: parseJsonNum(json['price_min']),
+      priceMax: parseJsonNum(json['price_max']),
+      priceFrom: parseJsonNum(json['price_from']),
       category: json['category'] is Map
-          ? GetEditProductCategoryModel.fromJson(
-              Map<String, dynamic>.from(
-                json['category'] as Map,
-              ),
-            )
+          ? GetEditProductCategoryModel.fromJson(parseJsonMap(json['category']))
           : null,
-
-      sku: _parseString(
-        json['sku'],
-      ),
-
-      brand: _parseString(
-        json['brand'],
-      ),
-
-      priceOld: _parseNum(
-        json['price_old'],
-      ),
-
-      isActive: _parseBool(
-        json['is_active'],
-      ),
-
-      gallery: _parseList(
+      sku: parseJsonString(json['sku']),
+      brand: parseJsonString(json['brand']),
+      brandId: parseJsonInt(json['brand_id']),
+      priceOld: parseJsonNum(json['price_old']),
+      isActive: parseJsonBool(json['is_active']),
+      gallery: parseJsonList(
         json['gallery'],
         GetEditProductGalleryModel.fromJson,
       ),
-
-      attributes: _parseList(
+      attributes: parseJsonList(
         json['attributes'],
         GetEditProductAttributeModel.fromJson,
       ),
-
-      campaigns: _parseDynamicList(
+      campaigns: parseJsonList(
         json['campaigns'],
+        GetEditProductCampaignModel.fromJson,
       ),
+      allowAffiliate: parseJsonBool(json['allow_affiliate']),
+      metaTitle: parseJsonString(json['meta_title']),
+      metaDescription: parseJsonString(json['meta_description']),
+      metaKeywords: parseJsonString(json['meta_keywords']),
+      affiliateMetaTitle: parseJsonString(json['affiliate_meta_title']),
+      affiliateMetaDescription: parseJsonString(
+        json['affiliate_meta_description'],
+      ),
+      affiliateMetaKeywords: parseJsonString(json['affiliate_meta_keywords']),
     );
   }
 
-  // ============================================================
-  // To JSON
-  // ============================================================
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'slug': slug,
-      'description': description,
-      'short_description': shortDescription,
-      'price': price,
-      'regular_price': regularPrice,
-      'sale_price': salePrice,
-      'currency': currency,
-      'currency_symbol': currencySymbol,
-      'stock_status': stockStatus,
-      'stock_quantity': stockQuantity,
-      'has_variants': hasVariants,
-      'rating': rating,
-      'review_count': reviewCount,
-      'on_sale': onSale,
-      'is_flash_deal': isFlashDeal,
-      'flash_deal_price': flashDealPrice,
-      'flash_deal_end': flashDealEnd,
-      'deal_campaign_id': dealCampaignId,
-      'deal_discount_percentage': dealDiscountPercentage,
-      'deal_event_name': dealEventName,
-      'deal_event_slug': dealEventSlug,
-      'featured': featured,
-      'image': image,
-      'merchant_id': merchantId,
-      'merchant_name': merchantName,
-      'created_at': createdAt,
-      'updated_at': updatedAt,
-      'variants': variants.map((e) => e.toJson()).toList(),
-      'base_price': basePrice,
-      'base_price_old': basePriceOld,
-      'deal_rate': dealRate,
-      'attribute_groups':
-          attributeGroups.map((e) => e.toJson()).toList(),
-      'price_min': priceMin,
-      'price_max': priceMax,
-      'price_from': priceFrom,
-      'category': category?.toJson(),
-      'sku': sku,
-      'brand': brand,
-      'price_old': priceOld,
-      'is_active': isActive,
-      'gallery': gallery.map((e) => e.toJson()).toList(),
-      'attributes': attributes.map((e) => e.toJson()).toList(),
-      'campaigns': campaigns,
-    };
-  }
-
-  // ============================================================
-  // Helpers
-  // ============================================================
-
-  static bool _parseBool(dynamic value) {
-    if (value is bool) {
-      return value;
-    }
-
-    if (value is String) {
-      final normalized = value.trim().toLowerCase();
-
-      return normalized == 'true' ||
-          normalized == '1' ||
-          normalized == 'yes';
-    }
-
-    if (value is num) {
-      return value != 0;
-    }
-
-    return false;
-  }
-
-  static int? _parseInt(dynamic value) {
-    if (value is int) {
-      return value;
-    }
-
-    if (value is num) {
-      return value.toInt();
-    }
-
-    if (value is String) {
-      return int.tryParse(value);
-    }
-
-    return null;
-  }
-
-  static num? _parseNum(dynamic value) {
-    if (value is num) {
-      return value;
-    }
-
-    if (value is String) {
-      return num.tryParse(value);
-    }
-
-    return null;
-  }
-
-  static String? _parseString(dynamic value) {
-    if (value == null) {
-      return null;
-    }
-
-    return value.toString();
-  }
-
-  static List<T> _parseList<T>(
-    dynamic value,
-    T Function(Map<String, dynamic>) fromJson,
-  ) {
-    if (value is! List) {
-      return const [];
-    }
-
-    return value
-        .whereType<Map>()
-        .map(
-          (item) => fromJson(
-            Map<String, dynamic>.from(item),
-          ),
-        )
-        .toList();
-  }
-
-  static List<dynamic> _parseDynamicList(dynamic value) {
-    if (value is! List) {
-      return const [];
-    }
-
-    return List<dynamic>.from(value);
-  }
+  JsonMap toJson() => {
+    'id': id,
+    'name': name,
+    'slug': slug,
+    'description': description,
+    'short_description': shortDescription,
+    'price': price,
+    'regular_price': regularPrice,
+    'sale_price': salePrice,
+    'currency': currency,
+    'currency_symbol': currencySymbol,
+    'stock_status': stockStatus,
+    'stock_quantity': stockQuantity,
+    'has_variants': hasVariants,
+    'rating': rating,
+    'review_count': reviewCount,
+    'on_sale': onSale,
+    'is_flash_deal': isFlashDeal,
+    'flash_deal_price': flashDealPrice,
+    'flash_deal_end': flashDealEnd,
+    'deal_campaign_id': dealCampaignId,
+    'deal_discount_percentage': dealDiscountPercentage,
+    'deal_event_name': dealEventName,
+    'deal_event_slug': dealEventSlug,
+    'featured': featured,
+    'image': image,
+    'merchant_id': merchantId,
+    'merchant_name': merchantName,
+    'created_at': createdAt,
+    'updated_at': updatedAt,
+    'variants': variants.map((e) => e.toJson()).toList(),
+    'base_price': basePrice,
+    'base_price_old': basePriceOld,
+    'deal_rate': dealRate,
+    'attribute_groups': attributeGroups.map((e) => e.toJson()).toList(),
+    'price_min': priceMin,
+    'price_max': priceMax,
+    'price_from': priceFrom,
+    'category': category?.toJson(),
+    'sku': sku,
+    'brand': brand,
+    'brand_id': brandId,
+    'price_old': priceOld,
+    'is_active': isActive,
+    'gallery': gallery.map((e) => e.toJson()).toList(),
+    'attributes': attributes.map((e) => e.toJson()).toList(),
+    'campaigns': campaigns.map((e) => e.toJson()).toList(),
+    'allow_affiliate': allowAffiliate,
+    'meta_title': metaTitle,
+    'meta_description': metaDescription,
+    'meta_keywords': metaKeywords,
+    'affiliate_meta_title': affiliateMetaTitle,
+    'affiliate_meta_description': affiliateMetaDescription,
+    'affiliate_meta_keywords': affiliateMetaKeywords,
+  };
 }
-
-// ================================================================
-// Product Variant
-// ================================================================
 
 class GetEditProductVariantModel {
   const GetEditProductVariantModel({
@@ -626,162 +357,52 @@ class GetEditProductVariantModel {
   });
 
   final int? id;
-
   final String? sku;
-
   final num? price;
-
   final num? priceOld;
-
   final int? stockQty;
-
   final num? weight;
-
   final String? barcode;
-
   final bool isActive;
-
   final bool isPriceOverride;
-
-  /// Example:
-  /// {
-  ///   "3": 6,
-  ///   "4": 9
-  /// }
   final Map<String, dynamic> attributes;
-
   final List<GetEditProductOptionValueModel> optionValues;
 
-  factory GetEditProductVariantModel.fromJson(
-    Map<String, dynamic>? json,
-  ) {
-    if (json == null) {
-      return const GetEditProductVariantModel();
-    }
+  factory GetEditProductVariantModel.fromJson(JsonMap? json) {
+    if (json == null) return const GetEditProductVariantModel();
 
     return GetEditProductVariantModel(
-      id: _parseInt(json['id']),
-      sku: _parseString(json['sku']),
-      price: _parseNum(json['price']),
-      priceOld: _parseNum(json['price_old']),
-      stockQty: _parseInt(json['stock_qty']),
-      weight: _parseNum(json['weight']),
-      barcode: _parseString(json['barcode']),
-      isActive: _parseBool(json['is_active']),
-      isPriceOverride: _parseBool(
-        json['is_price_override'],
-      ),
-      attributes: _parseMap(json['attributes']),
-      optionValues: _parseList(
+      id: parseJsonInt(json['id']),
+      sku: parseJsonString(json['sku']),
+      price: parseJsonNum(json['price']),
+      priceOld: parseJsonNum(json['price_old']),
+      stockQty: parseJsonInt(json['stock_qty']),
+      weight: parseJsonNum(json['weight']),
+      barcode: parseJsonString(json['barcode']),
+      isActive: parseJsonBool(json['is_active']),
+      isPriceOverride: parseJsonBool(json['is_price_override']),
+      attributes: parseJsonMap(json['attributes']),
+      optionValues: parseJsonList(
         json['option_values'],
         GetEditProductOptionValueModel.fromJson,
       ),
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'sku': sku,
-      'price': price,
-      'price_old': priceOld,
-      'stock_qty': stockQty,
-      'weight': weight,
-      'barcode': barcode,
-      'is_active': isActive,
-      'is_price_override': isPriceOverride,
-      'attributes': attributes,
-      'option_values':
-          optionValues.map((e) => e.toJson()).toList(),
-    };
-  }
-
-  static bool _parseBool(dynamic value) {
-    if (value is bool) {
-      return value;
-    }
-
-    if (value is String) {
-      final normalized = value.trim().toLowerCase();
-
-      return normalized == 'true' ||
-          normalized == '1' ||
-          normalized == 'yes';
-    }
-
-    if (value is num) {
-      return value != 0;
-    }
-
-    return false;
-  }
-
-  static int? _parseInt(dynamic value) {
-    if (value is int) {
-      return value;
-    }
-
-    if (value is num) {
-      return value.toInt();
-    }
-
-    if (value is String) {
-      return int.tryParse(value);
-    }
-
-    return null;
-  }
-
-  static num? _parseNum(dynamic value) {
-    if (value is num) {
-      return value;
-    }
-
-    if (value is String) {
-      return num.tryParse(value);
-    }
-
-    return null;
-  }
-
-  static String? _parseString(dynamic value) {
-    if (value == null) {
-      return null;
-    }
-
-    return value.toString();
-  }
-
-  static Map<String, dynamic> _parseMap(dynamic value) {
-    if (value is! Map) {
-      return const {};
-    }
-
-    return Map<String, dynamic>.from(value);
-  }
-
-  static List<T> _parseList<T>(
-    dynamic value,
-    T Function(Map<String, dynamic>) fromJson,
-  ) {
-    if (value is! List) {
-      return const [];
-    }
-
-    return value
-        .whereType<Map>()
-        .map(
-          (item) => fromJson(
-            Map<String, dynamic>.from(item),
-          ),
-        )
-        .toList();
-  }
+  JsonMap toJson() => {
+    'id': id,
+    'sku': sku,
+    'price': price,
+    'price_old': priceOld,
+    'stock_qty': stockQty,
+    'weight': weight,
+    'barcode': barcode,
+    'is_active': isActive,
+    'is_price_override': isPriceOverride,
+    'attributes': attributes,
+    'option_values': optionValues.map((e) => e.toJson()).toList(),
+  };
 }
-
-// ================================================================
-// Variant Option Value
-// ================================================================
 
 class GetEditProductOptionValueModel {
   const GetEditProductOptionValueModel({
@@ -793,373 +414,140 @@ class GetEditProductOptionValueModel {
   });
 
   final int? attributeId;
-
   final String? attribute;
-
   final int? attributeValueId;
-
   final String? value;
-
   final String? code;
 
-  factory GetEditProductOptionValueModel.fromJson(
-    Map<String, dynamic>? json,
-  ) {
-    if (json == null) {
-      return const GetEditProductOptionValueModel();
-    }
+  factory GetEditProductOptionValueModel.fromJson(JsonMap? json) {
+    if (json == null) return const GetEditProductOptionValueModel();
 
     return GetEditProductOptionValueModel(
-      attributeId: _parseInt(
-        json['attribute_id'],
-      ),
-      attribute: _parseString(
-        json['attribute'],
-      ),
-      attributeValueId: _parseInt(
-        json['attribute_value_id'],
-      ),
-      value: _parseString(
-        json['value'],
-      ),
-      code: _parseString(
-        json['code'],
-      ),
+      attributeId: parseJsonInt(json['attribute_id']),
+      attribute: parseJsonString(json['attribute']),
+      attributeValueId: parseJsonInt(json['attribute_value_id']),
+      value: parseJsonString(json['value']),
+      code: parseJsonString(json['code']),
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'attribute_id': attributeId,
-      'attribute': attribute,
-      'attribute_value_id': attributeValueId,
-      'value': value,
-      'code': code,
-    };
-  }
-
-  static int? _parseInt(dynamic value) {
-    if (value is int) {
-      return value;
-    }
-
-    if (value is num) {
-      return value.toInt();
-    }
-
-    if (value is String) {
-      return int.tryParse(value);
-    }
-
-    return null;
-  }
-
-  static String? _parseString(dynamic value) {
-    if (value == null) {
-      return null;
-    }
-
-    return value.toString();
-  }
+  JsonMap toJson() => {
+    'attribute_id': attributeId,
+    'attribute': attribute,
+    'attribute_value_id': attributeValueId,
+    'value': value,
+    'code': code,
+  };
 }
-
-// ================================================================
-// Attribute Group
-// ================================================================
 
 class GetEditProductAttributeGroupModel {
   const GetEditProductAttributeGroupModel({
     this.attributeId,
     this.name,
+    this.inputType,
     this.values = const [],
   });
 
   final int? attributeId;
-
   final String? name;
-
+  final String? inputType;
   final List<GetEditProductAttributeGroupValueModel> values;
 
-  factory GetEditProductAttributeGroupModel.fromJson(
-    Map<String, dynamic>? json,
-  ) {
+  factory GetEditProductAttributeGroupModel.fromJson(JsonMap? json) {
     if (json == null) {
       return const GetEditProductAttributeGroupModel();
     }
 
     return GetEditProductAttributeGroupModel(
-      attributeId: _parseInt(
-        json['attribute_id'],
-      ),
-      name: _parseString(
-        json['name'],
-      ),
-      values: _parseList(
+      attributeId: parseJsonInt(json['attribute_id']),
+      name: parseJsonString(json['name']),
+      inputType: parseJsonString(json['input_type']),
+      values: parseJsonList(
         json['values'],
         GetEditProductAttributeGroupValueModel.fromJson,
       ),
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'attribute_id': attributeId,
-      'name': name,
-      'values': values.map((e) => e.toJson()).toList(),
-    };
-  }
-
-  static int? _parseInt(dynamic value) {
-    if (value is int) {
-      return value;
-    }
-
-    if (value is num) {
-      return value.toInt();
-    }
-
-    if (value is String) {
-      return int.tryParse(value);
-    }
-
-    return null;
-  }
-
-  static String? _parseString(dynamic value) {
-    if (value == null) {
-      return null;
-    }
-
-    return value.toString();
-  }
-
-  static List<T> _parseList<T>(
-    dynamic value,
-    T Function(Map<String, dynamic>) fromJson,
-  ) {
-    if (value is! List) {
-      return const [];
-    }
-
-    return value
-        .whereType<Map>()
-        .map(
-          (item) => fromJson(
-            Map<String, dynamic>.from(item),
-          ),
-        )
-        .toList();
-  }
+  JsonMap toJson() => {
+    'attribute_id': attributeId,
+    'name': name,
+    'input_type': inputType,
+    'values': values.map((e) => e.toJson()).toList(),
+  };
 }
-
-// ================================================================
-// Attribute Group Value
-// ================================================================
 
 class GetEditProductAttributeGroupValueModel {
   const GetEditProductAttributeGroupValueModel({
     this.attributeValueId,
     this.value,
+    this.code,
     this.priceModifier,
   });
 
   final int? attributeValueId;
-
   final String? value;
-
+  final String? code;
   final num? priceModifier;
 
-  factory GetEditProductAttributeGroupValueModel.fromJson(
-    Map<String, dynamic>? json,
-  ) {
+  factory GetEditProductAttributeGroupValueModel.fromJson(JsonMap? json) {
     if (json == null) {
       return const GetEditProductAttributeGroupValueModel();
     }
 
     return GetEditProductAttributeGroupValueModel(
-      attributeValueId: _parseInt(
-        json['attribute_value_id'],
-      ),
-      value: _parseString(
-        json['value'],
-      ),
-      priceModifier: _parseNum(
-        json['price_modifier'],
-      ),
+      attributeValueId: parseJsonInt(json['attribute_value_id']),
+      value: parseJsonString(json['value']),
+      code: parseJsonString(json['code']),
+      priceModifier: parseJsonNum(json['price_modifier']),
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'attribute_value_id': attributeValueId,
-      'value': value,
-      'price_modifier': priceModifier,
-    };
-  }
-
-  static int? _parseInt(dynamic value) {
-    if (value is int) {
-      return value;
-    }
-
-    if (value is num) {
-      return value.toInt();
-    }
-
-    if (value is String) {
-      return int.tryParse(value);
-    }
-
-    return null;
-  }
-
-  static num? _parseNum(dynamic value) {
-    if (value is num) {
-      return value;
-    }
-
-    if (value is String) {
-      return num.tryParse(value);
-    }
-
-    return null;
-  }
-
-  static String? _parseString(dynamic value) {
-    if (value == null) {
-      return null;
-    }
-
-    return value.toString();
-  }
+  JsonMap toJson() => {
+    'attribute_value_id': attributeValueId,
+    'value': value,
+    'code': code,
+    'price_modifier': priceModifier,
+  };
 }
-
-// ================================================================
-// Product Category
-// ================================================================
 
 class GetEditProductCategoryModel {
-  const GetEditProductCategoryModel({
-    this.id,
-    this.name,
-  });
+  const GetEditProductCategoryModel({this.id, this.name});
 
   final int? id;
-
   final String? name;
 
-  factory GetEditProductCategoryModel.fromJson(
-    Map<String, dynamic>? json,
-  ) {
-    if (json == null) {
-      return const GetEditProductCategoryModel();
-    }
+  factory GetEditProductCategoryModel.fromJson(JsonMap? json) {
+    if (json == null) return const GetEditProductCategoryModel();
 
     return GetEditProductCategoryModel(
-      id: _parseInt(json['id']),
-      name: _parseString(json['name']),
+      id: parseJsonInt(json['id']),
+      name: parseJsonString(json['name']),
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-    };
-  }
-
-  static int? _parseInt(dynamic value) {
-    if (value is int) {
-      return value;
-    }
-
-    if (value is num) {
-      return value.toInt();
-    }
-
-    if (value is String) {
-      return int.tryParse(value);
-    }
-
-    return null;
-  }
-
-  static String? _parseString(dynamic value) {
-    if (value == null) {
-      return null;
-    }
-
-    return value.toString();
-  }
+  JsonMap toJson() => {'id': id, 'name': name};
 }
-
-// ================================================================
-// Gallery
-// ================================================================
 
 class GetEditProductGalleryModel {
-  const GetEditProductGalleryModel({
-    this.id,
-    this.image,
-    this.sortOrder,
-  });
+  const GetEditProductGalleryModel({this.id, this.image, this.sortOrder});
 
   final int? id;
-
   final String? image;
-
   final int? sortOrder;
 
-  factory GetEditProductGalleryModel.fromJson(
-    Map<String, dynamic>? json,
-  ) {
-    if (json == null) {
-      return const GetEditProductGalleryModel();
-    }
+  factory GetEditProductGalleryModel.fromJson(JsonMap? json) {
+    if (json == null) return const GetEditProductGalleryModel();
 
     return GetEditProductGalleryModel(
-      id: _parseInt(json['id']),
-      image: _parseString(json['image']),
-      sortOrder: _parseInt(json['sort_order']),
+      id: parseJsonInt(json['id']),
+      image: parseJsonString(json['image']),
+      sortOrder: parseJsonInt(json['sort_order']),
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'image': image,
-      'sort_order': sortOrder,
-    };
-  }
-
-  static int? _parseInt(dynamic value) {
-    if (value is int) {
-      return value;
-    }
-
-    if (value is num) {
-      return value.toInt();
-    }
-
-    if (value is String) {
-      return int.tryParse(value);
-    }
-
-    return null;
-  }
-
-  static String? _parseString(dynamic value) {
-    if (value == null) {
-      return null;
-    }
-
-    return value.toString();
-  }
+  JsonMap toJson() => {'id': id, 'image': image, 'sort_order': sortOrder};
 }
-
-// ================================================================
-// Product Attribute
-// ================================================================
 
 class GetEditProductAttributeModel {
   const GetEditProductAttributeModel({
@@ -1173,126 +561,40 @@ class GetEditProductAttributeModel {
   });
 
   final int? id;
-
   final int? attributeId;
-
   final String? name;
-
   final String? inputType;
-
   final bool isRequired;
-
   final int? displayOrder;
-
   final List<GetEditProductAttributeValueModel> values;
 
-  factory GetEditProductAttributeModel.fromJson(
-    Map<String, dynamic>? json,
-  ) {
-    if (json == null) {
-      return const GetEditProductAttributeModel();
-    }
+  factory GetEditProductAttributeModel.fromJson(JsonMap? json) {
+    if (json == null) return const GetEditProductAttributeModel();
 
     return GetEditProductAttributeModel(
-      id: _parseInt(json['id']),
-      attributeId: _parseInt(
-        json['attribute_id'],
-      ),
-      name: _parseString(json['name']),
-      inputType: _parseString(
-        json['input_type'],
-      ),
-      isRequired: _parseBool(
-        json['is_required'],
-      ),
-      displayOrder: _parseInt(
-        json['display_order'],
-      ),
-      values: _parseList(
+      id: parseJsonInt(json['id']),
+      attributeId: parseJsonInt(json['attribute_id']),
+      name: parseJsonString(json['name']),
+      inputType: parseJsonString(json['input_type']),
+      isRequired: parseJsonBool(json['is_required']),
+      displayOrder: parseJsonInt(json['display_order']),
+      values: parseJsonList(
         json['values'],
         GetEditProductAttributeValueModel.fromJson,
       ),
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'attribute_id': attributeId,
-      'name': name,
-      'input_type': inputType,
-      'is_required': isRequired,
-      'display_order': displayOrder,
-      'values': values.map((e) => e.toJson()).toList(),
-    };
-  }
-
-  static bool _parseBool(dynamic value) {
-    if (value is bool) {
-      return value;
-    }
-
-    if (value is String) {
-      final normalized = value.trim().toLowerCase();
-
-      return normalized == 'true' ||
-          normalized == '1' ||
-          normalized == 'yes';
-    }
-
-    if (value is num) {
-      return value != 0;
-    }
-
-    return false;
-  }
-
-  static int? _parseInt(dynamic value) {
-    if (value is int) {
-      return value;
-    }
-
-    if (value is num) {
-      return value.toInt();
-    }
-
-    if (value is String) {
-      return int.tryParse(value);
-    }
-
-    return null;
-  }
-
-  static String? _parseString(dynamic value) {
-    if (value == null) {
-      return null;
-    }
-
-    return value.toString();
-  }
-
-  static List<T> _parseList<T>(
-    dynamic value,
-    T Function(Map<String, dynamic>) fromJson,
-  ) {
-    if (value is! List) {
-      return const [];
-    }
-
-    return value
-        .whereType<Map>()
-        .map(
-          (item) => fromJson(
-            Map<String, dynamic>.from(item),
-          ),
-        )
-        .toList();
-  }
+  JsonMap toJson() => {
+    'id': id,
+    'attribute_id': attributeId,
+    'name': name,
+    'input_type': inputType,
+    'is_required': isRequired,
+    'display_order': displayOrder,
+    'values': values.map((e) => e.toJson()).toList(),
+  };
 }
-
-// ================================================================
-// Product Attribute Value
-// ================================================================
 
 class GetEditProductAttributeValueModel {
   const GetEditProductAttributeValueModel({
@@ -1304,85 +606,81 @@ class GetEditProductAttributeValueModel {
   });
 
   final int? id;
-
   final int? attributeValueId;
-
   final String? value;
-
   final String? code;
-
   final num? priceModifier;
 
-  factory GetEditProductAttributeValueModel.fromJson(
-    Map<String, dynamic>? json,
-  ) {
+  factory GetEditProductAttributeValueModel.fromJson(JsonMap? json) {
     if (json == null) {
       return const GetEditProductAttributeValueModel();
     }
 
     return GetEditProductAttributeValueModel(
-      id: _parseInt(json['id']),
-      attributeValueId: _parseInt(
-        json['attribute_value_id'],
-      ),
-      value: _parseString(json['value']),
-      code: _parseString(json['code']),
-      priceModifier: _parseNum(
-        json['price_modifier'],
-      ),
+      id: parseJsonInt(json['id']),
+      attributeValueId: parseJsonInt(json['attribute_value_id']),
+      value: parseJsonString(json['value']),
+      code: parseJsonString(json['code']),
+      priceModifier: parseJsonNum(json['price_modifier']),
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'attribute_value_id': attributeValueId,
-      'value': value,
-      'code': code,
-      'price_modifier': priceModifier,
-    };
-  }
-
-  static int? _parseInt(dynamic value) {
-    if (value is int) {
-      return value;
-    }
-
-    if (value is num) {
-      return value.toInt();
-    }
-
-    if (value is String) {
-      return int.tryParse(value);
-    }
-
-    return null;
-  }
-
-  static num? _parseNum(dynamic value) {
-    if (value is num) {
-      return value;
-    }
-
-    if (value is String) {
-      return num.tryParse(value);
-    }
-
-    return null;
-  }
-
-  static String? _parseString(dynamic value) {
-    if (value == null) {
-      return null;
-    }
-
-    return value.toString();
-  }
+  JsonMap toJson() => {
+    'id': id,
+    'attribute_value_id': attributeValueId,
+    'value': value,
+    'code': code,
+    'price_modifier': priceModifier,
+  };
 }
 
-// ================================================================
-// Translation
-// ================================================================
+class GetEditProductCampaignModel {
+  const GetEditProductCampaignModel({
+    this.id,
+    this.name,
+    this.campaignType,
+    this.status,
+    this.discountPercentage,
+    this.startDate,
+    this.endDate,
+    this.eventId,
+  });
+
+  final int? id;
+  final String? name;
+  final String? campaignType;
+  final String? status;
+  final num? discountPercentage;
+  final String? startDate;
+  final String? endDate;
+  final int? eventId;
+
+  factory GetEditProductCampaignModel.fromJson(JsonMap? json) {
+    if (json == null) return const GetEditProductCampaignModel();
+
+    return GetEditProductCampaignModel(
+      id: parseJsonInt(json['id']),
+      name: parseJsonString(json['name']),
+      campaignType: parseJsonString(json['campaign_type']),
+      status: parseJsonString(json['status']),
+      discountPercentage: parseJsonNum(json['discount_percentage']),
+      startDate: parseJsonString(json['start_date']),
+      endDate: parseJsonString(json['end_date']),
+      eventId: parseJsonInt(json['event_id']),
+    );
+  }
+
+  JsonMap toJson() => {
+    'id': id,
+    'name': name,
+    'campaign_type': campaignType,
+    'status': status,
+    'discount_percentage': discountPercentage,
+    'start_date': startDate,
+    'end_date': endDate,
+    'event_id': eventId,
+  };
+}
 
 class GetEditProductTranslationModel {
   const GetEditProductTranslationModel({
@@ -1395,60 +693,33 @@ class GetEditProductTranslationModel {
   });
 
   final String? nameAr;
-
   final String? shortDescriptionAr;
-
   final String? descriptionAr;
-
   final String? metaTitleAr;
-
   final String? metaDescriptionAr;
-
   final String? metaKeywordsAr;
 
-  factory GetEditProductTranslationModel.fromJson(
-    Map<String, dynamic>? json,
-  ) {
+  factory GetEditProductTranslationModel.fromJson(JsonMap? json) {
     if (json == null) {
       return const GetEditProductTranslationModel();
     }
 
     return GetEditProductTranslationModel(
-      nameAr: _parseString(json['name_ar']),
-      shortDescriptionAr: _parseString(
-        json['short_description_ar'],
-      ),
-      descriptionAr: _parseString(
-        json['description_ar'],
-      ),
-      metaTitleAr: _parseString(
-        json['meta_title_ar'],
-      ),
-      metaDescriptionAr: _parseString(
-        json['meta_description_ar'],
-      ),
-      metaKeywordsAr: _parseString(
-        json['meta_keywords_ar'],
-      ),
+      nameAr: parseJsonString(json['name_ar']),
+      shortDescriptionAr: parseJsonString(json['short_description_ar']),
+      descriptionAr: parseJsonString(json['description_ar']),
+      metaTitleAr: parseJsonString(json['meta_title_ar']),
+      metaDescriptionAr: parseJsonString(json['meta_description_ar']),
+      metaKeywordsAr: parseJsonString(json['meta_keywords_ar']),
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'name_ar': nameAr,
-      'short_description_ar': shortDescriptionAr,
-      'description_ar': descriptionAr,
-      'meta_title_ar': metaTitleAr,
-      'meta_description_ar': metaDescriptionAr,
-      'meta_keywords_ar': metaKeywordsAr,
-    };
-  }
-
-  static String? _parseString(dynamic value) {
-    if (value == null) {
-      return null;
-    }
-
-    return value.toString();
-  }
+  JsonMap toJson() => {
+    'name_ar': nameAr,
+    'short_description_ar': shortDescriptionAr,
+    'description_ar': descriptionAr,
+    'meta_title_ar': metaTitleAr,
+    'meta_description_ar': metaDescriptionAr,
+    'meta_keywords_ar': metaKeywordsAr,
+  };
 }

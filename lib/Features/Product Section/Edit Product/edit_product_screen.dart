@@ -333,9 +333,9 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
 
       _editProduct = product;
 
-      _populateProductData(product: product, translation: result.translation);
-
       setState(() {
+        _populateProductData(product: product, translation: result.translation);
+
         _isLoadingProduct = false;
         _loadProductError = null;
       });
@@ -393,6 +393,8 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     _shortDescriptionController.text = product.shortDescription ?? '';
 
     _fullDescriptionController.text = product.description ?? '';
+
+    _allowAffiliates = product.allowAffiliate;
 
     // ═══════════════════════════════════════════════════════════════════════════
     // ARABIC TRANSLATION
@@ -540,11 +542,11 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
 
     _slugController.text = product.slug ?? _slugify(product.name ?? '');
 
-    _metaTitleController.text = '';
+    _metaTitleController.text = product.metaTitle ?? '';
 
-    _metaDescriptionController.text = '';
+    _metaDescriptionController.text = product.metaDescription ?? '';
 
-    _metaKeywordsController.text = '';
+    _metaKeywordsController.text = product.metaKeywords ?? '';
 
     // ═══════════════════════════════════════════════════════════════════════════
     // STATUS
