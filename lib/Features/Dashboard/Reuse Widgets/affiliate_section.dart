@@ -190,7 +190,6 @@ class AffiliateSection extends StatelessWidget {
   // ===========================================================================
 
   Widget _buildProductsMetric() {
-    final hasHiddenProducts = hiddenFromAffiliates > 0;
 
     return Container(
       width: double.infinity,
