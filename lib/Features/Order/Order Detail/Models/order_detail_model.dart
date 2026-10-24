@@ -1,3 +1,4 @@
+import 'courier_shipment_model.dart';
 import 'order_detail_customer_model.dart';
 import 'order_detail_item_model.dart';
 import 'order_shipping_address_model.dart';
@@ -23,6 +24,7 @@ class VendorOrderDetailModel {
     this.tracking,
     this.shippingAddress,
     this.customer,
+    this.courierShipment,
   });
 
   // ============================================================
@@ -57,6 +59,8 @@ class VendorOrderDetailModel {
   final VendorOrderShippingAddressModel? shippingAddress;
 
   final VendorOrderDetailCustomerModel? customer;
+
+  final VendorCourierShipmentModel? courierShipment;
 
   // ============================================================
   // From JSON
@@ -116,6 +120,12 @@ class VendorOrderDetailModel {
               ),
             )
           : null,
+
+            courierShipment: json['courier_shipment'] is Map
+          ? VendorCourierShipmentModel.fromJson(
+              Map<String, dynamic>.from(json['courier_shipment'] as Map),
+            )
+          : null, 
     );
   }
 
@@ -143,6 +153,7 @@ class VendorOrderDetailModel {
       'tracking': tracking?.toJson(),
       'shipping_address': shippingAddress?.toJson(),
       'customer': customer?.toJson(),
+      'courier_shipment': courierShipment?.toJson(), 
     };
   }
 

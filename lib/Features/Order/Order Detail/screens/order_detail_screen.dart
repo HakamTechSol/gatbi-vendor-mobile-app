@@ -15,6 +15,7 @@ import '../Payment Proof/Accecpted/Controller/verify_controller.dart';
 import '../Payment Proof/Rejected/controller/reject_controller.dart';
 import '../Payment Proof/Rejected/rejected_payment_dailog.dart';
 
+import '../Reuse Widgets/courier_shipment_card.dart';
 import '../Reuse Widgets/customer_info_card.dart';
 import '../Reuse Widgets/order_detail_header.dart';
 import '../Reuse Widgets/order_detail_loading.dart';
@@ -1221,6 +1222,9 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
 
     final hasTracking = tracking?.hasValidTracking == true;
 
+    final shipment = order.courierShipment;
+    final shipmentActive = shipment != null && shipment.isActive;
+
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(
         parent: BouncingScrollPhysics(),
@@ -1254,6 +1258,14 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
           // ORDER ITEMS
           // ====================================================
           OrderItemsCard(order: order),
+
+          // ====================================================
+          // COURIER SHIPMENT (EMX / internal)
+          // ====================================================
+          if (order.courierShipment != null) ...[
+            const SizedBox(height: 14),
+            CourierShipmentCard(shipment: order.courierShipment!),
+          ],
 
           // ====================================================
           // ORDER TRACKING
@@ -1304,7 +1316,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
           // ====================================================
           // STATUS UPDATE
           // ====================================================
-          if (!isordercancelled && !isorderdelivered) ...[
+          if (!isordercancelled && !isorderdelivered && !shipmentActive) ...[
             OrderStatusUpdateCard(
               status: _selectedStatus,
               onStatusChanged: (status) {
@@ -1318,10 +1330,47 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
               noteController: _noteController,
               isLoading: _isUpdatingStatus,
             ),
-
             const SizedBox(height: 14),
           ],
 
+          // Shipment active → info banner (buttons ki jagah)
+          if (!isordercancelled && !isorderdelivered && shipmentActive) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.20),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.lock_outline_rounded,
+                    size: 18,
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      shipment.isEmx
+                          ? 'Shipment is active — status updates automatically via EMX tracking. '
+                                'Manual "Mark Shipped/Delivered" is disabled.'
+                          : 'Shipment is active — status updates via rider. '
+                                'Manual "Mark Shipped/Delivered" is disabled.',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.navy,
+                        height: 1.45,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+          ],
           // ====================================================
           // TIMELINE
           // ====================================================
