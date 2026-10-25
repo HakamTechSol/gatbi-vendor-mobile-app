@@ -77,6 +77,8 @@ class EditProfileMerchantModel {
     this.kycStatus,
     this.primaryCategoryId,
     this.warehouseAddress,
+    this.warehouseCity,      
+    this.warehouseCountry,  
     this.businessType,
     this.tradeLicenseNumber,
     this.bankAccountName,
@@ -94,6 +96,8 @@ class EditProfileMerchantModel {
   final String? kycStatus;
   final int? primaryCategoryId;
   final String? warehouseAddress;
+  final String? warehouseCity;      
+  final String? warehouseCountry;   
   final String? businessType;
   final String? tradeLicenseNumber;
   final String? bankAccountName;
@@ -116,6 +120,8 @@ class EditProfileMerchantModel {
       kycStatus: _parseString(json['kyc_status']),
       primaryCategoryId: _parseInt(json['primary_category_id']),
       warehouseAddress: _parseString(json['warehouse_address']),
+      warehouseCity: _parseString(json['warehouse_city']),        
+      warehouseCountry: _parseString(json['warehouse_country']),  
       businessType: _parseString(json['business_type']),
       tradeLicenseNumber: _parseString(json['trade_license_number']),
       bankAccountName: _parseString(json['bank_account_name']),
@@ -136,6 +142,8 @@ class EditProfileMerchantModel {
       'kyc_status': kycStatus,
       'primary_category_id': primaryCategoryId,
       'warehouse_address': warehouseAddress,
+      'warehouse_city': warehouseCity,        
+      'warehouse_country': warehouseCountry,  
       'business_type': businessType,
       'trade_license_number': tradeLicenseNumber,
       'bank_account_name': bankAccountName,
@@ -144,30 +152,15 @@ class EditProfileMerchantModel {
   }
 
   static String? _parseString(dynamic value) {
-    if (value == null) {
-      return null;
-    }
-
-    if (value is String) {
-      return value;
-    }
-
+    if (value == null) return null;
+    if (value is String) return value;
     return value.toString();
   }
 
   static int? _parseInt(dynamic value) {
-    if (value is int) {
-      return value;
-    }
-
-    if (value is num) {
-      return value.toInt();
-    }
-
-    if (value is String) {
-      return int.tryParse(value);
-    }
-
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
     return null;
   }
 }

@@ -397,7 +397,11 @@ class _ProfileContent extends StatelessWidget {
 
             const SizedBox(height: 16),
 
-            VendorProfileWarehouseCard(address: merchant.warehouseAddress),
+            VendorProfileWarehouseCard(
+              address: merchant.warehouseAddress,
+              city: merchant.warehouseCity,
+              country: merchant.warehouseCountry,
+            ),
 
             const SizedBox(height: 16),
 

@@ -4,13 +4,29 @@ import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
 
 class VendorProfileWarehouseCard extends StatelessWidget {
-  const VendorProfileWarehouseCard({super.key, this.address});
+  const VendorProfileWarehouseCard({
+    super.key,
+    this.address,
+    this.city,
+    this.country,
+  });
 
   final String? address;
+  final String? city;
+  final String? country;
 
   @override
   Widget build(BuildContext context) {
     final hasAddress = address != null && address!.trim().isNotEmpty;
+    final hasCity = city != null && city!.trim().isNotEmpty;
+    final hasCountry = country != null && country!.trim().isNotEmpty;
+
+    // Build location line like: "Dubai, AE"
+    final locationParts = <String>[
+      if (hasCity) city!.trim(),
+      if (hasCountry) country!.trim().toUpperCase(),
+    ];
+    final locationLine = locationParts.join(', ');
 
     return Container(
       width: double.infinity,
@@ -108,23 +124,55 @@ class VendorProfileWarehouseCard extends StatelessWidget {
                 const SizedBox(width: 12),
 
                 // ----------------------------------------------------
-                // ADDRESS
+                // ADDRESS + CITY / COUNTRY
                 // ----------------------------------------------------
                 Expanded(
-                  child: Text(
-                    hasAddress
-                        ? address!.trim()
-                        : 'No warehouse address available.',
-                    style: hasAddress
-                        ? AppTextStyles.bodyMedium.copyWith(
-                            color: AppColors.textPrimary,
-                            height: 1.55,
-                            fontWeight: FontWeight.w500,
-                          )
-                        : AppTextStyles.bodyMedium.copyWith(
-                            color: AppColors.textMuted,
-                            fontStyle: FontStyle.italic,
-                          ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        hasAddress
+                            ? address!.trim()
+                            : 'No warehouse address available.',
+                        style: hasAddress
+                            ? AppTextStyles.bodyMedium.copyWith(
+                                color: AppColors.textPrimary,
+                                height: 1.55,
+                                fontWeight: FontWeight.w500,
+                              )
+                            : AppTextStyles.bodyMedium.copyWith(
+                                color: AppColors.textMuted,
+                                fontStyle: FontStyle.italic,
+                              ),
+                      ),
+
+                      if (locationLine.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.public_outlined,
+                              size: 14,
+                              color: AppColors.textMuted,
+                            ),
+
+                            const SizedBox(width: 6),
+
+                            Flexible(
+                              child: Text(
+                                locationLine,
+                                style: AppTextStyles.bodySmall.copyWith(
+                                  color: AppColors.textSecondary,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ],

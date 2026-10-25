@@ -11,6 +11,25 @@ class DioClient {
   Dio get dio => _dio;
 
   // ============================================================
+  // AUTH TOKEN MANAGEMENT
+  // ============================================================
+
+  /// Updates the Authorization header for future requests.
+  /// Called during login / OTP verify when a token is received.
+  void updateAuthToken(String? token) {
+    if (token != null && token.trim().isNotEmpty) {
+      _dio.options.headers['Authorization'] = 'Bearer ${token.trim()}';
+    } else {
+      _dio.options.headers.remove('Authorization');
+    }
+  }
+
+  /// Clears the Authorization header (used during logout).
+  void clearAuthToken() {
+    _dio.options.headers.remove('Authorization');
+  }
+
+  // ============================================================
   // GET
   // ============================================================
 

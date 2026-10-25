@@ -89,6 +89,8 @@ class VendorSettingsMerchantModel {
     this.kycStatus,
     this.primaryCategoryId,
     this.warehouseAddress,
+    this.warehouseCity,
+    this.warehouseCountry,
     this.businessType,
     this.tradeLicenseNumber,
     this.bankAccountName,
@@ -110,6 +112,8 @@ class VendorSettingsMerchantModel {
   final String? kycStatus;
   final int? primaryCategoryId;
   final String? warehouseAddress;
+  final String? warehouseCity;
+  final String? warehouseCountry;
   final String? businessType;
   final String? tradeLicenseNumber;
   final String? bankAccountName;
@@ -138,6 +142,8 @@ class VendorSettingsMerchantModel {
       kycStatus: _parseString(json['kyc_status']),
       primaryCategoryId: _parseInt(json['primary_category_id']),
       warehouseAddress: _parseString(json['warehouse_address']),
+      warehouseCity: _parseString(json['warehouse_city']),
+      warehouseCountry: _parseString(json['warehouse_country']),
       businessType: _parseString(json['business_type']),
       tradeLicenseNumber: _parseString(
         json['trade_license_number'],
@@ -168,6 +174,8 @@ class VendorSettingsMerchantModel {
       'kyc_status': kycStatus,
       'primary_category_id': primaryCategoryId,
       'warehouse_address': warehouseAddress,
+      'warehouse_city': warehouseCity,
+      'warehouse_country': warehouseCountry,
       'business_type': businessType,
       'trade_license_number': tradeLicenseNumber,
       'bank_account_name': bankAccountName,
@@ -207,7 +215,6 @@ class VendorSettingsMerchantModel {
     return null;
   }
 }
-
 // ============================================================
 // User Model
 // ============================================================

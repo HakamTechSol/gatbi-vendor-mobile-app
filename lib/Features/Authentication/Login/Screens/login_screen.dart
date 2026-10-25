@@ -81,21 +81,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     FocusScope.of(context).unfocus();
 
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
-      // ============================================================
-      // REAL API LOGIN
-      // ============================================================
-
       final dioClient = ref.read(dioProvider);
-
       final controller = LoginController(dioClient: dioClient);
 
       final LoginModel result = await controller.login(
@@ -104,9 +95,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       );
 
       // ============================================================
-      // RESPONSE VALIDATION
+      // SAFETY: API success check
       // ============================================================
-
       if (result.success != true) {
         throw ApiException(
           message: result.message ?? 'Login failed. Please try again.',
@@ -114,12 +104,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         );
       }
 
-      // ============================================================
-      // OTP REQUIRED
-      // ============================================================
+      if (!mounted) return;
 
+      // ============================================================
+      // CASE 1: OTP REQUIRED
+      // ============================================================
       if (result.requiresOtp == true) {
-        if (!mounted) return;
+        debugPrint('LOGIN → OTP required for merchant: ${result.merchantId}');
 
         context.go(
           AppRoutes.loginotpVerification,
@@ -129,32 +120,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             'expires_in_minutes': result.expiresInMinutes,
           },
         );
-
         return;
       }
 
       // ============================================================
-      // UNEXPECTED SUCCESS RESPONSE
+      // CASE 2: DIRECT LOGIN (No OTP) — Token received
       // ============================================================
+      if (result.token != null && result.token!.isNotEmpty) {
+        debugPrint('LOGIN → Direct login success. Token received.');
 
+        // Navigate straight to BottomBar
+        context.go(AppRoutes.bottombar);
+        return;
+      }
+
+      // ============================================================
+      // CASE 3: Unknown response
+      // ============================================================
       throw const ApiException(
         message: 'Unexpected login response received from server.',
         code: 'INVALID_LOGIN_RESPONSE',
       );
     } on ApiException catch (error) {
       if (!mounted) return;
-
       _showError(error.message);
     } catch (error) {
       if (!mounted) return;
-
       _showError('Something went wrong. Please try again.');
     } finally {
       if (!mounted) return;
-
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
     }
   }
 

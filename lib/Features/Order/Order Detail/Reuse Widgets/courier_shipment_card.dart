@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../Core/Custom Widgets/custom_button.dart'; // ⬅️ Path check kar lena
+import '../../../../Core/Custom Widgets/custom_button.dart';
 import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
 import '../Models/courier_shipment_model.dart';
@@ -8,10 +8,6 @@ import '../Models/courier_shipment_model.dart';
 // ============================================================
 //  COURIER SHIPMENT CARD (Vendor)
 //  Handles both EMX + internal. Null-safe, terminal-aware.
-//
-//  Optional:
-//   - onRetryPickup  → when shipment.isBookingFailed, shows "Retry Pickup"
-//   - isRetryLoading → disables the retry button + shows spinner
 // ============================================================
 
 class CourierShipmentCard extends StatelessWidget {
@@ -24,10 +20,8 @@ class CourierShipmentCard extends StatelessWidget {
 
   final VendorCourierShipmentModel shipment;
 
-  /// If provided AND shipment.isBookingFailed → show "Retry Pickup" button.
   final VoidCallback? onRetryPickup;
 
-  /// True while the retry request is in-flight (disables the button).
   final bool isRetryLoading;
 
   @override
@@ -104,6 +98,8 @@ class CourierShipmentCard extends StatelessWidget {
                       Text(
                         shipment.shipmentNo!,
                         style: AppTextStyles.bodySmall,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                   ],
                 ),
@@ -129,6 +125,7 @@ class CourierShipmentCard extends StatelessWidget {
                 ),
               ),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Icon(
                     Icons.inventory_2_outlined,
@@ -157,7 +154,7 @@ class CourierShipmentCard extends StatelessWidget {
           if (awb.isNotEmpty)
             _infoRow(
               icon: Icons.qr_code_2_rounded,
-              label: 'Tracking №',
+              label: 'Tracking No',
               value: awb,
               monospace: true,
             ),
@@ -184,6 +181,7 @@ class CourierShipmentCard extends StatelessWidget {
                 ),
               ),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Icon(
                     Icons.hourglass_top_rounded,
@@ -205,7 +203,6 @@ class CourierShipmentCard extends StatelessWidget {
               ),
             ),
 
-            // 🔥 YAHAN CUSTOM BUTTON USE KIYA HAI 🔥
             if (onRetryPickup != null) ...[
               const SizedBox(height: 10),
               CustomButton(
@@ -216,7 +213,6 @@ class CourierShipmentCard extends StatelessWidget {
                 isLoading: isRetryLoading,
                 isEnabled: !isRetryLoading,
                 onPressed: onRetryPickup,
-                // Solid warning color for retry mode
                 gradient: const LinearGradient(
                   colors: [AppColors.warning, AppColors.warning],
                   begin: Alignment.centerLeft,
@@ -270,11 +266,15 @@ class CourierShipmentCard extends StatelessWidget {
                         style: AppTextStyles.bodyMedium.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       if ((shipment.riderPhone ?? '').isNotEmpty)
                         Text(
                           shipment.riderPhone!,
                           style: AppTextStyles.bodySmall,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                     ],
                   ),
@@ -304,6 +304,8 @@ class CourierShipmentCard extends StatelessWidget {
                     child: Text(
                       emx ? 'COD — EMX collects at door' : 'Cash on delivery',
                       style: AppTextStyles.bodySmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   Text(
@@ -402,6 +404,7 @@ class CourierShipmentCard extends StatelessWidget {
     );
   }
 
+  // 🔥 FIXED: Timeline Row (Value Right Aligned, 1 Line)
   Widget _timelineRow({
     required IconData icon,
     required String label,
@@ -410,29 +413,29 @@ class CourierShipmentCard extends StatelessWidget {
     Color? iconColor,
   }) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Icon(icon, size: 14, color: iconColor ?? AppColors.textSecondary),
         const SizedBox(width: 7),
+        // Label
+        Text(
+          label,
+          style: AppTextStyles.bodySmall.copyWith(
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(width: 12),
+        // Value (Right Aligned & Ellipsis)
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 1),
-              Text(
-                value,
-                style: AppTextStyles.bodyMedium.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: valueColor ?? AppColors.navy,
-                ),
-              ),
-            ],
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.bodyMedium.copyWith(
+              fontWeight: FontWeight.w700,
+              color: valueColor ?? AppColors.navy,
+            ),
           ),
         ),
       ],
@@ -468,6 +471,7 @@ class CourierShipmentCard extends StatelessWidget {
     );
   }
 
+  // 🔥 FIXED: Info Row (Value Right Aligned, 1 Line)
   Widget _infoRow({
     required IconData icon,
     required String label,
@@ -476,26 +480,26 @@ class CourierShipmentCard extends StatelessWidget {
     Color? valueColor,
   }) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Icon(icon, size: 14, color: AppColors.textSecondary),
         const SizedBox(width: 7),
+        // Label
+        Text(label, style: AppTextStyles.bodySmall),
+        const SizedBox(width: 12),
+        // Value (Right Aligned & Ellipsis)
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: AppTextStyles.bodySmall),
-              const SizedBox(height: 1),
-              Text(
-                value,
-                style: AppTextStyles.bodyMedium.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: valueColor ?? AppColors.navy,
-                  fontFamily: monospace ? 'monospace' : null,
-                  letterSpacing: monospace ? 0.6 : null,
-                ),
-              ),
-            ],
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.bodyMedium.copyWith(
+              fontWeight: FontWeight.w700,
+              color: valueColor ?? AppColors.navy,
+              fontFamily: monospace ? 'monospace' : null,
+              letterSpacing: monospace ? 0.6 : null,
+            ),
           ),
         ),
       ],

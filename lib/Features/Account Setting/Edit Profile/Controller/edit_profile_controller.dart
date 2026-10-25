@@ -21,33 +21,37 @@ class EditProfileController {
 
   final EditProfileRepository _repository;
 
-  Future<EditProfileModel> editProfile({
-    required String about,
-    required String warehouseAddress,
-    required String phoneFull,
-    required String phoneCountry,
-    required int primaryCategoryId,
-    String? logo,
-    File? logoFile,
-  }) async {
-    try {
-      return await _repository.editProfile(
-        about: about,
-        warehouseAddress: warehouseAddress,
-        phoneFull: phoneFull,
-        phoneCountry: phoneCountry,
-        primaryCategoryId: primaryCategoryId,
-        logo: logo,
-        logoFile: logoFile,
-      );
-    } on ApiException {
-      rethrow;
-    } catch (error) {
-      throw ApiException(
-        message: 'Something went wrong. Please try again.',
-        code: 'UNKNOWN_ERROR',
-        originalError: error,
-      );
-    }
+ Future<EditProfileModel> editProfile({
+  required String about,
+  required String warehouseAddress,
+  required String warehouseCity,       
+  required String warehouseCountry,    
+  required String phoneFull,
+  required String phoneCountry,
+  required int primaryCategoryId,
+  String? logo,
+  File? logoFile,
+}) async {
+  try {
+    return await _repository.editProfile(
+      about: about,
+      warehouseAddress: warehouseAddress,
+      warehouseCity: warehouseCity,        
+      warehouseCountry: warehouseCountry,  
+      phoneFull: phoneFull,
+      phoneCountry: phoneCountry,
+      primaryCategoryId: primaryCategoryId,
+      logo: logo,
+      logoFile: logoFile,
+    );
+  } on ApiException {
+    rethrow;
+  } catch (error) {
+    throw ApiException(
+      message: 'Something went wrong. Please try again.',
+      code: 'UNKNOWN_ERROR',
+      originalError: error,
+    );
   }
+}
 }

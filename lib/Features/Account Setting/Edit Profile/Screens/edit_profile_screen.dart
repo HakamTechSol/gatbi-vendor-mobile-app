@@ -16,6 +16,7 @@ import '../../../Authentication/Registration/Country Code/country_model.dart';
 import '../../../Authentication/Registration/Phone Rule/phone_rules_controller.dart';
 import '../../../Authentication/Registration/Phone Rule/phone_rules_model.dart';
 
+import '../../Countries Dropdown/Screens/warehouse_country_dropdown.dart';
 import '../../Get Profile/Controller/get_profile_controller.dart';
 import '../../Get Profile/Models/get_profile_model.dart';
 
@@ -47,6 +48,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   final TextEditingController _phoneController = TextEditingController();
 
+  final TextEditingController _warehouseCityController =
+      TextEditingController();
+
   // ============================================================
   // STATE
   // ============================================================
@@ -54,6 +58,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   VendorSettingsMerchantModel? _merchant;
 
   String? _selectedPhoneCountry;
+
+  String? _selectedWarehouseCountry;
 
   CountryItemModel? _selectedCountry;
 
@@ -308,20 +314,16 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   void _populateForm(VendorSettingsMerchantModel merchant) {
     _storeNameController.text = merchant.name?.trim() ?? '';
-
     _emailController.text = merchant.email?.trim() ?? '';
-
     _aboutController.text = merchant.about?.trim() ?? '';
-
     _warehouseController.text = merchant.warehouseAddress?.trim() ?? '';
+    _warehouseCityController.text = merchant.warehouseCity?.trim() ?? '';
+
+    // NEW: Set the initial value for the dropdown
+    _selectedWarehouseCountry = merchant.warehouseCountry?.trim().toUpperCase();
 
     _selectedCategoryId = merchant.primaryCategoryId;
-
     _existingLogo = merchant.logo?.trim();
-
-    // Full phone initially rakho.
-    // PhoneCodeDropdown country resolve karne ke baad
-    // _extractLocalPhoneNumber() local number set karega.
     _phoneController.text = merchant.phone?.trim() ?? '';
 
     debugPrint('');
@@ -333,6 +335,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     debugPrint('Phone: ${merchant.phone}');
     debugPrint('Category ID: ${merchant.primaryCategoryId}');
     debugPrint('Logo: ${merchant.logo}');
+    debugPrint('Warehouse City: ${merchant.warehouseCity}'); // NEW
+    debugPrint('Warehouse Country: ${merchant.warehouseCountry}'); // NEW
     debugPrint('==========================================');
     debugPrint('');
   }
@@ -499,6 +503,24 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     }
 
     // ============================================================
+    // WAREHOUSE CITY / COUNTRY — UPDATED
+    // ============================================================
+
+    final warehouseCity = _warehouseCityController.text.trim();
+    final warehouseCountry =
+        _selectedWarehouseCountry?.trim().toUpperCase() ?? '';
+
+    if (warehouseCity.isEmpty) {
+      _showErrorSnackBar('Warehouse city is required.');
+      return;
+    }
+
+    if (warehouseCountry.isEmpty) {
+      _showErrorSnackBar('Warehouse country is required.');
+      return;
+    }
+
+    // ============================================================
     // PHONE VALIDATION
     // ============================================================
 
@@ -527,6 +549,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     debugPrint('==================================================');
     debugPrint('ABOUT: ${_aboutController.text.trim()}');
     debugPrint('WAREHOUSE: ${_warehouseController.text.trim()}');
+    debugPrint('WAREHOUSE CITY: $warehouseCity');
+    debugPrint('WAREHOUSE COUNTRY: $warehouseCountry');
     debugPrint(
       'PHONE COUNTRY: '
       '${_selectedPhoneCountry!.trim().toUpperCase()}',
@@ -551,6 +575,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           .editProfile(
             about: _aboutController.text.trim(),
             warehouseAddress: _warehouseController.text.trim(),
+            warehouseCity: warehouseCity,
+            warehouseCountry: warehouseCountry,
             phoneFull: phoneFull,
             phoneCountry: _selectedPhoneCountry!.trim().toUpperCase(),
             primaryCategoryId: _selectedCategoryId!,
@@ -813,6 +839,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _emailController.dispose();
     _aboutController.dispose();
     _warehouseController.dispose();
+    _warehouseCityController.dispose();
     _phoneController.dispose();
 
     super.dispose();
@@ -1400,7 +1427,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   Widget _buildLocationCard() {
     return _FormCard(
       title: 'Warehouse',
-      subtitle: 'Your registered warehouse address.',
+      subtitle: 'Your registered warehouse address, city and country.',
       icon: Icons.location_on_outlined,
       children: [
         CustomTextField(
@@ -1414,7 +1441,45 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             if (value == null || value.trim().isEmpty) {
               return 'Warehouse address is required.';
             }
+            return null;
+          },
+        ),
 
+        const SizedBox(height: 16),
+
+        // ========================================================
+        // CITY
+        // ========================================================
+        CustomTextField(
+          controller: _warehouseCityController,
+          label: 'Warehouse City',
+          hintText: 'e.g. Dubai',
+          prefixIcon: Icons.location_city_outlined,
+          textInputAction: TextInputAction.next,
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'Warehouse city is required.';
+            }
+            return null;
+          },
+        ),
+
+        const SizedBox(height: 16),
+
+        // ========================================================
+        // COUNTRY (NEW DROPDOWN)
+        // ========================================================
+        WarehouseCountryDropdown(
+          value: _selectedWarehouseCountry,
+          onChanged: (value) {
+            setState(() {
+              _selectedWarehouseCountry = value;
+            });
+          },
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'Warehouse country is required.';
+            }
             return null;
           },
         ),

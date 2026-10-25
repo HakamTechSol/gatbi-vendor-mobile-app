@@ -1,13 +1,8 @@
-import 'dart:io';
-
 import '../../../../Services/api_exception.dart';
 import '../../../../Services/auth_session.dart';
 import '../../../../Services/dio_client.dart';
 import '../../../../Services/token_storage.dart';
-
-import '../../../Push Notification/Devices Registered/Controller/device_registered_controller.dart';
-import '../../../Push Notification/Devices Registered/Models/device_registered_model.dart';
-import '../../../Push Notification/Services/firebase_messaging_service.dart';
+import '../../../../Services/device_registration_helper.dart'; // NEW: Imported Helper
 
 import '../Models/login_resend_otp_model.dart';
 import '../Models/login_verify_otp_model.dart';
@@ -66,6 +61,10 @@ class OtpController {
 
       await SecureStorageService.instance.saveToken(token);
 
+      // IMPORTANT: Update DioClient headers immediately so
+      // the device registration API is authenticated.
+      _dioClient.updateAuthToken(token);
+
       // ==========================================================
       // MARK USER AUTHENTICATED
       // ==========================================================
@@ -73,10 +72,10 @@ class OtpController {
       AuthSession.instance.markAuthenticated();
 
       // ==========================================================
-      // REGISTER FCM DEVICE
+      // REGISTER FCM DEVICE (Using the Helper)
       // ==========================================================
 
-      await _registerDevice();
+      await DeviceRegistrationHelper.registerDevice(dioClient: _dioClient);
 
       return result;
     } on ApiException {
@@ -87,88 +86,6 @@ class OtpController {
         code: 'UNKNOWN_ERROR',
         originalError: error,
       );
-    }
-  }
-
-  // ============================================================
-  // REGISTER DEVICE
-  // ============================================================
-
-  Future<void> _registerDevice() async {
-    try {
-      // ----------------------------------------------------------
-      // Get FCM Token
-      // ----------------------------------------------------------
-
-      final String? fcmToken = await FirebaseMessagingService.instance
-          .getToken();
-
-      if (fcmToken == null || fcmToken.isEmpty) {
-        return;
-      }
-
-      // ----------------------------------------------------------
-      // Platform
-      // ----------------------------------------------------------
-
-      final String platform = Platform.isAndroid
-          ? 'android'
-          : Platform.isIOS
-          ? 'ios'
-          : 'web';
-
-      // ----------------------------------------------------------
-      // Debug
-      // ----------------------------------------------------------
-
-      print('');
-      print('========== DEVICE REGISTRATION ==========');
-      print('FCM TOKEN: $fcmToken');
-      print('PLATFORM: $platform');
-      print('=========================================');
-      print('');
-
-      // ----------------------------------------------------------
-      // Controller
-      // ----------------------------------------------------------
-
-      final controller = DeviceRegisteredController(dioClient: _dioClient);
-
-      // ----------------------------------------------------------
-      // Register API
-      // ----------------------------------------------------------
-
-      final DeviceRegisteredModel result = await controller.registerDevice(
-        token: fcmToken,
-        platform: platform,
-      );
-
-      // ----------------------------------------------------------
-      // Result
-      // ----------------------------------------------------------
-
-      if (result.success != true) {
-        if (result.message != null) {
-          print('DEVICE REGISTRATION FAILED: ${result.message}');
-        }
-
-        return;
-      }
-
-      print('DEVICE REGISTRATION SUCCESS');
-      print('MESSAGE: ${result.message ?? 'N/A'}');
-      print('');
-    } catch (error) {
-      // ----------------------------------------------------------
-      // Device registration failure should NOT undo
-      // successful OTP authentication.
-      // ----------------------------------------------------------
-
-      print('');
-      print('========== DEVICE REGISTRATION ERROR ==========');
-      print('ERROR: $error');
-      print('===============================================');
-      print('');
     }
   }
 
