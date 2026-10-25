@@ -25,12 +25,30 @@ class VendorOrderDetailResponseModel {
       return const VendorOrderDetailResponseModel();
     }
 
+    // Extract the order map first
+    final orderJson = json['order'] is Map
+        ? Map<String, dynamic>.from(json['order'] as Map)
+        : <String, dynamic>{};
+
+    // Root level fields ko orderJson mein merge kar rahe hain
+    // taake VendorOrderDetailModel unhe easily parse kar sake.
+    if (json.containsKey('courier_shipment')) {
+      orderJson['courier_shipment'] = json['courier_shipment'];
+    }
+    if (json.containsKey('can_request_pickup')) {
+      orderJson['can_request_pickup'] = json['can_request_pickup'];
+    }
+    if (json.containsKey('pickup_block_reason')) {
+      orderJson['pickup_block_reason'] = json['pickup_block_reason'];
+    }
+    if (json.containsKey('pickup_provider')) {
+      orderJson['pickup_provider'] = json['pickup_provider'];
+    }
+
     return VendorOrderDetailResponseModel(
       success: _parseBool(json['success']),
-      order: json['order'] is Map
-          ? VendorOrderDetailModel.fromJson(
-              Map<String, dynamic>.from(json['order'] as Map),
-            )
+      order: orderJson.isNotEmpty
+          ? VendorOrderDetailModel.fromJson(orderJson)
           : null,
       paymentProof: json['payment_proof'] is Map
           ? VendorOrderPaymentProofModel.fromJson(
@@ -49,6 +67,10 @@ class VendorOrderDetailResponseModel {
       'success': success,
       'order': order?.toJson(),
       'payment_proof': paymentProof?.toJson(),
+      'courier_shipment': order?.courierShipment?.toJson(),
+      'can_request_pickup': order?.canRequestPickup,
+      'pickup_block_reason': order?.pickupBlockReason,
+      'pickup_provider': order?.pickupProvider,
     };
   }
 

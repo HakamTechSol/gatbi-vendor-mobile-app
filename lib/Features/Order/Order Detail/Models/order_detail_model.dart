@@ -25,12 +25,15 @@ class VendorOrderDetailModel {
     this.shippingAddress,
     this.customer,
     this.courierShipment,
+    // ⬇️ NEW
+    this.canRequestPickup = false,
+    this.pickupBlockReason,
+    this.pickupProvider,
   });
 
   // ============================================================
   // Order Fields
   // ============================================================
-
   final int? id;
   final String? orderNumber;
   final String? status;
@@ -49,29 +52,31 @@ class VendorOrderDetailModel {
   // ============================================================
   // Nested Data
   // ============================================================
-
   final List<VendorOrderDetailItemModel> items;
-
   final List<VendorOrderStatusHistoryModel> statusHistory;
-
   final VendorOrderTrackingModel? tracking;
-
   final VendorOrderShippingAddressModel? shippingAddress;
-
   final VendorOrderDetailCustomerModel? customer;
-
   final VendorCourierShipmentModel? courierShipment;
+
+  // ============================================================
+  // Ready-for-Pickup (NEW — vendor app only)
+  // ============================================================
+
+  /// true → no shipment + eligible → show "Ready for Pickup" button.
+  final bool canRequestPickup;
+
+  /// false pe reason — e.g. "Set warehouse address in Settings..."
+  final String? pickupBlockReason;
+
+  /// Courier the platform will book — e.g. "EMX (Emirates Post)".
+  final String? pickupProvider;
 
   // ============================================================
   // From JSON
   // ============================================================
-
-  factory VendorOrderDetailModel.fromJson(
-    Map<String, dynamic>? json,
-  ) {
-    if (json == null) {
-      return const VendorOrderDetailModel();
-    }
+  factory VendorOrderDetailModel.fromJson(Map<String, dynamic>? json) {
+    if (json == null) return const VendorOrderDetailModel();
 
     return VendorOrderDetailModel(
       id: _parseInt(json['id']),
@@ -87,125 +92,95 @@ class VendorOrderDetailModel {
       subtotal: _parseNum(json['subtotal']),
       createdAt: _parseString(json['created_at']),
 
-      items: _parseList(
-        json['items'],
-        VendorOrderDetailItemModel.fromJson,
-      ),
-
+      items: _parseList(json['items'], VendorOrderDetailItemModel.fromJson),
       statusHistory: _parseList(
         json['status_history'],
         VendorOrderStatusHistoryModel.fromJson,
       ),
 
-     tracking: json['tracking'] is Map
-    ? VendorOrderTrackingModel.fromJson(
-        Map<String, dynamic>.from(
-          json['tracking'] as Map,
-        ),
-      )
-    : null,
+      tracking: json['tracking'] is Map
+          ? VendorOrderTrackingModel.fromJson(
+              Map<String, dynamic>.from(json['tracking'] as Map),
+            )
+          : null,
 
       shippingAddress: json['shipping_address'] is Map
           ? VendorOrderShippingAddressModel.fromJson(
-              Map<String, dynamic>.from(
-                json['shipping_address'] as Map,
-              ),
+              Map<String, dynamic>.from(json['shipping_address'] as Map),
             )
           : null,
 
       customer: json['customer'] is Map
           ? VendorOrderDetailCustomerModel.fromJson(
-              Map<String, dynamic>.from(
-                json['customer'] as Map,
-              ),
+              Map<String, dynamic>.from(json['customer'] as Map),
             )
           : null,
 
-            courierShipment: json['courier_shipment'] is Map
+      courierShipment: json['courier_shipment'] is Map
           ? VendorCourierShipmentModel.fromJson(
               Map<String, dynamic>.from(json['courier_shipment'] as Map),
             )
-          : null, 
+          : null,
+
+      // ⬇️ NEW
+      canRequestPickup: json['can_request_pickup'] == true,
+      pickupBlockReason: _parseString(json['pickup_block_reason']),
+      pickupProvider: _parseString(json['pickup_provider']),
     );
   }
 
   // ============================================================
   // To JSON
   // ============================================================
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'order_number': orderNumber,
-      'status': status,
-      'payment_status': paymentStatus,
-      'payment_method': paymentMethod,
-      'currency': currency,
-      'currency_symbol': currencySymbol,
-      'total': total,
-      'shipping': shipping,
-      'tax': tax,
-      'subtotal': subtotal,
-      'created_at': createdAt,
-      'items': items.map((e) => e.toJson()).toList(),
-      'status_history':
-          statusHistory.map((e) => e.toJson()).toList(),
-      'tracking': tracking?.toJson(),
-      'shipping_address': shippingAddress?.toJson(),
-      'customer': customer?.toJson(),
-      'courier_shipment': courierShipment?.toJson(), 
-    };
-  }
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'order_number': orderNumber,
+    'status': status,
+    'payment_status': paymentStatus,
+    'payment_method': paymentMethod,
+    'currency': currency,
+    'currency_symbol': currencySymbol,
+    'total': total,
+    'shipping': shipping,
+    'tax': tax,
+    'subtotal': subtotal,
+    'created_at': createdAt,
+    'items': items.map((e) => e.toJson()).toList(),
+    'status_history': statusHistory.map((e) => e.toJson()).toList(),
+    'tracking': tracking?.toJson(),
+    'shipping_address': shippingAddress?.toJson(),
+    'customer': customer?.toJson(),
+    'courier_shipment': courierShipment?.toJson(),
+    // ⬇️ NEW
+    'can_request_pickup': canRequestPickup,
+    'pickup_block_reason': pickupBlockReason,
+    'pickup_provider': pickupProvider,
+  };
 
   // ============================================================
   // Helpers
   // ============================================================
-
-  static String? _parseString(dynamic value) {
-    if (value == null) {
-      return null;
+  static String? _parseString(dynamic v) {
+    if (v == null) return null;
+    if (v is String) {
+      final s = v.trim();
+      return s.isEmpty || s == 'null' ? null : s;
     }
-
-    if (value is String) {
-      return value;
-    }
-
-    return value.toString();
+    return v.toString();
   }
 
-  static int? _parseInt(dynamic value) {
-    if (value == null) {
-      return null;
-    }
-
-    if (value is int) {
-      return value;
-    }
-
-    if (value is num) {
-      return value.toInt();
-    }
-
-    if (value is String) {
-      return int.tryParse(value);
-    }
-
+  static int? _parseInt(dynamic v) {
+    if (v == null) return null;
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    if (v is String) return int.tryParse(v);
     return null;
   }
 
-  static num? _parseNum(dynamic value) {
-    if (value == null) {
-      return null;
-    }
-
-    if (value is num) {
-      return value;
-    }
-
-    if (value is String) {
-      return num.tryParse(value);
-    }
-
+  static num? _parseNum(dynamic v) {
+    if (v == null) return null;
+    if (v is num) return v;
+    if (v is String) return num.tryParse(v);
     return null;
   }
 
@@ -213,17 +188,10 @@ class VendorOrderDetailModel {
     dynamic value,
     T Function(Map<String, dynamic>) fromJson,
   ) {
-    if (value is! List) {
-      return const [];
-    }
-
+    if (value is! List) return const [];
     return value
         .whereType<Map>()
-        .map(
-          (item) => fromJson(
-            Map<String, dynamic>.from(item),
-          ),
-        )
+        .map((e) => fromJson(Map<String, dynamic>.from(e)))
         .toList();
   }
 }

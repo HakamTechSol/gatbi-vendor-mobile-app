@@ -40,4 +40,30 @@ class VendorOrderDetailController {
       );
     }
   }
+
+  // ============================================================
+  // Request Pickup  ("Ready for Pickup")
+  // POST /api/mobile/vendor/orders/{id}/request-pickup
+  //
+  // Returns the raw JSON response so the UI can:
+  //   - branch on result['success']
+  //   - show result['message'] (server is human-readable)
+  //   - optionally read result['courier_shipment'] immediately
+  //
+  // Throws ApiException on 4xx/5xx/network errors.
+  // ============================================================
+
+  Future<Map<String, dynamic>> requestPickup({required int orderId}) async {
+    try {
+      return await _repository.requestPickup(orderId: orderId);
+    } on ApiException {
+      rethrow;
+    } catch (error) {
+      throw ApiException(
+        message: 'Something went wrong. Please try again.',
+        code: 'UNKNOWN_ERROR',
+        originalError: error,
+      );
+    }
+  }
 }

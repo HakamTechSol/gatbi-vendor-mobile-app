@@ -1,8 +1,10 @@
+import 'package:dio/dio.dart'; // ⬅️ Ye import zaroori hai Options ke liye
 import 'package:flutter/foundation.dart';
 
 import '../../../../Services/api_exception.dart';
 import '../../../../Services/api_url.dart';
 import '../../../../Services/dio_client.dart';
+import '../../../../Services/token_storage.dart';
 import '../Models/order_detail_response_model.dart';
 
 class VendorOrderDetailRepository {
@@ -57,6 +59,148 @@ class VendorOrderDetailRepository {
   }
 
   // ============================================================
+  // Request Pickup  ("Ready for Pickup" — vendor app only)
+  // POST /api/mobile/vendor/orders/{id}/request-pickup
+  // ============================================================
+
+  Future<Map<String, dynamic>> requestPickup({required int orderId}) async {
+    if (orderId <= 0) {
+      throw const ApiException(
+        message: 'Invalid order ID.',
+        code: 'INVALID_ORDER_ID',
+      );
+    }
+
+    final endpoint = '${ApiUrls.order(orderId)}/request-pickup';
+
+    // SecureStorage se token nikalo
+    final token = await SecureStorageService.instance.getToken();
+
+    if (kDebugMode) {
+      debugPrint('');
+      debugPrint('========== VENDOR REQUEST-PICKUP ==========');
+      debugPrint('ENDPOINT: $endpoint');
+      debugPrint('METHOD: POST');
+      debugPrint(
+        'TOKEN: ${token != null ? 'FOUND (${token.length} chars)' : 'NULL'}',
+      );
+      debugPrint('===========================================');
+      debugPrint('');
+    }
+
+    if (token == null || token.isEmpty) {
+      throw const ApiException(
+        message: 'Your session has expired. Please log in again.',
+        code: 'UNAUTHORIZED',
+      );
+    }
+
+    Map<String, dynamic>? data;
+
+    try {
+      final response = await _dioClient.post<Map<String, dynamic>>(
+        endpoint,
+        data: const <String, dynamic>{},
+        options: Options(
+          headers: {
+            'Accept': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          // 🔥 FIX: Timeout 20s se badha kar 45s kar diya hai kyunki backend EMX call mein time le raha hai
+          receiveTimeout: const Duration(seconds: 45),
+          sendTimeout: const Duration(seconds: 45),
+        ),
+      );
+
+      data = response.data;
+    } on ApiException {
+      rethrow;
+    } on DioException catch (error) {
+      // 🔥 FIX: Specific DioException handling for better UI messages
+      String msg = 'Unable to request pickup. Please try again.';
+
+      if (error.type == DioExceptionType.receiveTimeout ||
+          error.type == DioExceptionType.connectionTimeout) {
+        msg =
+            'The server is taking too long to respond. Please try again later.';
+      } else if (error.response?.data is Map) {
+        final respData = error.response!.data as Map;
+        final serverMsg = respData['message']?.toString();
+        if (serverMsg != null && serverMsg.trim().isNotEmpty) {
+          msg = serverMsg.trim();
+        }
+      }
+
+      throw ApiException(
+        message: msg,
+        code: 'PICKUP_REQUEST_FAILED',
+        originalError: error,
+      );
+    } catch (error) {
+      final msg = _extractErrorMessage(error);
+      throw ApiException(
+        message: msg,
+        code: 'PICKUP_REQUEST_FAILED',
+        originalError: error,
+      );
+    }
+
+    if (data == null) {
+      throw const ApiException(
+        message: 'Invalid response received from server.',
+        code: 'INVALID_RESPONSE',
+      );
+    }
+
+    if (kDebugMode) {
+      debugPrint('');
+      debugPrint('========== REQUEST-PICKUP RESULT ==========');
+      debugPrint('SUCCESS: ${data['success']}');
+      debugPrint('MESSAGE: ${data['message']}');
+      debugPrint('ERROR CODE: ${data['error_code']}');
+
+      final cs = data['courier_shipment'];
+      if (cs is Map) {
+        debugPrint('---------- SHIPMENT ----------');
+        debugPrint('SHIPMENT NO: ${cs['shipment_no']}');
+        debugPrint('CARRIER: ${cs['carrier']}');
+        debugPrint('STATUS: ${cs['status']}');
+        debugPrint('CARRIER STATUS: ${cs['carrier_status']}');
+        debugPrint('AWB NUMBER: ${cs['awb_number']}');
+      } else {
+        debugPrint('SHIPMENT: NULL');
+      }
+      debugPrint('===========================================');
+      debugPrint('');
+    }
+
+    return data;
+  }
+
+  /// Pull a human-readable message out of a DioException / generic error.
+  String _extractErrorMessage(Object error) {
+    try {
+      final dyn = error as dynamic;
+      final resp = dyn?.response;
+      final respData = resp?.data;
+      if (respData is Map) {
+        final m1 = respData['message'];
+        if (m1 is String && m1.trim().isNotEmpty) return m1.trim();
+        final err = respData['error'];
+        if (err is Map) {
+          final m2 = err['message'];
+          if (m2 is String && m2.trim().isNotEmpty) return m2.trim();
+        }
+      }
+      final msg = dyn?.message;
+      if (msg is String && msg.trim().isNotEmpty) return msg.trim();
+    } catch (_) {
+      // ignore
+    }
+    return 'Unable to request pickup. Please try again.';
+  }
+
+  // ============================================================
   // Debug Logging
   // ============================================================
 
@@ -102,6 +246,54 @@ class VendorOrderDetailRepository {
       debugPrint('TOTAL: ${order.total ?? 'N/A'}');
 
       debugPrint('CREATED AT: ${order.createdAt ?? 'N/A'}');
+
+      // --------------------------------------------------------
+      // Ready-for-Pickup (NEW)
+      // --------------------------------------------------------
+
+      debugPrint('');
+      debugPrint('---------- READY-FOR-PICKUP ----------');
+      debugPrint('CAN REQUEST PICKUP: ${order.canRequestPickup}');
+      debugPrint('PICKUP BLOCK REASON: ${order.pickupBlockReason ?? 'N/A'}');
+      debugPrint('PICKUP PROVIDER: ${order.pickupProvider ?? 'N/A'}');
+
+      // --------------------------------------------------------
+      // Courier Shipment (NEW)
+      // --------------------------------------------------------
+
+      debugPrint('');
+      debugPrint('---------- COURIER SHIPMENT ----------');
+
+      final shipment = order.courierShipment;
+
+      if (shipment == null) {
+        debugPrint('COURIER SHIPMENT: NULL');
+      } else {
+        debugPrint('SHIPMENT NO: ${shipment.shipmentNo ?? 'N/A'}');
+        debugPrint('PROVIDER NAME: ${shipment.providerName ?? 'N/A'}');
+        debugPrint('PROVIDER: ${shipment.provider ?? 'N/A'}');
+        debugPrint('CARRIER: ${shipment.carrier ?? 'N/A'}');
+        debugPrint('CARRIER STATUS: ${shipment.carrierStatus ?? 'N/A'}');
+        debugPrint('STATUS: ${shipment.status ?? 'N/A'}');
+        debugPrint('AWB NUMBER: ${shipment.awbNumber ?? 'N/A'}');
+        debugPrint('TRACKING URL: ${shipment.trackingUrl ?? 'N/A'}');
+        debugPrint('RIDER NAME: ${shipment.riderName ?? 'N/A'}');
+        debugPrint('RIDER PHONE: ${shipment.riderPhone ?? 'N/A'}');
+        debugPrint('COD AMOUNT: ${shipment.codAmount ?? 'N/A'}');
+        debugPrint('COD COLLECTED: ${shipment.codCollected ?? 'N/A'}');
+        debugPrint('RECEIVER NAME: ${shipment.receiverName ?? 'N/A'}');
+        debugPrint('FAILURE REASON: ${shipment.failureReason ?? 'N/A'}');
+        debugPrint(
+          'PICKUP SCHEDULED AT: ${shipment.pickupScheduledAt ?? 'N/A'}',
+        );
+        debugPrint('PICKED UP AT: ${shipment.pickedUpAt ?? 'N/A'}');
+        debugPrint('DELIVERED AT: ${shipment.deliveredAt ?? 'N/A'}');
+        debugPrint('IS EMX: ${shipment.isEmx}');
+        debugPrint('IS INTERNAL: ${shipment.isInternal}');
+        debugPrint('IS ACTIVE: ${shipment.isActive}');
+        debugPrint('IS TERMINAL: ${shipment.isTerminal}');
+        debugPrint('IS BOOKING FAILED: ${shipment.isBookingFailed}');
+      }
 
       // --------------------------------------------------------
       // Items

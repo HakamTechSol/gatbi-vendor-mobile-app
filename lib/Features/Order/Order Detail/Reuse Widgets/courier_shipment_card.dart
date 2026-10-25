@@ -1,19 +1,34 @@
 import 'package:flutter/material.dart';
 
+import '../../../../Core/Custom Widgets/custom_button.dart'; // ⬅️ Path check kar lena
 import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
 import '../Models/courier_shipment_model.dart';
 
-
 // ============================================================
 //  COURIER SHIPMENT CARD (Vendor)
 //  Handles both EMX + internal. Null-safe, terminal-aware.
+//
+//  Optional:
+//   - onRetryPickup  → when shipment.isBookingFailed, shows "Retry Pickup"
+//   - isRetryLoading → disables the retry button + shows spinner
 // ============================================================
 
 class CourierShipmentCard extends StatelessWidget {
-  const CourierShipmentCard({super.key, required this.shipment});
+  const CourierShipmentCard({
+    super.key,
+    required this.shipment,
+    this.onRetryPickup,
+    this.isRetryLoading = false,
+  });
 
   final VendorCourierShipmentModel shipment;
+
+  /// If provided AND shipment.isBookingFailed → show "Retry Pickup" button.
+  final VoidCallback? onRetryPickup;
+
+  /// True while the retry request is in-flight (disables the button).
+  final bool isRetryLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -27,6 +42,16 @@ class CourierShipmentCard extends StatelessWidget {
     final carrierStatus = shipment.safeCarrierStatus;
     final codAmount = (shipment.codAmount ?? 0).toDouble();
     final codCollected = shipment.codCollected;
+
+    final pickupScheduledAt = shipment.pickupScheduledAt ?? '';
+    final pickedUpAt = shipment.pickedUpAt ?? '';
+    final deliveredAt = shipment.deliveredAt ?? '';
+    final receiverName = shipment.receiverName ?? '';
+
+    final hasTimeline =
+        pickupScheduledAt.isNotEmpty ||
+        pickedUpAt.isNotEmpty ||
+        deliveredAt.isNotEmpty;
 
     return Container(
       width: double.infinity,
@@ -146,7 +171,7 @@ class CourierShipmentCard extends StatelessWidget {
             ),
           ],
 
-          // ── Booking failed neutral note ──
+          // ── Booking failed neutral note + Retry button ──
           if (shipment.isBookingFailed) ...[
             const SizedBox(height: 8),
             Container(
@@ -179,6 +204,31 @@ class CourierShipmentCard extends StatelessWidget {
                 ],
               ),
             ),
+
+            // 🔥 YAHAN CUSTOM BUTTON USE KIYA HAI 🔥
+            if (onRetryPickup != null) ...[
+              const SizedBox(height: 10),
+              CustomButton(
+                text: 'Retry Pickup',
+                icon: Icons.refresh_rounded,
+                height: 44,
+                borderRadius: 10,
+                isLoading: isRetryLoading,
+                isEnabled: !isRetryLoading,
+                onPressed: onRetryPickup,
+                // Solid warning color for retry mode
+                gradient: const LinearGradient(
+                  colors: [AppColors.warning, AppColors.warning],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+                foregroundColor: Colors.white,
+                textStyle: AppTextStyles.bodySmall.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
           ],
 
           // ── Failure reason (internal, if any) ──
@@ -193,8 +243,7 @@ class CourierShipmentCard extends StatelessWidget {
           ],
 
           // ── Rider (internal only) ──
-          if (shipment.isInternal &&
-              (shipment.riderName ?? '').isNotEmpty) ...[
+          if (shipment.isInternal && (shipment.riderName ?? '').isNotEmpty) ...[
             const SizedBox(height: 10),
             Row(
               children: [
@@ -238,10 +287,7 @@ class CourierShipmentCard extends StatelessWidget {
           if (codAmount > 0) ...[
             const SizedBox(height: 10),
             Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 10,
-                vertical: 8,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
                 color: AppColors.backgroundSecondary.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(8),
@@ -256,9 +302,7 @@ class CourierShipmentCard extends StatelessWidget {
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      emx
-                          ? 'COD — EMX collects at door'
-                          : 'Cash on delivery',
+                      emx ? 'COD — EMX collects at door' : 'Cash on delivery',
                       style: AppTextStyles.bodySmall,
                     ),
                   ),
@@ -284,12 +328,116 @@ class CourierShipmentCard extends StatelessWidget {
               valueColor: AppColors.success,
             ),
           ],
+
+          // ── Shipment Timeline (pickup → delivered) ──
+          if (hasTimeline || receiverName.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Divider(height: 1, color: AppColors.backgroundSecondary),
+            const SizedBox(height: 12),
+            _timelineSection(
+              pickupScheduledAt: pickupScheduledAt,
+              pickedUpAt: pickedUpAt,
+              deliveredAt: deliveredAt,
+              receiverName: receiverName,
+            ),
+          ],
         ],
       ),
     );
   }
 
   // ── small helpers ──
+
+  Widget _timelineSection({
+    required String pickupScheduledAt,
+    required String pickedUpAt,
+    required String deliveredAt,
+    required String receiverName,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Shipment Timeline',
+          style: AppTextStyles.bodySmall.copyWith(
+            fontWeight: FontWeight.w700,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        if (pickupScheduledAt.isNotEmpty)
+          _timelineRow(
+            icon: Icons.event_available_outlined,
+            label: 'Pickup scheduled',
+            value: pickupScheduledAt,
+          ),
+        if (pickedUpAt.isNotEmpty) ...[
+          if (pickupScheduledAt.isNotEmpty) const SizedBox(height: 6),
+          _timelineRow(
+            icon: Icons.inventory_2_outlined,
+            label: 'Picked up',
+            value: pickedUpAt,
+          ),
+        ],
+        if (deliveredAt.isNotEmpty) ...[
+          if (pickupScheduledAt.isNotEmpty || pickedUpAt.isNotEmpty)
+            const SizedBox(height: 6),
+          _timelineRow(
+            icon: Icons.check_circle_outline_rounded,
+            label: 'Delivered',
+            value: deliveredAt,
+            valueColor: AppColors.success,
+            iconColor: AppColors.success,
+          ),
+        ],
+        if (receiverName.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          _timelineRow(
+            icon: Icons.person_pin_circle_outlined,
+            label: 'Received by',
+            value: receiverName,
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _timelineRow({
+    required IconData icon,
+    required String label,
+    required String value,
+    Color? valueColor,
+    Color? iconColor,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 14, color: iconColor ?? AppColors.textSecondary),
+        const SizedBox(width: 7),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 1),
+              Text(
+                value,
+                style: AppTextStyles.bodyMedium.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: valueColor ?? AppColors.navy,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 
   Widget _badge(String label, Color color) {
     return Container(

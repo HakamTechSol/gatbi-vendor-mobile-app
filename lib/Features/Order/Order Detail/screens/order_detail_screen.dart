@@ -27,6 +27,7 @@ import '../Reuse Widgets/order_tracking_card.dart';
 import '../Reuse Widgets/payment_action_buttons.dart';
 import '../Reuse Widgets/payment_info_card.dart';
 import '../Reuse Widgets/payment_proof_card.dart';
+import '../Reuse Widgets/ready_for_pickup_card.dart'; 
 import '../Reuse Widgets/shipping_address_card.dart';
 
 class OrderDetailScreen extends ConsumerStatefulWidget {
@@ -77,6 +78,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
 
   bool _isPaymentProcessing = false;
 
+  bool _isPickupRequesting = false;
+
   // ============================================================
   // ERROR
   // ============================================================
@@ -92,9 +95,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     super.initState();
 
     _trackingController = TextEditingController();
-
     _carrierController = TextEditingController();
-
     _noteController = TextEditingController();
 
     _loadOrderDetail();
@@ -107,11 +108,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
   @override
   void dispose() {
     _trackingController.dispose();
-
     _carrierController.dispose();
-
     _noteController.dispose();
-
     super.dispose();
   }
 
@@ -120,76 +118,27 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
   // ============================================================
 
   Future<void> _loadOrderDetail({bool refresh = false}) async {
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
     setState(() {
       _order = null;
-
       _paymentProof = null;
-
       _isLoading = true;
-
       _errorMessage = null;
-
       _selectedStatus = 'pending';
     });
 
     try {
       final controller = ref.read(vendorOrderDetailControllerProvider);
-
-      debugPrint('');
-
-      debugPrint(
-        '════════════════════════════════════════════════════════════',
-      );
-
-      debugPrint('VENDOR ORDER DETAIL API');
-
-      debugPrint('ORDER ID: ${widget.orderId}');
-
-      debugPrint('REFRESH: $refresh');
-
-      debugPrint('STATUS: LOADING');
-
-      debugPrint(
-        '════════════════════════════════════════════════════════════',
-      );
-
-      debugPrint('');
-
       final result = await controller.getOrderDetail(orderId: widget.orderId);
 
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
 
       if (!result.success || result.order == null) {
         setState(() {
           _isLoading = false;
-
           _errorMessage = 'Unable to load order details.';
         });
-
-        debugPrint('');
-
-        debugPrint(
-          '════════════════════════════════════════════════════════════',
-        );
-
-        debugPrint('VENDOR ORDER DETAIL API');
-
-        debugPrint('ORDER ID: ${widget.orderId}');
-
-        debugPrint('STATUS: INVALID RESPONSE');
-
-        debugPrint(
-          '════════════════════════════════════════════════════════════',
-        );
-
-        debugPrint('');
-
         return;
       }
 
@@ -197,126 +146,24 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
 
       setState(() {
         _order = order;
-
         _paymentProof = result.paymentProof;
-
         _selectedStatus = _getNextStatus(order.status);
-
         _isLoading = false;
-
         _errorMessage = null;
       });
 
-      // ========================================================
-      // TRACKING LOG
-      // ========================================================
-
-      final tracking = order.tracking;
-
-      debugPrint('');
-
-      debugPrint(
-        '════════════════════════════════════════════════════════════',
-      );
-
-      debugPrint('VENDOR ORDER DETAIL API');
-
-      debugPrint('ORDER ID: ${order.id}');
-
-      debugPrint('ORDER NUMBER: ${order.orderNumber}');
-
-      debugPrint('STATUS: ${order.status}');
-
-      debugPrint('PAYMENT STATUS: ${order.paymentStatus}');
-
-      debugPrint('PAYMENT METHOD: ${order.paymentMethod}');
-
-      debugPrint('ITEMS: ${order.items.length}');
-
-      debugPrint('STATUS HISTORY: ${order.statusHistory.length}');
-
-      debugPrint('TRACKING: ${tracking != null ? 'AVAILABLE' : 'NULL'}');
-
-      debugPrint(
-        'TRACKING NUMBER: '
-        '${tracking?.trackingNumber ?? 'N/A'}',
-      );
-
-      debugPrint(
-        'CARRIER: '
-        '${tracking?.carrier ?? 'N/A'}',
-      );
-
-      debugPrint(
-        'PAYMENT PROOF: '
-        '${result.paymentProof != null ? 'AVAILABLE' : 'NULL'}',
-      );
-
-      debugPrint('STATUS: SUCCESS');
-
-      debugPrint(
-        '════════════════════════════════════════════════════════════',
-      );
-
-      debugPrint('');
     } on ApiException catch (error) {
-      if (!mounted) {
-        return;
-      }
-
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
-
         _errorMessage = error.message;
       });
-
-      debugPrint('');
-
-      debugPrint(
-        '════════════════════════════════════════════════════════════',
-      );
-
-      debugPrint('VENDOR ORDER DETAIL API ERROR');
-
-      debugPrint('ORDER ID: ${widget.orderId}');
-
-      debugPrint('MESSAGE: ${error.message}');
-
-      debugPrint('CODE: ${error.code}');
-
-      debugPrint(
-        '════════════════════════════════════════════════════════════',
-      );
-
-      debugPrint('');
     } catch (error) {
-      if (!mounted) {
-        return;
-      }
-
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
-
         _errorMessage = 'Something went wrong. Please try again.';
       });
-
-      debugPrint('');
-
-      debugPrint(
-        '════════════════════════════════════════════════════════════',
-      );
-
-      debugPrint('ORDER DETAIL UNKNOWN ERROR');
-
-      debugPrint('ORDER ID: ${widget.orderId}');
-
-      debugPrint('ERROR: $error');
-
-      debugPrint(
-        '════════════════════════════════════════════════════════════',
-      );
-
-      debugPrint('');
     }
   }
 
@@ -326,20 +173,102 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
 
   String _getNextStatus(String? status) {
     final currentStatus = status?.trim().toLowerCase() ?? '';
-
     const statusFlow = ['pending', 'processing', 'shipped', 'delivered'];
-
     final currentIndex = statusFlow.indexOf(currentStatus);
 
-    if (currentIndex == -1) {
-      return 'pending';
-    }
-
-    if (currentIndex >= statusFlow.length - 1) {
-      return 'delivered';
-    }
+    if (currentIndex == -1) return 'pending';
+    if (currentIndex >= statusFlow.length - 1) return 'delivered';
 
     return statusFlow[currentIndex + 1];
+  }
+
+  // ============================================================
+  // READY FOR PICKUP — request / retry
+  // ============================================================
+
+  Future<void> _handleRequestPickup({bool isRetry = false}) async {
+    final order = _order;
+    if (order == null) return;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: AppColors.white,
+        surfaceTintColor: AppColors.white,
+        title: Text(
+          isRetry ? 'Retry courier booking?' : 'Parcel packed & ready?',
+          style: AppTextStyles.titleMedium.copyWith(color: AppColors.navy),
+        ),
+        content: Text(
+          isRetry
+              ? 'A courier will be re-booked for this order. Make sure the parcel is still packed and ready.'
+              : 'A courier will be booked to collect this parcel from your warehouse. Only tap if the parcel is packed and ready.',
+          style: AppTextStyles.bodySmall.copyWith(
+            color: AppColors.textSecondary,
+            height: 1.45,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(
+              'Cancel',
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isRetry ? AppColors.warning : AppColors.primary,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: Text(isRetry ? 'Retry' : 'Confirm & Book'),
+          ),
+        ],
+      ),
+    );
+    
+    if (ok != true) return;
+
+    setState(() => _isPickupRequesting = true);
+
+    try {
+      final controller = ref.read(vendorOrderDetailControllerProvider);
+      final result = await controller.requestPickup(orderId: widget.orderId);
+
+      final success = result['success'] == true;
+      final message = (result['message'] ?? '').toString().trim();
+
+      if (!success) {
+        throw ApiException(
+          message: message.isNotEmpty ? message : 'Pickup request failed.',
+          code: (result['error_code'] ?? 'PICKUP_REQUEST_FAILED').toString(),
+        );
+      }
+
+      _showSnackBar(
+        message.isNotEmpty
+            ? message
+            : (isRetry
+                  ? 'Courier booking retried.'
+                  : 'Courier booked — keep the parcel ready.'),
+      );
+
+      await _loadOrderDetail(refresh: true);
+    } on ApiException catch (error) {
+      _showSnackBar(error.message);
+    } catch (_) {
+      _showSnackBar('Something went wrong. Please try again.');
+    } finally {
+      if (mounted) setState(() => _isPickupRequesting = false);
+    }
   }
 
   // ============================================================
@@ -350,70 +279,30 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     FocusScope.of(context).unfocus();
 
     final order = _order;
-
     if (order == null) {
       _showSnackBar('Order details are not available.');
       return;
     }
 
     final orderId = order.id ?? widget.orderId;
-
     if (orderId <= 0) {
       _showSnackBar('Invalid order ID.');
       return;
     }
 
     final status = _selectedStatus.trim().toLowerCase();
-
     if (status.isEmpty) {
       _showSnackBar('Please select an order status.');
       return;
     }
 
-    setState(() {
-      _isUpdatingStatus = true;
-    });
+    setState(() => _isUpdatingStatus = true);
 
     try {
       final controller = ref.read(vendorOrderStatusControllerProvider);
-
       final notes = _noteController.text.trim();
-
       final trackingNumber = _trackingController.text.trim();
-
       final carrier = _carrierController.text.trim();
-
-      debugPrint('');
-
-      debugPrint(
-        '════════════════════════════════════════════════════════════',
-      );
-
-      debugPrint('UPDATE ORDER STATUS FROM UI');
-
-      debugPrint('ORDER ID: $orderId');
-
-      debugPrint('STATUS: $status');
-
-      debugPrint('NOTES: ${notes.isEmpty ? 'N/A' : notes}');
-
-      debugPrint(
-        'TRACKING NUMBER: '
-        '${trackingNumber.isEmpty ? 'N/A' : trackingNumber}',
-      );
-
-      debugPrint(
-        'CARRIER: '
-        '${carrier.isEmpty ? 'N/A' : carrier}',
-      );
-
-      debugPrint('STATUS: API CALL STARTED');
-
-      debugPrint(
-        '════════════════════════════════════════════════════════════',
-      );
-
-      debugPrint('');
 
       final result = await controller.updateOrderStatus(
         orderId: orderId,
@@ -425,9 +314,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
         estimatedDelivery: null,
       );
 
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
 
       if (!result.success) {
         throw ApiException(
@@ -436,113 +323,22 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
         );
       }
 
-      debugPrint('');
-
-      debugPrint(
-        '════════════════════════════════════════════════════════════',
-      );
-
-      debugPrint('UPDATE ORDER STATUS FROM UI');
-
-      debugPrint('ORDER ID: $orderId');
-
-      debugPrint('STATUS: SUCCESS');
-
-      debugPrint(
-        'MESSAGE: '
-        '${result.message ?? 'Order status updated successfully'}',
-      );
-
-      debugPrint(
-        'UPDATED ORDER STATUS: '
-        '${result.order?.status ?? status}',
-      );
-
-      debugPrint(
-        'STATUS HISTORY: '
-        '${result.order?.statusHistory.length ?? 0}',
-      );
-
-      debugPrint(
-        '════════════════════════════════════════════════════════════',
-      );
-
-      debugPrint('');
-
-      setState(() {
-        _isUpdatingStatus = false;
-      });
+      setState(() => _isUpdatingStatus = false);
 
       _showSnackBar(result.message ?? 'Order status updated successfully.');
-
       _trackingController.clear();
-
       _carrierController.clear();
-
       _noteController.clear();
 
       await _loadOrderDetail(refresh: true);
+      
     } on ApiException catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _isUpdatingStatus = false;
-      });
-
-      debugPrint('');
-
-      debugPrint(
-        '════════════════════════════════════════════════════════════',
-      );
-
-      debugPrint('UPDATE ORDER STATUS UI ERROR');
-
-      debugPrint('ORDER ID: $orderId');
-
-      debugPrint('STATUS: $status');
-
-      debugPrint('MESSAGE: ${error.message}');
-
-      debugPrint('CODE: ${error.code}');
-
-      debugPrint(
-        '════════════════════════════════════════════════════════════',
-      );
-
-      debugPrint('');
-
+      if (!mounted) return;
+      setState(() => _isUpdatingStatus = false);
       _showSnackBar(error.message);
     } catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _isUpdatingStatus = false;
-      });
-
-      debugPrint('');
-
-      debugPrint(
-        '════════════════════════════════════════════════════════════',
-      );
-
-      debugPrint('UPDATE ORDER STATUS UNKNOWN UI ERROR');
-
-      debugPrint('ORDER ID: $orderId');
-
-      debugPrint('STATUS: $status');
-
-      debugPrint('ERROR: $error');
-
-      debugPrint(
-        '════════════════════════════════════════════════════════════',
-      );
-
-      debugPrint('');
-
+      if (!mounted) return;
+      setState(() => _isUpdatingStatus = false);
       _showSnackBar('Something went wrong. Please try again.');
     }
   }
@@ -553,12 +349,10 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
 
   Future<void> _handleApprovePayment() async {
     final paymentProof = _paymentProof;
-
     if (paymentProof == null) {
       _showSnackBar('Payment proof is not available.');
       return;
     }
-
     await _showVerifyPaymentDialog();
   }
 
@@ -576,164 +370,41 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             Future<void> confirmVerify() async {
-              if (isSubmitting) {
-                return;
-              }
+              if (isSubmitting) return;
 
-              setDialogState(() {
-                isSubmitting = true;
-              });
+              setDialogState(() => isSubmitting = true);
 
-              if (mounted) {
-                setState(() {
-                  _isPaymentProcessing = true;
-                });
-              }
+              if (mounted) setState(() => _isPaymentProcessing = true);
 
               try {
-                final controller = ref.read(
-                  paymentProofVerifyControllerProvider,
-                );
+                final controller = ref.read(paymentProofVerifyControllerProvider);
+                final result = await controller.verifyPaymentProof(orderId: widget.orderId);
 
-                debugPrint('');
-
-                debugPrint(
-                  '════════════════════════════════════════════════════════════',
-                );
-
-                debugPrint('VERIFY PAYMENT PROOF FROM UI');
-
-                debugPrint('ORDER ID: ${widget.orderId}');
-
-                debugPrint('STATUS: API CALL STARTED');
-
-                debugPrint('REQUEST BODY: NONE');
-
-                debugPrint(
-                  '════════════════════════════════════════════════════════════',
-                );
-
-                debugPrint('');
-
-                final result = await controller.verifyPaymentProof(
-                  orderId: widget.orderId,
-                );
-
-                if (!mounted) {
-                  return;
-                }
+                if (!mounted) return;
 
                 if (!result.success) {
                   throw ApiException(
-                    message:
-                        result.message ?? 'Unable to verify payment proof.',
+                    message: result.message ?? 'Unable to verify payment proof.',
                     code: 'PAYMENT_PROOF_VERIFY_FAILED',
                   );
                 }
 
-                debugPrint('');
-
-                debugPrint(
-                  '════════════════════════════════════════════════════════════',
-                );
-
-                debugPrint('VERIFY PAYMENT PROOF FROM UI');
-
-                debugPrint('ORDER ID: ${widget.orderId}');
-
-                debugPrint('STATUS: SUCCESS');
-
-                debugPrint(
-                  'MESSAGE: '
-                  '${result.message ?? 'Payment proof accepted'}',
-                );
-
-                debugPrint(
-                  '════════════════════════════════════════════════════════════',
-                );
-
-                debugPrint('');
-
-                setDialogState(() {
-                  isSubmitting = false;
-                });
-
-                setState(() {
-                  _isPaymentProcessing = false;
-                });
+                setDialogState(() => isSubmitting = false);
+                setState(() => _isPaymentProcessing = false);
 
                 Navigator.of(dialogContext).pop();
-
-                _showSnackBar(
-                  result.message ?? 'Payment proof accepted successfully.',
-                );
+                _showSnackBar(result.message ?? 'Payment proof accepted successfully.');
 
                 await _loadOrderDetail(refresh: true);
               } on ApiException catch (error) {
-                if (!mounted) {
-                  return;
-                }
-
-                setDialogState(() {
-                  isSubmitting = false;
-                });
-
-                setState(() {
-                  _isPaymentProcessing = false;
-                });
-
-                debugPrint('');
-
-                debugPrint(
-                  '════════════════════════════════════════════════════════════',
-                );
-
-                debugPrint('VERIFY PAYMENT PROOF UI ERROR');
-
-                debugPrint('ORDER ID: ${widget.orderId}');
-
-                debugPrint('MESSAGE: ${error.message}');
-
-                debugPrint('CODE: ${error.code}');
-
-                debugPrint(
-                  '════════════════════════════════════════════════════════════',
-                );
-
-                debugPrint('');
-
+                if (!mounted) return;
+                setDialogState(() => isSubmitting = false);
+                setState(() => _isPaymentProcessing = false);
                 _showSnackBar(error.message);
               } catch (error) {
-                if (!mounted) {
-                  return;
-                }
-
-                setDialogState(() {
-                  isSubmitting = false;
-                });
-
-                setState(() {
-                  _isPaymentProcessing = false;
-                });
-
-                debugPrint('');
-
-                debugPrint(
-                  '════════════════════════════════════════════════════════════',
-                );
-
-                debugPrint('VERIFY PAYMENT PROOF UNKNOWN UI ERROR');
-
-                debugPrint('ORDER ID: ${widget.orderId}');
-
-                debugPrint('ERROR: $error');
-
-                debugPrint(
-                  '════════════════════════════════════════════════════════════',
-                );
-
-                debugPrint('');
-
+                if (!mounted) return;
+                setDialogState(() => isSubmitting = false);
+                setState(() => _isPaymentProcessing = false);
                 _showSnackBar('Something went wrong. Please try again.');
               }
             }
@@ -741,9 +412,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
             return AlertDialog(
               backgroundColor: AppColors.white,
               surfaceTintColor: AppColors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
               titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
               contentPadding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
               title: Row(
@@ -755,19 +424,13 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                       color: AppColors.primary.withValues(alpha: 0.10),
                       borderRadius: BorderRadius.circular(11),
                     ),
-                    child: const Icon(
-                      Icons.verified_outlined,
-                      color: AppColors.primary,
-                      size: 21,
-                    ),
+                    child: const Icon(Icons.verified_outlined, color: AppColors.primary, size: 21),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       'Accept Payment Proof',
-                      style: AppTextStyles.titleMedium.copyWith(
-                        color: AppColors.navy,
-                      ),
+                      style: AppTextStyles.titleMedium.copyWith(color: AppColors.navy),
                     ),
                   ),
                 ],
@@ -778,16 +441,12 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                 children: [
                   Text(
                     'Are you sure you want to accept this payment proof?',
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
+                    style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'This will mark the payment as paid.',
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: AppColors.textMuted,
-                    ),
+                    style: AppTextStyles.bodySmall.copyWith(color: AppColors.textMuted),
                   ),
                   const SizedBox(height: 20),
                   Row(
@@ -799,11 +458,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                           height: 46,
                           borderRadius: 11,
                           isEnabled: !isSubmitting,
-                          onPressed: isSubmitting
-                              ? null
-                              : () {
-                                  Navigator.of(dialogContext).pop();
-                                },
+                          onPressed: isSubmitting ? null : () => Navigator.of(dialogContext).pop(),
                           foregroundColor: AppColors.textSecondary,
                           borderColor: AppColors.backgroundSecondary,
                         ),
@@ -831,11 +486,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       },
     );
 
-    if (mounted) {
-      setState(() {
-        _isPaymentProcessing = false;
-      });
-    }
+    if (mounted) setState(() => _isPaymentProcessing = false);
   }
 
   // ============================================================
@@ -844,12 +495,10 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
 
   Future<void> _handleRejectPayment() async {
     final paymentProof = _paymentProof;
-
     if (paymentProof == null) {
       _showSnackBar('Payment proof is not available.');
       return;
     }
-
     await _showRejectPaymentDialog();
   }
 
@@ -864,46 +513,17 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       builder: (dialogContext) {
         return RejectPaymentDialog(
           onSubmit: ({required String reason, required String notes}) async {
-            if (mounted) {
-              setState(() {
-                _isPaymentProcessing = true;
-              });
-            }
+            if (mounted) setState(() => _isPaymentProcessing = true);
 
             try {
               final controller = ref.read(paymentProofRejectControllerProvider);
-
-              debugPrint('');
-
-              debugPrint(
-                '════════════════════════════════════════════════════════════',
-              );
-
-              debugPrint('REJECT PAYMENT PROOF FROM UI');
-
-              debugPrint('ORDER ID: ${widget.orderId}');
-
-              debugPrint('REASON: $reason');
-
-              debugPrint('NOTES: $notes');
-
-              debugPrint('STATUS: API CALL STARTED');
-
-              debugPrint(
-                '════════════════════════════════════════════════════════════',
-              );
-
-              debugPrint('');
-
               final result = await controller.rejectPaymentProof(
                 orderId: widget.orderId,
                 reason: reason,
                 notes: notes,
               );
 
-              if (!mounted) {
-                return;
-              }
+              if (!mounted) return;
 
               if (!result.success) {
                 throw ApiException(
@@ -912,103 +532,20 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                 );
               }
 
-              debugPrint('');
-
-              debugPrint(
-                '════════════════════════════════════════════════════════════',
-              );
-
-              debugPrint('REJECT PAYMENT PROOF FROM UI');
-
-              debugPrint('ORDER ID: ${widget.orderId}');
-
-              debugPrint('STATUS: SUCCESS');
-
-              debugPrint(
-                'MESSAGE: '
-                '${result.message ?? 'Payment proof rejected'}',
-              );
-
-              debugPrint(
-                '════════════════════════════════════════════════════════════',
-              );
-
-              debugPrint('');
-
               Navigator.of(dialogContext).pop();
+              if (mounted) setState(() => _isPaymentProcessing = false);
 
-              if (mounted) {
-                setState(() {
-                  _isPaymentProcessing = false;
-                });
-              }
-
-              _showSnackBar(
-                result.message ?? 'Payment proof rejected successfully.',
-              );
-
+              _showSnackBar(result.message ?? 'Payment proof rejected successfully.');
               await _loadOrderDetail(refresh: true);
             } on ApiException catch (error) {
-              if (!mounted) {
-                return;
-              }
-
-              setState(() {
-                _isPaymentProcessing = false;
-              });
-
-              debugPrint('');
-
-              debugPrint(
-                '════════════════════════════════════════════════════════════',
-              );
-
-              debugPrint('REJECT PAYMENT PROOF UI ERROR');
-
-              debugPrint('ORDER ID: ${widget.orderId}');
-
-              debugPrint('MESSAGE: ${error.message}');
-
-              debugPrint('CODE: ${error.code}');
-
-              debugPrint(
-                '════════════════════════════════════════════════════════════',
-              );
-
-              debugPrint('');
-
+              if (!mounted) return;
+              setState(() => _isPaymentProcessing = false);
               _showSnackBar(error.message);
-
               rethrow;
             } catch (error) {
-              if (!mounted) {
-                return;
-              }
-
-              setState(() {
-                _isPaymentProcessing = false;
-              });
-
-              debugPrint('');
-
-              debugPrint(
-                '════════════════════════════════════════════════════════════',
-              );
-
-              debugPrint('REJECT PAYMENT PROOF UNKNOWN UI ERROR');
-
-              debugPrint('ORDER ID: ${widget.orderId}');
-
-              debugPrint('ERROR: $error');
-
-              debugPrint(
-                '════════════════════════════════════════════════════════════',
-              );
-
-              debugPrint('');
-
+              if (!mounted) return;
+              setState(() => _isPaymentProcessing = false);
               _showSnackBar('Something went wrong. Please try again.');
-
               rethrow;
             }
           },
@@ -1016,11 +553,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       },
     );
 
-    if (mounted) {
-      setState(() {
-        _isPaymentProcessing = false;
-      });
-    }
+    if (mounted) setState(() => _isPaymentProcessing = false);
   }
 
   // ============================================================
@@ -1029,10 +562,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
 
   void _handleViewPaymentProof() {
     final url = _paymentProof?.proofImageUrl;
-
-    if (url == null || url.trim().isEmpty) {
-      return;
-    }
+    if (url == null || url.trim().isEmpty) return;
 
     showDialog<void>(
       context: context,
@@ -1040,9 +570,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
         return Dialog(
           backgroundColor: AppColors.white,
           insetPadding: const EdgeInsets.all(20),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(16),
             child: Column(
@@ -1052,16 +580,9 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                   padding: const EdgeInsets.fromLTRB(18, 16, 10, 10),
                   child: Row(
                     children: [
-                      Expanded(
-                        child: Text(
-                          'Payment Proof',
-                          style: AppTextStyles.titleMedium,
-                        ),
-                      ),
+                      Expanded(child: Text('Payment Proof', style: AppTextStyles.titleMedium)),
                       IconButton(
-                        onPressed: () {
-                          Navigator.of(dialogContext).pop();
-                        },
+                        onPressed: () => Navigator.of(dialogContext).pop(),
                         icon: const Icon(Icons.close_rounded),
                       ),
                     ],
@@ -1076,19 +597,12 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                         return const SizedBox(
                           height: 300,
                           child: Center(
-                            child: Icon(
-                              Icons.broken_image_outlined,
-                              size: 48,
-                              color: AppColors.textMuted,
-                            ),
+                            child: Icon(Icons.broken_image_outlined, size: 48, color: AppColors.textMuted),
                           ),
                         );
                       },
                       loadingBuilder: (context, child, progress) {
-                        if (progress == null) {
-                          return child;
-                        }
-
+                        if (progress == null) return child;
                         return const SizedBox(
                           height: 300,
                           child: Center(child: CircularProgressIndicator()),
@@ -1116,9 +630,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
         SnackBar(
           content: Text(message),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
   }
@@ -1162,35 +674,26 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
   // ============================================================
 
   Widget _buildBody() {
-    if (_isLoading) {
-      return const OrderDetailLoading();
-    }
+    if (_isLoading) return const OrderDetailLoading();
 
     if (_errorMessage != null) {
       return _DetailError(
         message: _errorMessage!,
-        onRetry: () {
-          _loadOrderDetail(refresh: true);
-        },
+        onRetry: () => _loadOrderDetail(refresh: true),
       );
     }
 
     final order = _order;
-
     if (order == null) {
       return _DetailError(
         message: 'Order details are not available.',
-        onRetry: () {
-          _loadOrderDetail(refresh: true);
-        },
+        onRetry: () => _loadOrderDetail(refresh: true),
       );
     }
 
     return RefreshIndicator(
       color: AppColors.primary,
-      onRefresh: () async {
-        await _loadOrderDetail(refresh: true);
-      },
+      onRefresh: () async => await _loadOrderDetail(refresh: true),
       child: _buildContent(order),
     );
   }
@@ -1201,92 +704,63 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
 
   Widget _buildContent(VendorOrderDetailModel order) {
     final paymentProof = _paymentProof;
-
     final hasPaymentProof = paymentProof != null;
-
     final isPaymentPaid = order.paymentStatus?.trim().toLowerCase() == 'paid';
-
     final isordercancelled = order.status?.trim().toLowerCase() == 'cancelled';
-
     final isorderdelivered = order.status?.trim().toLowerCase() == 'delivered';
-
-    final needsPaymentVerification =
-        paymentProof != null &&
-        paymentProof.verificationStatus?.trim().toLowerCase() == 'pending';
-
-    // ==========================================================
-    // TRACKING
-    // ==========================================================
+    final needsPaymentVerification = paymentProof != null && paymentProof.verificationStatus?.trim().toLowerCase() == 'pending';
 
     final tracking = order.tracking;
-
     final hasTracking = tracking?.hasValidTracking == true;
 
     final shipment = order.courierShipment;
     final shipmentActive = shipment != null && shipment.isActive;
+    final shipmentBookingFailed = shipment?.isBookingFailed == true;
+
+    final showReadyForPickup = shipment == null && (order.canRequestPickup || (order.pickupBlockReason ?? '').trim().isNotEmpty);
 
     return SingleChildScrollView(
-      physics: const AlwaysScrollableScrollPhysics(
-        parent: BouncingScrollPhysics(),
-      ),
+      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 30),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ====================================================
-          // ORDER SUMMARY
-          // ====================================================
           OrderSummaryCard(order: order),
-
           const SizedBox(height: 14),
-
-          // ====================================================
-          // CUSTOMER
-          // ====================================================
           CustomerInfoCard(order: order),
-
           const SizedBox(height: 14),
-
-          // ====================================================
-          // SHIPPING ADDRESS
-          // ====================================================
           ShippingAddressCard(address: order.shippingAddress),
-
           const SizedBox(height: 14),
-
-          // ====================================================
-          // ORDER ITEMS
-          // ====================================================
           OrderItemsCard(order: order),
 
-          // ====================================================
-          // COURIER SHIPMENT (EMX / internal)
-          // ====================================================
-          if (order.courierShipment != null) ...[
+          if (showReadyForPickup) ...[
             const SizedBox(height: 14),
-            CourierShipmentCard(shipment: order.courierShipment!),
+            ReadyForPickupCard(
+              providerName: order.pickupProvider,
+              canRequestPickup: order.canRequestPickup,
+              blockReason: order.pickupBlockReason,
+              isRetryMode: false,
+              isLoading: _isPickupRequesting,
+              onRequestPickup: () => _handleRequestPickup(isRetry: false),
+              onOpenSettings: null,
+            ),
           ],
 
-          // ====================================================
-          // ORDER TRACKING
-          //
-          // Sirf tab show hoga jab:
-          //
-          // tracking_number available ho
-          // AND
-          // carrier available ho
-          // ====================================================
+          if (order.courierShipment != null) ...[
+            const SizedBox(height: 14),
+            CourierShipmentCard(
+              shipment: order.courierShipment!,
+              onRetryPickup: shipmentBookingFailed ? () => _handleRequestPickup(isRetry: true) : null,
+              isRetryLoading: _isPickupRequesting,
+            ),
+          ],
+
           if (hasTracking) ...[
             const SizedBox(height: 14),
-
             OrderTrackingCard(tracking: tracking!),
           ],
 
           const SizedBox(height: 14),
-
-          // ====================================================
-          // PAYMENT INFORMATION
-          // ====================================================
           PaymentInfoCard(
             order: order,
             paymentProof: paymentProof,
@@ -1295,35 +769,23 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
 
           if (hasPaymentProof && !isPaymentPaid && !isordercancelled) ...[
             const SizedBox(height: 14),
-
             PaymentProofCard(
               paymentProof: paymentProof,
               onView: _handleViewPaymentProof,
             ),
           ],
 
-          // ====================================================
-          // PAYMENT VERIFICATION
-          // ====================================================
           if (needsPaymentVerification) ...[
             const SizedBox(height: 14),
-
             _buildPaymentVerificationCard(),
           ],
 
           const SizedBox(height: 14),
 
-          // ====================================================
-          // STATUS UPDATE
-          // ====================================================
           if (!isordercancelled && !isorderdelivered && !shipmentActive) ...[
             OrderStatusUpdateCard(
               status: _selectedStatus,
-              onStatusChanged: (status) {
-                setState(() {
-                  _selectedStatus = status;
-                });
-              },
+              onStatusChanged: (status) => setState(() => _selectedStatus = status),
               onUpdate: _handleStatusUpdate,
               trackingController: _trackingController,
               carrierController: _carrierController,
@@ -1333,7 +795,6 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
             const SizedBox(height: 14),
           ],
 
-          // Shipment active → info banner (buttons ki jagah)
           if (!isordercancelled && !isorderdelivered && shipmentActive) ...[
             Container(
               width: double.infinity,
@@ -1341,29 +802,18 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
               decoration: BoxDecoration(
                 color: AppColors.primary.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.20),
-                ),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.20)),
               ),
               child: Row(
                 children: [
-                  Icon(
-                    Icons.lock_outline_rounded,
-                    size: 18,
-                    color: AppColors.primary,
-                  ),
+                  Icon(Icons.lock_outline_rounded, size: 18, color: AppColors.primary),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       shipment.isEmx
-                          ? 'Shipment is active — status updates automatically via EMX tracking. '
-                                'Manual "Mark Shipped/Delivered" is disabled.'
-                          : 'Shipment is active — status updates via rider. '
-                                'Manual "Mark Shipped/Delivered" is disabled.',
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.navy,
-                        height: 1.45,
-                      ),
+                          ? 'Shipment is active — status updates automatically via EMX tracking. Manual "Mark Shipped/Delivered" is disabled.'
+                          : 'Shipment is active — status updates via rider. Manual "Mark Shipped/Delivered" is disabled.',
+                      style: AppTextStyles.bodySmall.copyWith(color: AppColors.navy, height: 1.45),
                     ),
                   ),
                 ],
@@ -1371,9 +821,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
             ),
             const SizedBox(height: 14),
           ],
-          // ====================================================
-          // TIMELINE
-          // ====================================================
+
           OrderTimelineCard(timeline: order.statusHistory),
         ],
       ),
@@ -1412,26 +860,16 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                   color: AppColors.warning.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(
-                  Icons.verified_outlined,
-                  size: 19,
-                  color: AppColors.warning,
-                ),
+                child: const Icon(Icons.verified_outlined, size: 19, color: AppColors.warning),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Payment Verification',
-                      style: AppTextStyles.titleMedium,
-                    ),
+                    Text('Payment Verification', style: AppTextStyles.titleMedium),
                     const SizedBox(height: 2),
-                    Text(
-                      'Review the payment proof and choose an action.',
-                      style: AppTextStyles.bodySmall,
-                    ),
+                    Text('Review the payment proof and choose an action.', style: AppTextStyles.bodySmall),
                   ],
                 ),
               ),
@@ -1450,14 +888,13 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// ERROR
+// ERROR WIDGET
 // ═════════════════════════════════════════════════════════════════════════════
 
 class _DetailError extends StatelessWidget {
   const _DetailError({required this.message, required this.onRetry});
 
   final String message;
-
   final VoidCallback onRetry;
 
   @override
@@ -1475,33 +912,21 @@ class _DetailError extends StatelessWidget {
                 color: AppColors.error.withValues(alpha: 0.08),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
-                Icons.error_outline_rounded,
-                size: 32,
-                color: AppColors.error,
-              ),
+              child: const Icon(Icons.error_outline_rounded, size: 32, color: AppColors.error),
             ),
-
             const SizedBox(height: 14),
-
             Text(
               'Unable to load order',
               style: AppTextStyles.titleMedium.copyWith(color: AppColors.navy),
               textAlign: TextAlign.center,
             ),
-
             const SizedBox(height: 6),
-
             Text(
               message,
-              style: AppTextStyles.bodySmall.copyWith(
-                color: AppColors.textSecondary,
-              ),
+              style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
-
             const SizedBox(height: 18),
-
             ElevatedButton.icon(
               onPressed: onRetry,
               icon: const Icon(Icons.refresh_rounded),
@@ -1510,9 +935,7 @@ class _DetailError extends StatelessWidget {
                 backgroundColor: AppColors.primary,
                 foregroundColor: AppColors.white,
                 elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
             ),
           ],
