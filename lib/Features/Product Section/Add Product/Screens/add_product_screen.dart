@@ -45,42 +45,20 @@ class AddProductScreen extends ConsumerStatefulWidget {
 }
 
 class _AddProductScreenState extends ConsumerState<AddProductScreen> {
-  // ═══════════════════════════════════════════════════════════════════════════
-  // DRAFT STORAGE
-  // ═══════════════════════════════════════════════════════════════════════════
-
   static const String _draftKey = 'add_product_draft_v1';
 
   SharedPreferences? _prefs;
-
   bool _draftReady = false;
-
   Timer? _draftSaveTimer;
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // PRODUCT OPTIONS API
-  // ═══════════════════════════════════════════════════════════════════════════
-
   bool _isLoadingProductOptions = false;
-
   List<ProductOptionCategoryModel> _categories = <ProductOptionCategoryModel>[];
-
   List<ProductOptionBrandModel> _brands = <ProductOptionBrandModel>[];
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // ATTRIBUTE API
-  // ═══════════════════════════════════════════════════════════════════════════
-
   bool _isLoadingAttributes = false;
-
   List<GetAttributeModel> _availableAttributes = <GetAttributeModel>[];
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // WIZARD
-  // ═══════════════════════════════════════════════════════════════════════════
-
   int _currentStep = 0;
-
   static const int _totalSteps = 7;
 
   final List<String> _stepTitles = const [
@@ -109,148 +87,69 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   );
 
   final _formKey = GlobalKey<FormState>();
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // IMAGE PICKER
-  // ═══════════════════════════════════════════════════════════════════════════
-
   final ImagePicker _imagePicker = ImagePicker();
 
   File? _primaryImage;
-
   final List<File> _galleryImages = <File>[];
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // BASIC INFORMATION
-  // ═══════════════════════════════════════════════════════════════════════════
-
   final TextEditingController _productNameController = TextEditingController();
-
   final TextEditingController _shortDescriptionController =
       TextEditingController();
-
   final TextEditingController _fullDescriptionController =
       TextEditingController();
-
   bool _allowAffiliates = false;
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // ARABIC
-  // ═══════════════════════════════════════════════════════════════════════════
-
   final TextEditingController _arabicNameController = TextEditingController();
-
   final TextEditingController _arabicShortDescriptionController =
       TextEditingController();
-
   final TextEditingController _arabicFullDescriptionController =
       TextEditingController();
-
   final TextEditingController _arabicMetaTitleController =
       TextEditingController();
-
   final TextEditingController _arabicMetaKeywordsController =
       TextEditingController();
-
   final TextEditingController _arabicMetaDescriptionController =
       TextEditingController();
-
   bool _isTranslating = false;
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // PRICING & INVENTORY
-  // ═══════════════════════════════════════════════════════════════════════════
-
   final TextEditingController _priceController = TextEditingController();
-
   final TextEditingController _compareAtPriceController =
       TextEditingController();
-
   final TextEditingController _costPriceController = TextEditingController();
-
   final TextEditingController _stockController = TextEditingController();
-
   final TextEditingController _skuController = TextEditingController();
-
   String _inventoryType = 'track';
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // CATEGORY & BRAND
-  // ═══════════════════════════════════════════════════════════════════════════
-
   String? _categoryId;
-
   String? _brandId;
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // VARIANTS
-  // ═══════════════════════════════════════════════════════════════════════════
-
   bool _enableVariants = false;
-
   List<GetAttributeModel> _attributes = <GetAttributeModel>[];
-
   List<dynamic> _variants = <dynamic>[];
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // SEO
-  // ═══════════════════════════════════════════════════════════════════════════
-
   final TextEditingController _slugController = TextEditingController();
-
   final TextEditingController _metaTitleController = TextEditingController();
-
   final TextEditingController _metaDescriptionController =
       TextEditingController();
-
   final TextEditingController _metaKeywordsController = TextEditingController();
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // STATUS
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  /// Product active state.
-  ///
-  /// Default is true.
-  /// API payload will send:
-  /// true  -> is_active = 1
-  /// false -> is_active = 0
   bool _isActive = true;
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // SUBMIT
-  // ═══════════════════════════════════════════════════════════════════════════
-
   bool _isSubmitting = false;
-
   String? _formNotice;
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // INIT
-  // ═══════════════════════════════════════════════════════════════════════════
 
   @override
   void initState() {
     super.initState();
-
     _loadInitialData();
-
     _loadProductOptions();
-
     _loadAttributes();
-
     _restoreDraft();
   }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // INITIAL DATA
-  // ═══════════════════════════════════════════════════════════════════════════
 
   void _loadInitialData() {
     _productNameController.clear();
     _shortDescriptionController.clear();
     _fullDescriptionController.clear();
-
     _allowAffiliates = false;
 
     _arabicNameController.clear();
@@ -265,19 +164,15 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     _costPriceController.clear();
     _stockController.clear();
     _skuController.clear();
-
     _inventoryType = 'track';
 
     _categoryId = null;
     _brandId = null;
 
     _enableVariants = false;
-
     _attributes = <GetAttributeModel>[];
     _variants = <dynamic>[];
-
     _availableAttributes = <GetAttributeModel>[];
-
     _categories = <ProductOptionCategoryModel>[];
     _brands = <ProductOptionBrandModel>[];
 
@@ -286,140 +181,53 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     _metaDescriptionController.clear();
     _metaKeywordsController.clear();
 
-    // New product default = active.
     _isActive = true;
-
     _primaryImage = null;
     _galleryImages.clear();
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // PRODUCT OPTIONS
-  // ═══════════════════════════════════════════════════════════════════════════
-
   Future<void> _loadProductOptions() async {
-    if (_isLoadingProductOptions) {
-      return;
-    }
-
-    if (mounted) {
-      setState(() {
-        _isLoadingProductOptions = true;
-      });
-    }
+    if (_isLoadingProductOptions) return;
+    if (mounted) setState(() => _isLoadingProductOptions = true);
 
     try {
-      debugPrint('');
-      debugPrint('========== ADD PRODUCT ==========');
-      debugPrint('GET PRODUCT OPTIONS STARTED');
-
       final result = await ref
           .read(productOptionControllerProvider)
           .getProductOptions();
-
-      if (!mounted) {
-        return;
-      }
-
+      if (!mounted) return;
       setState(() {
         _categories = result.categories;
         _brands = result.brands;
         _isLoadingProductOptions = false;
       });
-
-      debugPrint('GET PRODUCT OPTIONS SUCCESS: ${result.success}');
-      debugPrint('CATEGORIES COUNT: ${result.categories.length}');
-
-      for (final category in result.categories) {
-        debugPrint(
-          'CATEGORY: ${category.name} | '
-          'ID: ${category.id} | '
-          'PARENT ID: ${category.parentId}',
-        );
-      }
-
-      debugPrint('BRANDS COUNT: ${result.brands.length}');
-
-      for (final brand in result.brands) {
-        debugPrint(
-          'BRAND: ${brand.name} | '
-          'ID: ${brand.id}',
-        );
-      }
-
-      debugPrint('================================');
-      debugPrint('');
-    } on ApiException catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _isLoadingProductOptions = false;
-        _categories = <ProductOptionCategoryModel>[];
-        _brands = <ProductOptionBrandModel>[];
-      });
-
-      debugPrint('Get product options API error: ${error.message}');
-
-      _showNotice(error.message, isError: true);
     } catch (error) {
-      if (!mounted) {
-        return;
-      }
-
+      if (!mounted) return;
       setState(() {
         _isLoadingProductOptions = false;
-        _categories = <ProductOptionCategoryModel>[];
-        _brands = <ProductOptionBrandModel>[];
+        _categories = [];
+        _brands = [];
       });
-
-      debugPrint('Get product options unexpected error: $error');
-
-      _showNotice(
-        'Unable to load categories and brands. Please try again.',
-        isError: true,
-      );
+      _showNotice('Unable to load categories and brands.', isError: true);
     }
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // CATEGORY DROPDOWN
-  // ═══════════════════════════════════════════════════════════════════════════
-
   List<ProductDropdownItem<String>> _buildCategoryDropdownItems() {
     final items = <ProductDropdownItem<String>>[];
-
     final childrenByParent = <int, List<ProductOptionCategoryModel>>{};
-
     final roots = <ProductOptionCategoryModel>[];
-
     final allIds = <int>{};
 
     for (final category in _categories) {
-      final id = category.id;
-
-      if (id != null) {
-        allIds.add(id);
-      }
+      if (category.id != null) allIds.add(category.id!);
     }
 
     for (final category in _categories) {
       final id = category.id;
-
-      if (id == null) {
-        continue;
-      }
+      if (id == null) continue;
 
       final parentId = category.parentId;
-
       if (parentId != null && parentId != 0 && allIds.contains(parentId)) {
-        childrenByParent.putIfAbsent(
-          parentId,
-          () => <ProductOptionCategoryModel>[],
-        );
-
-        childrenByParent[parentId]!.add(category);
+        childrenByParent.putIfAbsent(parentId, () => []).add(category);
       } else {
         roots.add(category);
       }
@@ -429,18 +237,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
     void addCategory(ProductOptionCategoryModel category, int level) {
       final id = category.id;
-
-      if (id == null || addedIds.contains(id)) {
-        return;
-      }
-
+      if (id == null || addedIds.contains(id)) return;
       addedIds.add(id);
 
       final name = category.name?.trim();
-
       if (name != null && name.isNotEmpty) {
         final prefix = level == 0 ? '' : '  ' * level;
-
         items.add(
           ProductDropdownItem<String>(
             value: id.toString(),
@@ -450,374 +252,142 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       }
 
       final children = childrenByParent[id];
-
-      if (children == null || children.isEmpty) {
-        return;
-      }
-
+      if (children == null || children.isEmpty) return;
       for (final child in children) {
         addCategory(child, level + 1);
       }
     }
 
-    for (final root in roots) {
-      addCategory(root, 0);
-    }
-
-    // Fallback for orphaned categories.
-    for (final category in _categories) {
-      addCategory(category, 0);
-    }
+    for (final root in roots) addCategory(root, 0);
+    for (final category in _categories) addCategory(category, 0);
 
     return items;
   }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // BRAND DROPDOWN
-  // ═══════════════════════════════════════════════════════════════════════════
 
   List<ProductDropdownItem<String>> _buildBrandDropdownItems() {
     final items = <ProductDropdownItem<String>>[];
-
     for (final brand in _brands) {
       final id = brand.id;
-
-      if (id == null) {
-        continue;
-      }
-
+      if (id == null) continue;
       final name = brand.name?.trim();
-
-      if (name == null || name.isEmpty) {
-        continue;
-      }
-
+      if (name == null || name.isEmpty) continue;
       items.add(ProductDropdownItem<String>(value: id.toString(), label: name));
     }
-
     return items;
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // ATTRIBUTES
-  // ═══════════════════════════════════════════════════════════════════════════
-
   Future<void> _loadAttributes() async {
-    if (_isLoadingAttributes) {
-      return;
-    }
-
-    if (mounted) {
-      setState(() {
-        _isLoadingAttributes = true;
-      });
-    }
+    if (_isLoadingAttributes) return;
+    if (mounted) setState(() => _isLoadingAttributes = true);
 
     try {
-      debugPrint('');
-      debugPrint('========== ADD PRODUCT ==========');
-      debugPrint('GET ATTRIBUTES STARTED');
-
       final result = await ref
           .read(getAttributesControllerProvider)
           .getAttributes();
-
-      if (!mounted) {
-        return;
-      }
-
+      if (!mounted) return;
       setState(() {
         _availableAttributes = result.attributes;
         _isLoadingAttributes = false;
       });
-
-      debugPrint('GET ATTRIBUTES SUCCESS: ${result.success}');
-
-      debugPrint('ATTRIBUTES COUNT: ${result.attributes.length}');
-
-      for (final attribute in result.attributes) {
-        debugPrint('');
-        debugPrint('ATTRIBUTE ID: ${attribute.id}');
-        debugPrint('ATTRIBUTE NAME: ${attribute.name}');
-        debugPrint('ATTRIBUTE SLUG: ${attribute.slug}');
-        debugPrint('ATTRIBUTE INPUT TYPE: ${attribute.inputType}');
-        debugPrint('ATTRIBUTE IS OWN: ${attribute.isOwn}');
-        debugPrint('ATTRIBUTE VALUES: ${attribute.values.length}');
-
-        for (final value in attribute.values) {
-          debugPrint(
-            '  VALUE ID: ${value.id} | '
-            'VALUE: ${value.value} | '
-            'CODE: ${value.code} | '
-            'SORT: ${value.sortOrder}',
-          );
-        }
-      }
-
-      debugPrint('');
-      debugPrint('================================');
-      debugPrint('');
-    } on ApiException catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _isLoadingAttributes = false;
-        _availableAttributes = <GetAttributeModel>[];
-      });
-
-      debugPrint('Get attributes API error: ${error.message}');
-
-      _showNotice(error.message, isError: true);
     } catch (error) {
-      if (!mounted) {
-        return;
-      }
-
+      if (!mounted) return;
       setState(() {
         _isLoadingAttributes = false;
-        _availableAttributes = <GetAttributeModel>[];
+        _availableAttributes = [];
       });
-
-      debugPrint('Get attributes unexpected error: $error');
-
-      _showNotice(
-        'Unable to load product attributes. Please try again.',
-        isError: true,
-      );
+      _showNotice('Unable to load product attributes.', isError: true);
     }
   }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // RESTORE DRAFT
-  // ═══════════════════════════════════════════════════════════════════════════
 
   Future<void> _restoreDraft() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-
       _prefs = prefs;
-
       final raw = prefs.getString(_draftKey);
-
       if (raw != null && raw.isNotEmpty) {
         final decoded = jsonDecode(raw);
-
         if (decoded is Map) {
           _restoreFromJson(Map<String, dynamic>.from(decoded));
         }
       }
-
       _draftReady = true;
-
-      if (mounted) {
-        setState(() {});
-      }
+      if (mounted) setState(() {});
     } catch (error) {
-      debugPrint('Draft restore error: $error');
-
       _draftReady = true;
-
-      if (mounted) {
-        setState(() {});
-      }
+      if (mounted) setState(() {});
     }
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // RESTORE JSON
-  // ═══════════════════════════════════════════════════════════════════════════
-
   void _restoreFromJson(Map<String, dynamic> data) {
-    String readString(String key, String fallback) {
-      final value = data[key];
-
-      if (value == null) {
-        return fallback;
-      }
-
-      return value.toString();
-    }
-
+    String readString(String key, String fallback) =>
+        data[key]?.toString() ?? fallback;
     String? readNullableString(String key) {
-      final value = data[key];
-
-      if (value == null) {
-        return null;
-      }
-
-      final text = value.toString();
-
-      return text.isEmpty ? null : text;
+      final text = data[key]?.toString();
+      return (text == null || text.isEmpty) ? null : text;
     }
 
-    _productNameController.text = readString(
-      'product_name',
-      _productNameController.text,
-    );
+    _productNameController.text = readString('product_name', '');
+    _shortDescriptionController.text = readString('short_description', '');
+    _fullDescriptionController.text = readString('full_description', '');
+    _allowAffiliates = data['allow_affiliates'] as bool? ?? false;
 
-    _shortDescriptionController.text = readString(
-      'short_description',
-      _shortDescriptionController.text,
-    );
-
-    _fullDescriptionController.text = readString(
-      'full_description',
-      _fullDescriptionController.text,
-    );
-
-    _allowAffiliates = data['allow_affiliates'] as bool? ?? _allowAffiliates;
-
-    _arabicNameController.text = readString(
-      'arabic_name',
-      _arabicNameController.text,
-    );
-
+    _arabicNameController.text = readString('arabic_name', '');
     _arabicShortDescriptionController.text = readString(
       'arabic_short_description',
-      _arabicShortDescriptionController.text,
+      '',
     );
-
     _arabicFullDescriptionController.text = readString(
       'arabic_full_description',
-      _arabicFullDescriptionController.text,
+      '',
     );
-
-    _arabicMetaTitleController.text = readString(
-      'arabic_meta_title',
-      _arabicMetaTitleController.text,
-    );
-
-    _arabicMetaKeywordsController.text = readString(
-      'arabic_meta_keywords',
-      _arabicMetaKeywordsController.text,
-    );
-
+    _arabicMetaTitleController.text = readString('arabic_meta_title', '');
+    _arabicMetaKeywordsController.text = readString('arabic_meta_keywords', '');
     _arabicMetaDescriptionController.text = readString(
       'arabic_meta_description',
-      _arabicMetaDescriptionController.text,
+      '',
     );
 
-    _priceController.text = readString('price', _priceController.text);
-
-    _compareAtPriceController.text = readString(
-      'compare_at_price',
-      _compareAtPriceController.text,
-    );
-
-    _costPriceController.text = readString(
-      'cost_price',
-      _costPriceController.text,
-    );
-
-    _stockController.text = readString('stock', _stockController.text);
-
-    _skuController.text = readString('sku', _skuController.text);
-
-    _inventoryType = readString('inventory_type', _inventoryType);
+    _priceController.text = readString('price', '');
+    _compareAtPriceController.text = readString('compare_at_price', '');
+    _costPriceController.text = readString('cost_price', '');
+    _stockController.text = readString('stock', '');
+    _skuController.text = readString('sku', '');
+    _inventoryType = readString('inventory_type', 'track');
 
     _categoryId = readNullableString('category_id');
-
     _brandId = readNullableString('brand_id');
-
     _enableVariants = data['enable_variants'] as bool? ?? false;
-
     _isActive = data['is_active'] as bool? ?? true;
 
-    _slugController.text = readString('slug', _slugController.text);
-
-    _metaTitleController.text = readString(
-      'meta_title',
-      _metaTitleController.text,
-    );
-
-    _metaDescriptionController.text = readString(
-      'meta_description',
-      _metaDescriptionController.text,
-    );
-
-    _metaKeywordsController.text = readString(
-      'meta_keywords',
-      _metaKeywordsController.text,
-    );
-
-    // ============================================================
-    // CURRENT STEP
-    // ============================================================
+    _slugController.text = readString('slug', '');
+    _metaTitleController.text = readString('meta_title', '');
+    _metaDescriptionController.text = readString('meta_description', '');
+    _metaKeywordsController.text = readString('meta_keywords', '');
 
     final savedStep = data['current_step'];
-
-    if (savedStep is int) {
-      _currentStep = savedStep.clamp(0, _totalSteps - 1);
-    }
-
-    // ============================================================
-    // PRIMARY IMAGE
-    // ============================================================
+    if (savedStep is int) _currentStep = savedStep.clamp(0, _totalSteps - 1);
 
     final primaryPath = data['primary_image'];
-
     if (primaryPath is String &&
         primaryPath.isNotEmpty &&
         File(primaryPath).existsSync()) {
       _primaryImage = File(primaryPath);
     }
 
-    // ============================================================
-    // GALLERY
-    // ============================================================
-
     final gallery = data['gallery_images'];
-
     if (gallery is List) {
       _galleryImages.clear();
-
       for (final item in gallery) {
         if (item is String && item.isNotEmpty && File(item).existsSync()) {
           _galleryImages.add(File(item));
         }
       }
     }
-
-    // ============================================================
-    // ATTRIBUTES
-    // ============================================================
-    //
-    // Runtime model instances cannot be restored directly from JSON.
-    // Keep this intentionally unchanged.
-    // ============================================================
-
-    final attributes = data['attributes'];
-
-    if (attributes is List) {
-      _attributes = attributes.whereType<GetAttributeModel>().toList(
-        growable: false,
-      );
-    }
-
-    // ============================================================
-    // VARIANTS
-    // ============================================================
-
-    final variants = data['variants'];
-
-    if (variants is List) {
-      _variants = List<dynamic>.from(variants);
-    }
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // DRAFT SAVE
-  // ═══════════════════════════════════════════════════════════════════════════
-
   void _scheduleDraftSave() {
-    if (!_draftReady) {
-      return;
-    }
-
+    if (!_draftReady) return;
     _draftSaveTimer?.cancel();
-
     _draftSaveTimer = Timer(const Duration(milliseconds: 400), () {
       unawaited(_saveDraft());
     });
@@ -826,72 +396,35 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   Future<void> _saveDraft() async {
     try {
       final prefs = _prefs ?? await SharedPreferences.getInstance();
-
       _prefs = prefs;
 
       final data = <String, dynamic>{
         'current_step': _currentStep,
-
-        // ========================================================
-        // BASIC
-        // ========================================================
         'product_name': _productNameController.text,
         'short_description': _shortDescriptionController.text,
         'full_description': _fullDescriptionController.text,
         'allow_affiliates': _allowAffiliates,
-
-        // ========================================================
-        // ARABIC
-        // ========================================================
         'arabic_name': _arabicNameController.text,
         'arabic_short_description': _arabicShortDescriptionController.text,
         'arabic_full_description': _arabicFullDescriptionController.text,
         'arabic_meta_title': _arabicMetaTitleController.text,
         'arabic_meta_keywords': _arabicMetaKeywordsController.text,
         'arabic_meta_description': _arabicMetaDescriptionController.text,
-
-        // ========================================================
-        // PRICING
-        // ========================================================
         'price': _priceController.text,
         'compare_at_price': _compareAtPriceController.text,
         'cost_price': _costPriceController.text,
         'stock': _stockController.text,
         'sku': _skuController.text,
         'inventory_type': _inventoryType,
-
-        // ========================================================
-        // CATEGORY / BRAND
-        // ========================================================
         'category_id': _categoryId,
         'brand_id': _brandId,
-
-        // ========================================================
-        // IMAGES
-        // ========================================================
         'primary_image': _primaryImage?.path,
-
         'gallery_images': _galleryImages.map((e) => e.path).toList(),
-
-        // ========================================================
-        // VARIANTS
-        // ========================================================
         'enable_variants': _enableVariants,
-
-        // Runtime variant objects are intentionally not persisted.
-        // They remain available during the current session.
-
-        // ========================================================
-        // SEO
-        // ========================================================
         'slug': _slugController.text,
         'meta_title': _metaTitleController.text,
         'meta_description': _metaDescriptionController.text,
         'meta_keywords': _metaKeywordsController.text,
-
-        // ========================================================
-        // STATUS
-        // ========================================================
         'is_active': _isActive,
       };
 
@@ -901,123 +434,28 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     }
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // CLEAR DRAFT
-  // ═══════════════════════════════════════════════════════════════════════════
-
   Future<void> _clearDraft() async {
     try {
       _draftSaveTimer?.cancel();
-
       final prefs = _prefs ?? await SharedPreferences.getInstance();
-
       _prefs = prefs;
-
       await prefs.remove(_draftKey);
     } catch (error) {
       debugPrint('Draft clear error: $error');
     }
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // CLEAR FORM AFTER SUCCESS
-  // ═══════════════════════════════════════════════════════════════════════════
-
   Future<void> _clearAllProductData() async {
     _draftSaveTimer?.cancel();
-
     await _clearDraft();
-
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
     setState(() {
-      // ============================================================
-      // BASIC
-      // ============================================================
-
-      _productNameController.clear();
-      _shortDescriptionController.clear();
-      _fullDescriptionController.clear();
-
-      _allowAffiliates = false;
-
-      // ============================================================
-      // ARABIC
-      // ============================================================
-
-      _arabicNameController.clear();
-      _arabicShortDescriptionController.clear();
-      _arabicFullDescriptionController.clear();
-      _arabicMetaTitleController.clear();
-      _arabicMetaKeywordsController.clear();
-      _arabicMetaDescriptionController.clear();
-
-      // ============================================================
-      // PRICING
-      // ============================================================
-
-      _priceController.clear();
-      _compareAtPriceController.clear();
-      _costPriceController.clear();
-      _stockController.clear();
-      _skuController.clear();
-
-      _inventoryType = 'track';
-
-      // ============================================================
-      // CATEGORY / BRAND
-      // ============================================================
-
-      _categoryId = null;
-      _brandId = null;
-
-      // ============================================================
-      // IMAGES
-      // ============================================================
-
-      _primaryImage = null;
-      _galleryImages.clear();
-
-      // ============================================================
-      // VARIANTS
-      // ============================================================
-
-      _enableVariants = false;
-      _attributes = <GetAttributeModel>[];
-      _variants = <dynamic>[];
-
-      // ============================================================
-      // SEO
-      // ============================================================
-
-      _slugController.clear();
-      _metaTitleController.clear();
-      _metaDescriptionController.clear();
-      _metaKeywordsController.clear();
-
-      // ============================================================
-      // STATUS
-      // ============================================================
-
-      _isActive = true;
-
-      // ============================================================
-      // WIZARD
-      // ============================================================
-
+      _loadInitialData();
       _currentStep = 0;
-
       _formNotice = null;
     });
-
-    debugPrint('ADD PRODUCT FORM CLEARED AFTER SUCCESS');
   }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // IMAGE PICKER
-  // ═══════════════════════════════════════════════════════════════════════════
 
   Future<void> _pickPrimaryImage() async {
     try {
@@ -1025,144 +463,70 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         source: ImageSource.gallery,
         imageQuality: 85,
       );
-
-      if (pickedFile == null || !mounted) {
-        return;
-      }
-
-      setState(() {
-        _primaryImage = File(pickedFile.path);
-      });
-
+      if (pickedFile == null || !mounted) return;
+      setState(() => _primaryImage = File(pickedFile.path));
       await _saveDraft();
     } catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      _showNotice('Unable to select primary image.', isError: true);
+      if (mounted)
+        _showNotice('Unable to select primary image.', isError: true);
     }
   }
 
   void _removePrimaryImage() {
-    setState(() {
-      _primaryImage = null;
-    });
-
+    setState(() => _primaryImage = null);
     _scheduleDraftSave();
   }
 
   Future<void> _addGalleryImages() async {
     try {
-      const int maxImages = 5;
-
-      final int remaining = maxImages - _galleryImages.length;
-
+      final int remaining = 5 - _galleryImages.length;
       if (remaining <= 0) {
-        _showNotice('You can upload a maximum of $maxImages gallery images.');
-
+        _showNotice('You can upload a maximum of 5 gallery images.');
         return;
       }
 
       final List<XFile> pickedFiles = await _imagePicker.pickMultiImage(
         imageQuality: 85,
       );
-
-      if (pickedFiles.isEmpty || !mounted) {
-        return;
-      }
+      if (pickedFiles.isEmpty || !mounted) return;
 
       final files = pickedFiles
           .take(remaining)
           .map((file) => File(file.path))
           .toList();
-
-      setState(() {
-        _galleryImages.addAll(files);
-      });
-
+      setState(() => _galleryImages.addAll(files));
       await _saveDraft();
-
-      if (pickedFiles.length > remaining) {
-        _showNotice(
-          'Only $remaining image(s) were added. '
-          'Maximum is $maxImages.',
-        );
-      }
     } catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      _showNotice('Unable to select gallery images.', isError: true);
+      if (mounted)
+        _showNotice('Unable to select gallery images.', isError: true);
     }
   }
 
   void _removeGalleryImage(int index) {
-    if (index < 0 || index >= _galleryImages.length) {
-      return;
-    }
-
-    setState(() {
-      _galleryImages.removeAt(index);
-    });
-
+    if (index < 0 || index >= _galleryImages.length) return;
+    setState(() => _galleryImages.removeAt(index));
     _scheduleDraftSave();
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // AUTO TRANSLATE
-  // ═══════════════════════════════════════════════════════════════════════════
-
   Future<void> _autoTranslateArabic() async {
     final name = _productNameController.text.trim();
-
     final shortDescription = _shortDescriptionController.text.trim();
-
     final description = _fullDescriptionController.text.trim();
-
     final metaTitle = _metaTitleController.text.trim();
-
     final metaKeywords = _metaKeywordsController.text.trim();
-
     final metaDescription = _metaDescriptionController.text.trim();
 
-    if (name.isEmpty) {
+    if (name.isEmpty || shortDescription.isEmpty || description.isEmpty) {
       _showNotice(
-        'Please enter the product name before translating.',
+        'Please fill English Name, Short and Full description first.',
         isError: true,
       );
-
       return;
     }
 
-    if (shortDescription.isEmpty) {
-      _showNotice(
-        'Please enter the short description before translating.',
-        isError: true,
-      );
-
-      return;
-    }
-
-    if (description.isEmpty) {
-      _showNotice(
-        'Please enter the full description before translating.',
-        isError: true,
-      );
-
-      return;
-    }
-
-    if (mounted) {
-      setState(() {
-        _isTranslating = true;
-      });
-    }
+    setState(() => _isTranslating = true);
 
     try {
-      debugPrint('========== ADD PRODUCT - AUTO TRANSLATE ==========');
-
       final result = await ref
           .read(productArabicTranslatorControllerProvider)
           .translateProduct(
@@ -1176,218 +540,76 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             targetLocale: 'ar',
           );
 
-      if (!mounted) {
-        return;
+      if (!mounted) return;
+
+      if (result.success && result.translation?.translated != null) {
+        final t = result.translation!.translated!;
+        if (t.name != null) _arabicNameController.text = t.name!.trim();
+        if (t.shortDescription != null)
+          _arabicShortDescriptionController.text = t.shortDescription!.trim();
+        if (t.description != null)
+          _arabicFullDescriptionController.text = t.description!.trim();
+        if (t.metaTitle != null)
+          _arabicMetaTitleController.text = t.metaTitle!.trim();
+        if (t.metaKeywords != null)
+          _arabicMetaKeywordsController.text = t.metaKeywords!.trim();
+        if (t.metaDescription != null)
+          _arabicMetaDescriptionController.text = t.metaDescription!.trim();
+        await _saveDraft();
+        _showNotice('Arabic translation completed.');
+      } else {
+        _showNotice(result.message ?? 'Translation failed.', isError: true);
       }
-
-      if (!result.success) {
-        _showNotice(
-          result.message ?? 'Unable to translate product to Arabic.',
-          isError: true,
-        );
-
-        return;
-      }
-
-      final translation = result.translation;
-
-      if (translation == null) {
-        _showNotice('Translation response is empty.', isError: true);
-
-        return;
-      }
-
-      final translated = translation.translated;
-
-      if (translated == null) {
-        _showNotice('Translated product data was not received.', isError: true);
-
-        return;
-      }
-
-      if (translated.name != null && translated.name!.trim().isNotEmpty) {
-        _arabicNameController.text = translated.name!.trim();
-      }
-
-      if (translated.shortDescription != null &&
-          translated.shortDescription!.trim().isNotEmpty) {
-        _arabicShortDescriptionController.text = translated.shortDescription!
-            .trim();
-      }
-
-      if (translated.description != null &&
-          translated.description!.trim().isNotEmpty) {
-        _arabicFullDescriptionController.text = translated.description!.trim();
-      }
-
-      if (translated.metaTitle != null &&
-          translated.metaTitle!.trim().isNotEmpty) {
-        _arabicMetaTitleController.text = translated.metaTitle!.trim();
-      }
-
-      if (translated.metaKeywords != null &&
-          translated.metaKeywords!.trim().isNotEmpty) {
-        _arabicMetaKeywordsController.text = translated.metaKeywords!.trim();
-      }
-
-      if (translated.metaDescription != null &&
-          translated.metaDescription!.trim().isNotEmpty) {
-        _arabicMetaDescriptionController.text = translated.metaDescription!
-            .trim();
-      }
-
-      await _saveDraft();
-
-      _showNotice(result.message ?? 'Arabic translation completed.');
-    } on ApiException catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      debugPrint('Arabic translation API error: ${error.message}');
-
-      _showNotice(error.message, isError: true);
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      debugPrint('Arabic translation error: $error');
-
-      _showNotice(
-        'Unable to translate product to Arabic. Please try again.',
-        isError: true,
-      );
+    } catch (e) {
+      if (mounted) _showNotice('Translation error occurred.', isError: true);
     } finally {
-      if (mounted) {
-        setState(() {
-          _isTranslating = false;
-        });
-      }
+      if (mounted) setState(() => _isTranslating = false);
     }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // SERIALIZE ATTRIBUTES
+  // ✅ FIXED SERIALIZE METHODS (Isme changes kiye gaye hain)
   // ═══════════════════════════════════════════════════════════════════════════
 
   List<int> _buildVariantAttributesPayload() {
     final result = <int>[];
-
     for (final attribute in _attributes) {
-      try {
-        final dynamic attributeIdValue = attribute.id;
+      final attributeId = attribute.id;
+      if (attributeId == null || attributeId <= 0) continue;
 
-        if (attributeIdValue == null) {
-          continue;
-        }
-
-        final attributeId = attributeIdValue is int
-            ? attributeIdValue
-            : int.tryParse(attributeIdValue.toString());
-
-        if (attributeId == null || attributeId <= 0) {
-          continue;
-        }
-
-        final values = attribute.values;
-
-        var hasSelectedValue = false;
-
-        for (final value in values) {
-          final dynamic valueIdValue = value.id;
-
-          if (valueIdValue == null) {
-            continue;
-          }
-
-          final valueId = valueIdValue is int
-              ? valueIdValue
-              : int.tryParse(valueIdValue.toString());
-
-          if (valueId != null && valueId > 0) {
-            hasSelectedValue = true;
-            break;
-          }
-        }
-
-        if (hasSelectedValue && !result.contains(attributeId)) {
-          result.add(attributeId);
-        }
-      } catch (error) {
-        debugPrint('Variant attribute serialization error: $error');
+      // Check if at least one value is selected
+      bool hasSelectedValue = attribute.values.any(
+        (v) => v.id != null && v.id! > 0,
+      );
+      if (hasSelectedValue && !result.contains(attributeId)) {
+        result.add(attributeId);
       }
     }
-
     return result;
   }
 
   Map<int, List<int>> _buildAttributeValuesPayload() {
     final result = <int, List<int>>{};
-
     for (final attribute in _attributes) {
-      final dynamic attributeIdValue = attribute.id;
-
-      if (attributeIdValue == null) {
-        continue;
-      }
-
-      final attributeId = attributeIdValue is int
-          ? attributeIdValue
-          : int.tryParse(attributeIdValue.toString());
-
-      if (attributeId == null || attributeId <= 0) {
-        continue;
-      }
+      final attributeId = attribute.id;
+      if (attributeId == null || attributeId <= 0) continue;
 
       final values = <int>[];
-
-      final dynamic attributeValues = attribute.values;
-
-      if (attributeValues is Iterable) {
-        for (final value in attributeValues) {
-          final dynamic valueIdValue = value.id;
-
-          if (valueIdValue == null) {
-            continue;
-          }
-
-          final valueId = valueIdValue is int
-              ? valueIdValue
-              : int.tryParse(valueIdValue.toString());
-
-          if (valueId != null && valueId > 0 && !values.contains(valueId)) {
-            values.add(valueId);
-          }
+      for (final value in attribute.values) {
+        if (value.id != null && value.id! > 0 && !values.contains(value.id)) {
+          values.add(value.id!);
         }
       }
-
-      if (values.isNotEmpty) {
-        result[attributeId] = values;
-      }
+      if (values.isNotEmpty) result[attributeId] = values;
     }
-
     return result;
   }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // ATTRIBUTE VALUE MODIFIERS
-  // ═══════════════════════════════════════════════════════════════════════════
-  //
-  // GetAttributeValueModel does NOT contain a modifier property.
-  //
-  // Therefore this must remain an empty map unless the API/model is later
-  // extended with an actual modifier field.
-  // ═══════════════════════════════════════════════════════════════════════════
 
   Map<int, num> _buildAttributeValueModifiersPayload() {
     return <int, num>{};
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // SERIALIZE VARIANTS
-  // ═══════════════════════════════════════════════════════════════════════════
-
+  // 🚨 Yahan actual fix hai!
   List<AddProductVariantRequestModel> _buildVariantsPayload() {
     final result = <AddProductVariantRequestModel>[];
 
@@ -1399,92 +621,80 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
         if (attributes is Map) {
           attributes.forEach((key, value) {
-            final attributeId = key is int ? key : int.tryParse(key.toString());
+            // key = Attribute Name (e.g., "Color") OR ID if already int
+            // value = Value Name (e.g., "Black") OR ID if already int
 
-            final dynamic normalizedValue = value is Map
-                ? value['id'] ?? value['value']
-                : value;
+            // 1. Find Attribute ID
+            int? attributeId;
+            if (key is int) {
+              attributeId = key;
+            } else {
+              final attrName = key.toString();
+              final matchedAttr = _availableAttributes.firstWhere(
+                (a) =>
+                    (a.name ?? '').trim().toLowerCase() ==
+                    attrName.trim().toLowerCase(),
+                orElse: () =>
+                    GetAttributeModel(id: null, name: null, values: []),
+              );
+              attributeId = matchedAttr.id;
+            }
 
-            final valueId = normalizedValue is int
-                ? normalizedValue
-                : int.tryParse(normalizedValue?.toString() ?? '');
+            if (attributeId == null || attributeId <= 0) return;
 
-            if (attributeId != null &&
-                attributeId > 0 &&
-                valueId != null &&
-                valueId > 0) {
+            // 2. Find Value ID
+            int? valueId;
+            if (value is int) {
+              valueId = value;
+            } else {
+              final valName = value.toString();
+              final matchedAttr = _availableAttributes.firstWhere(
+                (a) => a.id == attributeId,
+                orElse: () =>
+                    GetAttributeModel(id: null, name: null, values: []),
+              );
+
+              final matchedValue = matchedAttr.values.firstWhere(
+                (v) =>
+                    (v.value ?? '').trim().toLowerCase() ==
+                    valName.trim().toLowerCase(),
+                orElse: () => GetAttributeValueModel(id: null, value: null),
+              );
+              valueId = matchedValue.id;
+            }
+
+            if (valueId != null && valueId > 0) {
               variantAttributeValues[attributeId] = valueId;
             }
           });
         }
 
-        // ==========================================================
-        // PRICE
-        // ==========================================================
-
-        final dynamic variantPrice = variant.price;
-
-        final numericPrice = variantPrice is num
-            ? variantPrice
-            : num.tryParse(variantPrice?.toString() ?? '') ?? 0;
-
-        // ==========================================================
-        // COMPARE / OLD PRICE
-        // ==========================================================
-
-        final dynamic variantCompareAtPrice = variant.compareAtPrice;
-
-        final numericCompareAtPrice = variantCompareAtPrice == null
+        // Prices & Stock
+        final numericPrice = num.tryParse(variant.price?.toString() ?? '') ?? 0;
+        final numericCompareAtPrice = num.tryParse(
+          variant.compareAtPrice?.toString() ?? '',
+        );
+        final numericStockQty =
+            int.tryParse(variant.stockQuantity?.toString() ?? '') ?? 0;
+        final skuText = variant.sku?.toString().trim();
+        final nullableSku = (skuText == null || skuText.isEmpty)
             ? null
-            : variantCompareAtPrice is num
-            ? variantCompareAtPrice
-            : num.tryParse(variantCompareAtPrice.toString());
+            : skuText;
 
-        // ==========================================================
-        // STOCK
-        // ==========================================================
-
-        final dynamic variantStock = variant.stockQuantity;
-
-        final numericStockQty = variantStock is int
-            ? variantStock
-            : int.tryParse(variantStock?.toString() ?? '') ?? 0;
-
-        // ==========================================================
-        // SKU
-        // ==========================================================
-
-        final dynamic variantSku = variant.sku;
-
-        final skuText = variantSku?.toString().trim();
-
-        final nullableSku = skuText == null || skuText.isEmpty ? null : skuText;
-
-        // ==========================================================
-        // REQUEST MODEL
-        // ==========================================================
-
+        // Request Model
         final requestVariant = AddProductVariantRequestModel(
           sku: nullableSku,
           price: numericPrice,
           priceOld: numericCompareAtPrice,
           stockQty: numericStockQty,
           attributeValues: variantAttributeValues,
+          isActive: 1,
         );
 
         result.add(requestVariant);
 
-        // ==========================================================
-        // DEBUG
-        // ==========================================================
-
         debugPrint(
-          'VARIANT SERIALIZED: '
-          'SKU=${requestVariant.sku ?? 'AUTO'} | '
-          'PRICE=${requestVariant.price} | '
-          'PRICE_OLD=${requestVariant.priceOld ?? 'N/A'} | '
-          'STOCK=${requestVariant.stockQty} | '
-          'ATTRIBUTES=${requestVariant.attributeValues}',
+          'VARIANT SERIALIZED: SKU=$nullableSku | ATTRS=$variantAttributeValues',
         );
       } catch (error) {
         debugPrint('Variant serialization error: $error');
@@ -1494,132 +704,58 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     return result;
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // SUBMIT PRODUCT
-  // ═══════════════════════════════════════════════════════════════════════════
-
   Future<void> _submitProduct() async {
     FocusScope.of(context).unfocus();
-
     _clearNotice();
-
-    // ============================================================
-    // CURRENT STEP VALIDATION
-    // ============================================================
 
     if (!_validateCurrentStep()) {
       _showNotice('Please complete the required fields.', isError: true);
-
       return;
     }
 
-    // ============================================================
-    // REQUIRED PRODUCT VALIDATION
-    // ============================================================
-
     final productName = _productNameController.text.trim();
-
     if (productName.isEmpty) {
       _showNotice('Product name is required.', isError: true);
-
       return;
     }
 
     final categoryIdText = _categoryId?.trim();
-
-    if (categoryIdText == null || categoryIdText.isEmpty) {
-      _showNotice('Please select a category.', isError: true);
-
-      return;
-    }
-
-    final categoryId = int.tryParse(categoryIdText);
-
+    final categoryId = int.tryParse(categoryIdText ?? '');
     if (categoryId == null || categoryId <= 0) {
       _showNotice('Please select a valid category.', isError: true);
-
       return;
     }
 
-    final priceText = _priceController.text.trim();
-
-    if (priceText.isEmpty) {
-      _showNotice('Product price is required.', isError: true);
-
-      return;
-    }
-
-    final price = double.tryParse(priceText.replaceAll(',', ''));
-
+    final price = double.tryParse(
+      _priceController.text.trim().replaceAll(',', ''),
+    );
     if (price == null || price < 0) {
       _showNotice('Please enter a valid product price.', isError: true);
-
       return;
     }
 
     if (_primaryImage == null) {
       _showNotice('Please select a primary product image.', isError: true);
-
       return;
     }
 
-    // ============================================================
-    // STOCK
-    // ============================================================
-
-    final stockText = _stockController.text.trim();
-
-    final stockQty = int.tryParse(stockText.isEmpty ? '0' : stockText);
-
+    final stockQty = int.tryParse(
+      _stockController.text.trim().isEmpty ? '0' : _stockController.text.trim(),
+    );
     if (stockQty == null || stockQty < 0) {
       _showNotice('Please enter a valid stock quantity.', isError: true);
-
       return;
     }
-
-    // ============================================================
-    // SAVE DRAFT BEFORE API REQUEST
-    // ============================================================
 
     await _saveDraft();
-
-    if (!mounted) {
-      return;
-    }
-
-    setState(() {
-      _isSubmitting = true;
-    });
+    if (!mounted) return;
+    setState(() => _isSubmitting = true);
 
     try {
-      // ==========================================================
-      // BUILD VARIANT PAYLOAD
-      // ==========================================================
-
       final variantAttributes = _buildVariantAttributesPayload();
-
       final attributeValues = _buildAttributeValuesPayload();
-
       final attributeValueModifiers = _buildAttributeValueModifiersPayload();
-
       final variants = _buildVariantsPayload();
-
-      // ==========================================================
-      // ACTIVE STATUS
-      // ==========================================================
-      //
-      // Backend expects integer:
-      // 1 = active
-      // 0 = inactive
-      //
-      // Default _isActive = true, therefore a new product sends 1.
-      // ==========================================================
-
-      final int isActive = _isActive ? 1 : 0;
-
-      // ==========================================================
-      // BUILD REQUEST MODEL
-      // ==========================================================
 
       final request = AddProductRequestModel(
         name: productName,
@@ -1634,23 +770,18 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         brand: null,
         description: _nullableText(_fullDescriptionController.text),
         shortDescription: _nullableText(_shortDescriptionController.text),
-
-        // ✅ Convert bool toggle → int
         allowAffiliate: _allowAffiliates ? 1 : 0,
-
         hasVariants: _enableVariants,
         variantAttributes: variantAttributes,
         attributeValues: attributeValues,
         attributeValueModifiers: attributeValueModifiers,
         variants: variants,
-        isActive: isActive,
-
+        isActive: _isActive ? 1 : 0,
         nameAr: _nullableText(_arabicNameController.text),
         shortDescriptionAr: _nullableText(
           _arabicShortDescriptionController.text,
         ),
         descriptionAr: _nullableText(_arabicFullDescriptionController.text),
-
         metaTitle: _nullableText(_metaTitleController.text),
         metaDescription: _nullableText(_metaDescriptionController.text),
         metaKeywords: _nullableText(_metaKeywordsController.text),
@@ -1658,394 +789,108 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         metaDescriptionAr: _nullableText(_arabicMetaDescriptionController.text),
         metaKeywordsAr: _nullableText(_arabicMetaKeywordsController.text),
       );
-      // ==========================================================
-      // DEBUG REQUEST
-      // ==========================================================
-
-      debugPrint('');
-      debugPrint('══════════════════════════════════════════');
-      debugPrint('        CREATE PRODUCT REQUEST');
-      debugPrint('══════════════════════════════════════════');
-
-      debugPrint('NAME: ${request.name}');
-
-      debugPrint('CATEGORY ID: ${request.categoryId}');
-
-      debugPrint('BRAND ID: ${request.brandId ?? 'N/A'}');
-
-      debugPrint('PRICE: ${request.price}');
-
-      debugPrint('PRICE OLD: ${request.priceOld ?? 'N/A'}');
-
-      debugPrint('STOCK QTY: ${request.stockQty}');
-
-      debugPrint('SKU: ${request.sku ?? 'AUTO'}');
-
-      debugPrint('ALLOW AFFILIATE: ${request.allowAffiliate}');
-
-      debugPrint('HAS VARIANTS: ${request.hasVariants}');
-
-      debugPrint('IS ACTIVE: ${request.isActive}');
-
-      debugPrint('HERO IMAGE: ${request.heroImage.path}');
-
-      debugPrint('GALLERY IMAGES: ${request.galleryImages.length}');
-
-      debugPrint(
-        'VARIANT ATTRIBUTES: '
-        '${request.variantAttributes}',
-      );
-
-      debugPrint(
-        'ATTRIBUTE VALUES: '
-        '${request.attributeValues}',
-      );
-
-      debugPrint(
-        'ATTRIBUTE VALUE MODIFIERS: '
-        '${request.attributeValueModifiers}',
-      );
-
-      debugPrint('VARIANTS: ${request.variants.length}');
-
-      for (var i = 0; i < request.variants.length; i++) {
-        final variant = request.variants[i];
-
-        debugPrint(
-          'VARIANT[$i] '
-          'SKU=${variant.sku ?? 'AUTO'} '
-          'PRICE=${variant.price} '
-          'PRICE_OLD=${variant.priceOld ?? 'N/A'} '
-          'STOCK=${variant.stockQty} '
-          'ATTRIBUTES=${variant.attributeValues}',
-        );
-      }
-
-      debugPrint(
-        'ARABIC NAME: '
-        '${request.nameAr ?? 'N/A'}',
-      );
-
-      debugPrint(
-        'ARABIC SHORT DESCRIPTION: '
-        '${request.shortDescriptionAr ?? 'N/A'}',
-      );
-
-      debugPrint(
-        'ARABIC DESCRIPTION: '
-        '${request.descriptionAr ?? 'N/A'}',
-      );
-
-      debugPrint(
-        'META TITLE: '
-        '${request.metaTitle ?? 'N/A'}',
-      );
-
-      debugPrint(
-        'META DESCRIPTION: '
-        '${request.metaDescription ?? 'N/A'}',
-      );
-
-      debugPrint(
-        'META KEYWORDS: '
-        '${request.metaKeywords ?? 'N/A'}',
-      );
-
-      debugPrint('══════════════════════════════════════════');
-      debugPrint('');
-
-      // ==========================================================
-      // API CALL
-      // ==========================================================
 
       final result = await ref
           .read(addProductControllerProvider)
           .addProduct(request);
 
-      if (!mounted) {
-        return;
-      }
-
-      // ==========================================================
-      // RESPONSE LOG
-      // ==========================================================
-
-      debugPrint('');
-      debugPrint('══════════════════════════════════════════');
-      debugPrint('        CREATE PRODUCT RESPONSE');
-      debugPrint('══════════════════════════════════════════');
-
-      debugPrint('SUCCESS: ${result.success}');
-
-      debugPrint('MESSAGE: ${result.message ?? 'N/A'}');
-
-      debugPrint('PRODUCT ID: ${result.product?.id ?? 'N/A'}');
-
-      debugPrint('PRODUCT NAME: ${result.product?.name ?? 'N/A'}');
-
-      debugPrint('══════════════════════════════════════════');
-      debugPrint('');
-
-      // ==========================================================
-      // API FAILED
-      // ==========================================================
+      if (!mounted) return;
 
       if (!result.success) {
         _showNotice(
           result.message ?? 'Unable to create product.',
           isError: true,
         );
-
-        // Draft intentionally preserved.
         return;
       }
-
-      // ==========================================================
-      // API SUCCESS
-      // ==========================================================
 
       await _clearAllProductData();
-
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
 
       _showNotice(result.message ?? 'Product created successfully.');
-
       await Future<void>.delayed(const Duration(milliseconds: 600));
 
-      if (!mounted) {
-        return;
-      }
-
+      if (!mounted) return;
       context.push(AppRoutes.products);
     } on ApiException catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      debugPrint('');
-      debugPrint('══════════════════════════════════════════');
-      debugPrint('        CREATE PRODUCT API ERROR');
-      debugPrint('══════════════════════════════════════════');
-
-      debugPrint('MESSAGE: ${error.message}');
-
-      debugPrint('CODE: ${error.code}');
-
-      debugPrint('══════════════════════════════════════════');
-      debugPrint('');
-
-      // Draft intentionally preserved.
-      _showNotice(error.message, isError: true);
+      if (mounted) _showNotice(error.message, isError: true);
     } catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      debugPrint('');
-      debugPrint('CREATE PRODUCT UNEXPECTED ERROR: $error');
-
-      // Draft intentionally preserved.
-      _showNotice(
-        'Unable to create product. Your draft has been saved.',
-        isError: true,
-      );
+      if (mounted) _showNotice('Unable to create product.', isError: true);
     } finally {
-      if (mounted) {
-        setState(() {
-          _isSubmitting = false;
-        });
-      }
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // REQUEST HELPERS
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  String? _nullableText(String value) {
-    final text = value.trim();
-
-    if (text.isEmpty) {
-      return null;
-    }
-
-    return text;
-  }
-
-  int? _parseOptionalInt(String? value) {
-    if (value == null) {
-      return null;
-    }
-
-    final text = value.trim();
-
-    if (text.isEmpty) {
-      return null;
-    }
-
-    return int.tryParse(text);
-  }
-
-  double? _parseOptionalDouble(String value) {
-    final text = value.trim();
-
-    if (text.isEmpty) {
-      return null;
-    }
-
-    return double.tryParse(text.replaceAll(',', ''));
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // VALIDATE
-  // ═══════════════════════════════════════════════════════════════════════════
+  String? _nullableText(String value) =>
+      value.trim().isEmpty ? null : value.trim();
+  int? _parseOptionalInt(String? value) =>
+      (value == null || value.trim().isEmpty) ? null : int.tryParse(value);
+  double? _parseOptionalDouble(String value) =>
+      value.trim().isEmpty ? null : double.tryParse(value.replaceAll(',', ''));
 
   bool _validateCurrentStep() {
     final form = _stepFormKeys[_currentStep].currentState;
-
-    if (form == null) {
-      return true;
-    }
-
-    return form.validate();
+    return form?.validate() ?? true;
   }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // NEXT
-  // ═══════════════════════════════════════════════════════════════════════════
 
   Future<void> _nextStep() async {
     FocusScope.of(context).unfocus();
-
-    final valid = _validateCurrentStep();
-
-    if (!valid) {
+    if (!_validateCurrentStep()) {
       _showNotice(
         'Please complete the required fields before continuing.',
         isError: true,
       );
-
       return;
     }
-
     await _saveDraft();
-
-    if (!mounted) {
-      return;
-    }
-
+    if (!mounted) return;
     if (_currentStep < _totalSteps - 1) {
-      setState(() {
-        _currentStep++;
-      });
-
+      setState(() => _currentStep++);
       await _saveDraft();
-
       _scrollToTop();
     }
   }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // PREVIOUS
-  // ═══════════════════════════════════════════════════════════════════════════
 
   Future<void> _previousStep() async {
     FocusScope.of(context).unfocus();
-
     await _saveDraft();
-
-    if (!mounted) {
-      return;
-    }
-
+    if (!mounted) return;
     if (_currentStep > 0) {
-      setState(() {
-        _currentStep--;
-      });
-
+      setState(() => _currentStep--);
       await _saveDraft();
-
       _scrollToTop();
     }
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // JUMP TO STEP
-  // ═══════════════════════════════════════════════════════════════════════════
-
   Future<void> _goToStep(int step) async {
-    if (step < 0 || step >= _totalSteps) {
-      return;
-    }
-
-    if (step > _currentStep) {
-      return;
-    }
-
+    if (step < 0 || step >= _totalSteps || step > _currentStep) return;
     await _saveDraft();
-
-    if (!mounted) {
-      return;
-    }
-
-    setState(() {
-      _currentStep = step;
-    });
-
+    if (!mounted) return;
+    setState(() => _currentStep = step);
     _scrollToTop();
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // SCROLL TOP
-  // ═══════════════════════════════════════════════════════════════════════════
-
   void _scrollToTop() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) {
-        return;
-      }
-
-      Scrollable.ensureVisible(
-        context,
-        duration: const Duration(milliseconds: 250),
-        alignment: 0,
-      );
+      if (mounted)
+        Scrollable.ensureVisible(
+          context,
+          duration: const Duration(milliseconds: 250),
+          alignment: 0,
+        );
     });
   }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // CLOSE
-  // ═══════════════════════════════════════════════════════════════════════════
 
   Future<void> _closeScreen() async {
     FocusScope.of(context).unfocus();
-
     await _saveDraft();
-
-    if (!mounted) {
-      return;
-    }
-
-    Navigator.of(context).pop();
+    if (mounted) Navigator.of(context).pop();
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // NOTICE
-  // ═══════════════════════════════════════════════════════════════════════════
-
   void _showNotice(String message, {bool isError = false}) {
-    if (!mounted) {
-      return;
-    }
-
-    setState(() {
-      _formNotice = message;
-    });
-
+    if (!mounted) return;
+    setState(() => _formNotice = message);
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
-
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -2056,25 +901,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   }
 
   void _clearNotice() {
-    if (!mounted) {
-      return;
-    }
-
-    setState(() {
-      _formNotice = null;
-    });
+    if (mounted) setState(() => _formNotice = null);
   }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // CURRENT STEP
-  // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildCurrentStep() {
     switch (_currentStep) {
-      // ============================================================
-      // BASIC
-      // ============================================================
-
       case 0:
         return Form(
           key: _stepFormKeys[0],
@@ -2083,20 +914,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             shortDescriptionController: _shortDescriptionController,
             fullDescriptionController: _fullDescriptionController,
             allowAffiliates: _allowAffiliates,
-            onAllowAffiliatesChanged: (value) {
-              setState(() {
-                _allowAffiliates = value;
-              });
-
+            onAllowAffiliatesChanged: (v) {
+              setState(() => _allowAffiliates = v);
               _scheduleDraftSave();
             },
           ),
         );
-
-      // ============================================================
-      // ARABIC
-      // ============================================================
-
       case 1:
         return Form(
           key: _stepFormKeys[1],
@@ -2111,11 +934,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             onAutoTranslate: _autoTranslateArabic,
           ),
         );
-
-      // ============================================================
-      // CATEGORY & BRAND
-      // ============================================================
-
       case 2:
         return Form(
           key: _stepFormKeys[2],
@@ -2124,33 +942,18 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             brandId: _brandId,
             categories: _buildCategoryDropdownItems(),
             brands: _buildBrandDropdownItems(),
-            onCategoryChanged: (value) {
-              setState(() {
-                _categoryId = value;
-              });
-
-              debugPrint('Selected category ID: $value');
-
+            onCategoryChanged: (v) {
+              setState(() => _categoryId = v);
               _scheduleDraftSave();
             },
-            onBrandChanged: (value) {
-              setState(() {
-                _brandId = value;
-              });
-
-              debugPrint('Selected brand ID: $value');
-
+            onBrandChanged: (v) {
+              setState(() => _brandId = v);
               _scheduleDraftSave();
             },
             isLoadingCategories: _isLoadingProductOptions,
             isLoadingBrands: _isLoadingProductOptions,
           ),
         );
-
-      // ============================================================
-      // IMAGES
-      // ============================================================
-
       case 3:
         return ProductImagesSection(
           primaryImage: _primaryImage,
@@ -2160,11 +963,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
           onAddGalleryImage: _addGalleryImages,
           onRemoveGalleryImage: _removeGalleryImage,
         );
-
-      // ============================================================
-      // PRICING
-      // ============================================================
-
       case 4:
         return Form(
           key: _stepFormKeys[4],
@@ -2174,84 +972,39 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             stockController: _stockController,
             skuController: _skuController,
             inventoryType: _inventoryType,
-            onInventoryTypeChanged: (value) {
-              if (value == null) {
-                return;
+            onInventoryTypeChanged: (v) {
+              if (v != null) {
+                setState(() => _inventoryType = v);
+                _scheduleDraftSave();
               }
-
-              setState(() {
-                _inventoryType = value;
-              });
-
-              _scheduleDraftSave();
             },
           ),
         );
-
-      // ============================================================
-      // VARIANTS
-      // ============================================================
-
       case 5:
         return VariantsSection(
           attributes: _attributes,
-
-          onAttributesChanged: (value) {
-            final updatedAttributes = value
-                .whereType<GetAttributeModel>()
-                .toList(growable: false);
-
-            setState(() {
-              _attributes = updatedAttributes;
-            });
-
+          onAttributesChanged: (v) {
+            setState(
+              () => _attributes = v.whereType<GetAttributeModel>().toList(),
+            );
             _scheduleDraftSave();
           },
-
-          onVariantsChanged: (value) {
-            setState(() {
-              _variants = List<dynamic>.from(value);
-            });
-
+          onVariantsChanged: (v) {
+            setState(() => _variants = List<dynamic>.from(v));
             _scheduleDraftSave();
           },
-
           enabledVariants: _enableVariants,
-
-          onVariantsEnabledChanged: (value) {
-            setState(() {
-              _enableVariants = value;
-            });
-
+          onVariantsEnabledChanged: (v) {
+            setState(() => _enableVariants = v);
             _scheduleDraftSave();
           },
-
           availableAttributes: _availableAttributes,
-
-          // ========================================================
-          // PRICING DEFAULTS FOR NEW VARIANTS
-          // ========================================================
-          //
-          // These values are passed only when creating a NEW variant.
-          //
-          // Existing VariantData objects must keep their own values.
-          // VariantBuilder handles that behavior.
-          // ========================================================
           defaultPrice: _priceController.text.trim(),
-
           defaultCompareAtPrice: _compareAtPriceController.text.trim(),
-
           defaultStockQuantity: _stockController.text.trim(),
-
           defaultSku: _skuController.text.trim(),
-
           enabled: true,
         );
-
-      // ============================================================
-      // SEO
-      // ============================================================
-
       case 6:
         return Form(
           key: _stepFormKeys[6],
@@ -2264,13 +1017,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                 metaDescriptionController: _metaDescriptionController,
                 metaKeywordsController: _metaKeywordsController,
               ),
-
               const SizedBox(height: 24),
-
               _buildFinalSummary(),
-
               const SizedBox(height: 24),
-
               ProductSubmitSection(
                 isSubmitting: _isSubmitting,
                 onSubmit: _submitProduct,
@@ -2281,15 +1030,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             ],
           ),
         );
-
       default:
         return const SizedBox.shrink();
     }
   }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // FINAL SUMMARY
-  // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildFinalSummary() {
     return Container(
@@ -2318,9 +1062,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   size: 20,
                 ),
               ),
-
               const SizedBox(width: 12),
-
               Expanded(
                 child: Text(
                   'Ready to create product',
@@ -2332,48 +1074,39 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               ),
             ],
           ),
-
           const SizedBox(height: 18),
-
           _SummaryRow(
             label: 'Product',
             value: _productNameController.text.trim().isEmpty
                 ? 'Not provided'
                 : _productNameController.text.trim(),
           ),
-
           _SummaryRow(label: 'Category', value: _getSelectedCategoryName()),
-
           _SummaryRow(label: 'Brand', value: _getSelectedBrandName()),
-
           _SummaryRow(
             label: 'Price',
             value: _priceController.text.trim().isEmpty
                 ? 'Not provided'
                 : _priceController.text.trim(),
           ),
-
           _SummaryRow(
             label: 'Stock',
             value: _stockController.text.trim().isEmpty
                 ? '0'
                 : _stockController.text.trim(),
           ),
-
           _SummaryRow(
             label: 'Variants',
             value: _enableVariants
                 ? '${_variants.length} variant(s)'
                 : 'Disabled',
           ),
-
           _SummaryRow(
             label: 'Attributes',
             value: _attributes.isEmpty
                 ? 'None'
                 : '${_attributes.length} attribute(s)',
           ),
-
           _SummaryRow(
             label: 'Images',
             value:
@@ -2384,65 +1117,27 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // SELECTED CATEGORY
-  // ═══════════════════════════════════════════════════════════════════════════
-
   String _getSelectedCategoryName() {
-    if (_categoryId == null || _categoryId!.trim().isEmpty) {
+    if (_categoryId == null || _categoryId!.trim().isEmpty)
       return 'Not selected';
-    }
-
     final selectedId = int.tryParse(_categoryId!);
-
-    if (selectedId == null) {
-      return 'Not selected';
-    }
-
+    if (selectedId == null) return 'Not selected';
     for (final category in _categories) {
-      if (category.id == selectedId) {
-        final name = category.name?.trim();
-
-        if (name != null && name.isNotEmpty) {
-          return name;
-        }
-      }
+      if (category.id == selectedId)
+        return category.name?.trim() ?? 'Not selected';
     }
-
     return 'Not selected';
   }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // SELECTED BRAND
-  // ═══════════════════════════════════════════════════════════════════════════
 
   String _getSelectedBrandName() {
-    if (_brandId == null || _brandId!.trim().isEmpty) {
-      return 'Not selected';
-    }
-
+    if (_brandId == null || _brandId!.trim().isEmpty) return 'Not selected';
     final selectedId = int.tryParse(_brandId!);
-
-    if (selectedId == null) {
-      return 'Not selected';
-    }
-
+    if (selectedId == null) return 'Not selected';
     for (final brand in _brands) {
-      if (brand.id == selectedId) {
-        final name = brand.name?.trim();
-
-        if (name != null && name.isNotEmpty) {
-          return name;
-        }
-      }
+      if (brand.id == selectedId) return brand.name?.trim() ?? 'Not selected';
     }
-
     return 'Not selected';
   }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // STEP PROGRESS
-  // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildStepProgress() {
     return Container(
@@ -2467,7 +1162,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   ),
                 ),
               ),
-
               Text(
                 '${((_currentStep + 1) / _totalSteps * 100).round()}%',
                 style: AppTextStyles.caption.copyWith(
@@ -2477,9 +1171,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               ),
             ],
           ),
-
           const SizedBox(height: 12),
-
           ClipRRect(
             borderRadius: BorderRadius.circular(20),
             child: LinearProgressIndicator(
@@ -2489,17 +1181,13 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
             ),
           ),
-
           const SizedBox(height: 16),
-
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
               children: List.generate(_totalSteps, (index) {
                 final isCurrent = index == _currentStep;
-
                 final isCompleted = index < _currentStep;
-
                 return Row(
                   children: [
                     InkWell(
@@ -2547,9 +1235,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                                       ),
                               ),
                             ),
-
                             const SizedBox(width: 7),
-
                             Text(
                               _stepTitles[index],
                               style: AppTextStyles.caption.copyWith(
@@ -2565,7 +1251,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                         ),
                       ),
                     ),
-
                     if (index < _totalSteps - 1)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -2585,18 +1270,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // BOTTOM NAVIGATION
-  // ═══════════════════════════════════════════════════════════════════════════
-
   Widget _buildBottomNavigation() {
     final isFirst = _currentStep == 0;
-
     final isLast = _currentStep == _totalSteps - 1;
-
-    if (isLast) {
-      return const SizedBox.shrink();
-    }
+    if (isLast) return const SizedBox.shrink();
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -2629,10 +1306,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   ),
                 ),
               ),
-
               const SizedBox(width: 12),
             ],
-
             Expanded(
               flex: isFirst ? 1 : 2,
               child: FilledButton.icon(
@@ -2653,70 +1328,49 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // DISPOSE
-  // ═══════════════════════════════════════════════════════════════════════════
-
   @override
   void dispose() {
     _draftSaveTimer?.cancel();
-
     _productNameController.dispose();
     _shortDescriptionController.dispose();
     _fullDescriptionController.dispose();
-
     _arabicNameController.dispose();
     _arabicShortDescriptionController.dispose();
     _arabicFullDescriptionController.dispose();
     _arabicMetaTitleController.dispose();
     _arabicMetaKeywordsController.dispose();
     _arabicMetaDescriptionController.dispose();
-
     _priceController.dispose();
     _compareAtPriceController.dispose();
     _costPriceController.dispose();
     _stockController.dispose();
     _skuController.dispose();
-
     _slugController.dispose();
     _metaTitleController.dispose();
     _metaDescriptionController.dispose();
     _metaKeywordsController.dispose();
-
     super.dispose();
   }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // BUILD
-  // ═══════════════════════════════════════════════════════════════════════════
 
   @override
   Widget build(BuildContext context) {
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
-        if (didPop) {
-          return;
-        }
-
-        _closeScreen();
+        if (!didPop) _closeScreen();
       },
       child: Scaffold(
         backgroundColor: AppColors.background,
-
         appBar: AppBar(
           backgroundColor: AppColors.background,
           elevation: 0,
           surfaceTintColor: Colors.transparent,
-
           leading: IconButton(
             onPressed: _closeScreen,
             icon: const Icon(Icons.arrow_back_rounded),
           ),
-
           title: Text('Add Product', style: AppTextStyles.headlineMedium),
         ),
-
         body: !_draftReady
             ? const Center(child: CircularProgressIndicator())
             : Column(
@@ -2736,43 +1390,36 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                                   title: _stepTitles[_currentStep],
                                   description: _stepDescriptions[_currentStep],
                                 ),
-
                                 const SizedBox(height: 20),
-
                                 _buildStepProgress(),
-
                                 const SizedBox(height: 20),
-
                                 if (_formNotice != null) ...[
                                   ProductFormNotice(
                                     message: _formNotice!,
                                     type: ProductFormNoticeType.info,
                                     onClose: _clearNotice,
                                   ),
-
                                   const SizedBox(height: 20),
                                 ],
-
                                 AnimatedSwitcher(
                                   duration: const Duration(milliseconds: 220),
-                                  transitionBuilder: (child, animation) {
-                                    return FadeTransition(
-                                      opacity: animation,
-                                      child: SlideTransition(
-                                        position:
-                                            Tween<Offset>(
-                                              begin: const Offset(0.03, 0),
-                                              end: Offset.zero,
-                                            ).animate(
-                                              CurvedAnimation(
-                                                parent: animation,
-                                                curve: Curves.easeOut,
+                                  transitionBuilder: (child, animation) =>
+                                      FadeTransition(
+                                        opacity: animation,
+                                        child: SlideTransition(
+                                          position:
+                                              Tween<Offset>(
+                                                begin: const Offset(0.03, 0),
+                                                end: Offset.zero,
+                                              ).animate(
+                                                CurvedAnimation(
+                                                  parent: animation,
+                                                  curve: Curves.easeOut,
+                                                ),
                                               ),
-                                            ),
-                                        child: child,
+                                          child: child,
+                                        ),
                                       ),
-                                    );
-                                  },
                                   child: KeyedSubtree(
                                     key: ValueKey(_currentStep),
                                     child: _buildCurrentStep(),
@@ -2785,7 +1432,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       ),
                     ),
                   ),
-
                   _buildBottomNavigation(),
                 ],
               ),
@@ -2794,15 +1440,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   }
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// SUMMARY ROW
-// ═════════════════════════════════════════════════════════════════════════════
-
 class _SummaryRow extends StatelessWidget {
   const _SummaryRow({required this.label, required this.value});
-
   final String label;
-
   final String value;
 
   @override
@@ -2822,9 +1462,7 @@ class _SummaryRow extends StatelessWidget {
               ),
             ),
           ),
-
           const SizedBox(width: 10),
-
           Expanded(
             child: Text(
               value,
