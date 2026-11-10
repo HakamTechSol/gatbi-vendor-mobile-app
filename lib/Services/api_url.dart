@@ -14,6 +14,13 @@ class ApiUrls {
   static const String resetPassword = 'vendor/auth/reset-password';
   static const String resendOtp = 'vendor/auth/resend-otp';
   static const String logout = 'vendor/auth/logout';
+  // Social Login
+  static const String socialProviders = 'auth/social/providers';
+  static const String appleLogin = 'vendor/auth/social/apple';
+
+  static String socialLogin(String provider) {
+    return 'vendor/auth/social/$provider';
+  }
 
   //Using registration
   static const String businesstype = 'vendor/business-types';
@@ -31,12 +38,11 @@ class ApiUrls {
   static const String vendorBankInfo = 'vendor/settings/bank';
 
   // Business Change
-  static const String businessChange =
-    'vendor/settings/business-change';
+  static const String businessChange = 'vendor/settings/business-change';
 
   static String cancelBusinessChange(int requestId) {
-  return '$businessChange/$requestId/cancel';
-}
+    return '$businessChange/$requestId/cancel';
+  }
 
   // Notifications
   static const String getNotifications = 'vendor/notifications';

@@ -19,9 +19,18 @@ import '../Phone Rule/phone_rules_model.dart';
 import '../business Type/business_type_dropdown.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
-  const RegisterScreen({super.key, this.onBackToLogin});
+  const RegisterScreen({
+    super.key,
+    this.onBackToLogin,
+    this.initialEmail,
+    this.initialFirstName,
+    this.initialLastName,
+  });
 
   final VoidCallback? onBackToLogin;
+  final String? initialEmail;
+  final String? initialFirstName;
+  final String? initialLastName;
 
   @override
   ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
@@ -115,10 +124,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   void initState() {
     super.initState();
 
+    final initialName = <String?>[
+      widget.initialFirstName,
+      widget.initialLastName,
+    ].whereType<String>().map((value) => value.trim()).where((value) {
+      return value.isNotEmpty;
+    }).join(' ');
+
     // Text controllers.
-    _storeNameController = TextEditingController();
+    _storeNameController = TextEditingController(text: initialName);
     _licenseNumberController = TextEditingController();
-    _emailController = TextEditingController();
+    _emailController = TextEditingController(
+      text: widget.initialEmail?.trim() ?? '',
+    );
     _phoneController = TextEditingController();
     _addressController = TextEditingController();
     _aboutController = TextEditingController();

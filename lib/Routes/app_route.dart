@@ -24,6 +24,7 @@ import '../Features/Authentication/Email Verification OTP/email_otp_verification
 import '../Features/Authentication/Forget Password/Screens/forget_password_Screen.dart';
 import '../Features/Authentication/Forget Verification OTP/forget_verification_otp.dart';
 import '../Features/Authentication/Login Verification OTP/Screens/login_verification_otp_screen.dart';
+import '../Features/Authentication/Apple Login/Screens/apple_login_screen.dart';
 import '../Features/Authentication/Login/Screens/login_screen.dart';
 import '../Features/Authentication/Registration/Screen/registration_screen.dart';
 import '../Features/Authentication/Rest Password/reset_password_screen.dart';
@@ -71,6 +72,8 @@ abstract final class AppRoutes {
   static const String onboarding = '/onboarding';
 
   static const String login = '/login';
+
+  static const String appleLogin = '/apple-login';
 
   static const String register = '/register';
 
@@ -224,13 +227,37 @@ final GoRouter appRouter = GoRouter(
     ),
 
     // ═══════════════════════════════════════════════════════════════════════
+    // APPLE LOGIN
+    // ═══════════════════════════════════════════════════════════════════════
+    GoRoute(
+      path: AppRoutes.appleLogin,
+      name: 'apple-login',
+      builder: (BuildContext context, GoRouterState state) {
+        return AppleLoginScreen(
+          onLoginSuccess: () {
+            context.go(AppRoutes.bottombar);
+          },
+        );
+      },
+    ),
+
+    // ═══════════════════════════════════════════════════════════════════════
     // REGISTER
     // ═══════════════════════════════════════════════════════════════════════
     GoRoute(
       path: AppRoutes.register,
       name: 'register',
       builder: (BuildContext context, GoRouterState state) {
+        final extra = state.extra;
+
+        final data = extra is Map
+            ? Map<String, dynamic>.from(extra)
+            : <String, dynamic>{};
+
         return RegisterScreen(
+          initialEmail: data['email'] as String?,
+          initialFirstName: data['first_name'] as String?,
+          initialLastName: data['last_name'] as String?,
           onBackToLogin: () {
             context.go(AppRoutes.login);
           },

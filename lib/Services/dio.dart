@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import 'api_url.dart';
@@ -46,17 +47,12 @@ DioClient dio(Ref ref) {
         }
 
         // --------------------------------------------------------
-        // Debug logging
+        // Debug logging (never log bodies, query values or tokens)
         // --------------------------------------------------------
 
-        print('');
-        print('========== API REQUEST ==========');
-        print('METHOD: ${options.method}');
-        print('URL: ${options.uri}');
-        print('QUERY: ${options.queryParameters}');
-        print('BODY: ${options.data}');
-        print('=================================');
-        print('');
+        if (kDebugMode) {
+          debugPrint('[API] ${options.method} ${options.uri}');
+        }
 
         handler.next(options);
       },
@@ -65,13 +61,11 @@ DioClient dio(Ref ref) {
       // RESPONSE
       // ==========================================================
       onResponse: (response, handler) {
-        print('');
-        print('========== API RESPONSE ==========');
-        print('STATUS: ${response.statusCode}');
-        print('URL: ${response.requestOptions.uri}');
-        print('DATA: ${response.data}');
-        print('==================================');
-        print('');
+        if (kDebugMode) {
+          debugPrint(
+            '[API] ${response.statusCode} ${response.requestOptions.uri}',
+          );
+        }
 
         handler.next(response);
       },
@@ -80,15 +74,12 @@ DioClient dio(Ref ref) {
       // ERROR
       // ==========================================================
       onError: (DioException error, ErrorInterceptorHandler handler) async {
-        print('');
-        print('========== API ERROR ==========');
-        print('TYPE: ${error.type}');
-        print('STATUS: ${error.response?.statusCode}');
-        print('URL: ${error.requestOptions.uri}');
-        print('MESSAGE: ${error.message}');
-        print('RESPONSE: ${error.response?.data}');
-        print('================================');
-        print('');
+        if (kDebugMode) {
+          debugPrint(
+            '[API] ${error.type} ${error.response?.statusCode ?? '-'} '
+            '${error.requestOptions.uri}',
+          );
+        }
 
         final apiException = ErrorHandler.handle(error);
 
@@ -109,14 +100,23 @@ DioClient dio(Ref ref) {
           ApiUrls.forgotPassword,
           ApiUrls.resetPassword,
           ApiUrls.resendOtp,
+          ApiUrls.socialProviders,
+          ApiUrls.appleLogin,
         ];
+
+        final isPublicSocial =
+            requestPath == ApiUrls.socialProviders ||
+            requestPath.startsWith('vendor/auth/social/');
 
         // ========================================================
         // Session Expired
         // ========================================================
 
         final isSessionError =
-            statusCode == 401 && hasToken && !publicPaths.contains(requestPath);
+            statusCode == 401 &&
+            hasToken &&
+            !publicPaths.contains(requestPath) &&
+            !isPublicSocial;
 
         if (isSessionError) {
           await SessionManager.handleSessionExpired();

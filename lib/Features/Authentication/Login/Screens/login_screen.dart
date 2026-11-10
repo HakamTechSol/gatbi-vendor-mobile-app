@@ -10,6 +10,9 @@ import '../../../../Services/auth_validator.dart';
 import '../../../../Services/dio.dart';
 import '../../../../Theme/app_colors.dart';
 import '../../../../Theme/app_text_styles.dart';
+import '../../Social Login/Controller/social_login_controller.dart';
+import '../../Social Login/Models/social_login_result.dart';
+import '../../Social Login/Models/social_provider_model.dart';
 import '../Controller/login_controller.dart';
 import '../Models/login_model.dart';
 
@@ -45,6 +48,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
   bool _isLoading = false;
+  bool _socialProvidersLoading = true;
+  bool _socialLoginEnabled = true;
+  List<SocialProvider> _socialProviders = const <SocialProvider>[];
+  String? _busyProvider;
 
   // ═══════════════════════════════════════════════════════════════════════════
   // INIT / DISPOSE
@@ -59,6 +66,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     _emailFocusNode = FocusNode();
     _passwordFocusNode = FocusNode();
+
+    _loadSocialProviders();
+  }
+
+  Future<void> _loadSocialProviders() async {
+    try {
+      final controller = SocialLoginController(
+        dioClient: ref.read(dioProvider),
+      );
+
+      final response = await controller.fetchProviders();
+
+      if (!mounted) return;
+
+      setState(() {
+        _socialLoginEnabled = response.socialLoginEnabled;
+        _socialProviders = response.enabledProviders
+            .where((provider) => provider.isGoogle || provider.isApple)
+            .toList(growable: false);
+        _socialProvidersLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+
+      setState(() {
+        _socialLoginEnabled = false;
+        _socialProviders = const <SocialProvider>[];
+        _socialProvidersLoading = false;
+      });
+    }
   }
 
   @override
@@ -77,7 +114,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   // ═══════════════════════════════════════════════════════════════════════════
 
   Future<void> _handleLogin() async {
-    if (_isLoading) return;
+    if (_isLoading || _busyProvider != null) return;
 
     FocusScope.of(context).unfocus();
 
@@ -148,9 +185,134 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (!mounted) return;
       _showError('Something went wrong. Please try again.');
     } finally {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SOCIAL SIGN-IN
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  SocialProvider? _providerFor(String name) {
+    for (final provider in _socialProviders) {
+      if (provider.provider.toLowerCase() == name) return provider;
+    }
+    return null;
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    if (_busyProvider != null || _isLoading) return;
+
+    final provider = _providerFor('google');
+
+    if (provider == null) {
+      _showError('Google sign-in is not available right now.');
+      return;
+    }
+
+    FocusScope.of(context).unfocus();
+
+    setState(() => _busyProvider = 'google');
+
+    try {
+      final controller = SocialLoginController(
+        dioClient: ref.read(dioProvider),
+      );
+
+      final result = await controller.signInWithGoogle(provider: provider);
+
+      if (!mounted) return;
+
+      _handleSocialResult(result);
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      _showError(error.message);
+    } catch (_) {
+      if (!mounted) return;
+      _showError('Google sign-in failed. Please try again.');
+    } finally {
+      if (mounted) {
+        setState(() => _busyProvider = null);
+      }
+    }
+  }
+
+  Future<void> _handleAppleSignIn() async {
+    if (_busyProvider != null || _isLoading) return;
+
+    final provider = _providerFor('apple');
+
+    if (provider == null) {
+      _showError('Apple sign-in is not available right now.');
+      return;
+    }
+
+    FocusScope.of(context).unfocus();
+
+    setState(() => _busyProvider = 'apple');
+
+    try {
+      final controller = SocialLoginController(
+        dioClient: ref.read(dioProvider),
+      );
+
+      final result = await controller.signInWithApple(provider: provider);
+
+      if (!mounted) return;
+
+      _handleSocialResult(result);
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      _showError(error.message);
+    } catch (_) {
+      if (!mounted) return;
+      _showError('Apple sign-in failed. Please try again.');
+    } finally {
+      if (mounted) {
+        setState(() => _busyProvider = null);
+      }
+    }
+  }
+
+  void _handleSocialResult(SocialLoginResult result) {
+    if (result.vendorNotFound) {
+      context.go(
+        AppRoutes.register,
+        extra: {
+          'email': result.email,
+          'first_name': result.firstName,
+          'last_name': result.lastName,
+        },
+      );
+      return;
+    }
+
+    if (result.requiresOtp) {
+      context.go(
+        AppRoutes.loginotpVerification,
+        extra: {
+          'email': result.email ?? '',
+          'merchant_id': result.merchantId,
+          'expires_in_minutes': result.expiresInMinutes,
+        },
+      );
+      return;
+    }
+
+    if (result.hasToken) {
+      context.go(AppRoutes.bottombar);
+      return;
+    }
+
+    if (result.errorCode == 'CANCELLED') {
+      return;
+    }
+
+    _showError(
+      result.message ?? 'Sign-in could not be completed. Please try again.',
+    );
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -577,7 +739,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
               _buildLoginButton(),
 
-              const SizedBox(height: 18),
+              if (_showSocialSection) ...[
+                const SizedBox(height: 12),
+
+                _buildOrDivider(),
+
+                const SizedBox(height: 12),
+
+                _buildSocialButtons(),
+
+                const SizedBox(height: 18),
+              ] else
+                const SizedBox(height: 18),
 
               _buildRegisterSection(),
             ],
@@ -689,6 +862,70 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       height: 47,
       borderRadius: 10,
       elevation: 3,
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SOCIAL BUTTONS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  bool get _showSocialSection {
+    return !_socialProvidersLoading &&
+        _socialLoginEnabled &&
+        _socialProviders.isNotEmpty;
+  }
+
+  Widget _buildSocialButtons() {
+    return Column(
+      children: [
+        for (var index = 0; index < _socialProviders.length; index++) ...[
+          if (index > 0) const SizedBox(height: 10),
+          _buildSocialButton(_socialProviders[index]),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSocialButton(SocialProvider provider) {
+    final isGoogle = provider.isGoogle;
+    final providerKey = provider.provider.toLowerCase();
+
+    return CustomButton(
+      text: isGoogle ? 'Continue with Google' : 'Continue with Apple',
+      icon: isGoogle ? Icons.g_mobiledata_rounded : Icons.apple_rounded,
+      onPressed: isGoogle ? _handleGoogleSignIn : _handleAppleSignIn,
+      isLoading: _busyProvider == providerKey,
+      isEnabled: _busyProvider == null || _busyProvider == providerKey,
+      type: isGoogle ? CustomButtonType.outlined : CustomButtonType.primary,
+      gradient: isGoogle
+          ? null
+          : const LinearGradient(
+              colors: [Color(0xFF111111), Color(0xFF2C2C2E)],
+            ),
+      foregroundColor: isGoogle ? null : AppColors.white,
+      height: 47,
+      borderRadius: 10,
+      elevation: isGoogle ? 0 : 2,
+    );
+  }
+
+  Widget _buildOrDivider() {
+    return Row(
+      children: [
+        const Expanded(child: Divider(color: AppColors.divider)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: Text(
+            'OR',
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.textSecondary,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        const Expanded(child: Divider(color: AppColors.divider)),
+      ],
     );
   }
 
